@@ -7,32 +7,37 @@
 
 
 term(S) -->
-	structure(S).
+	structure(S),
+	!.
 
 term(V) -->
 	variable(V).
 
 
-structure(s(Name, [])) -->
-	atom(a(Name)).
-
-
-structure(s(Name, [])) -->
-	atom(a(Name)),
+structure(s(Functor, Terms)) -->
+	atom(a(Functor)),
 	spaces,
+	structure_bracket_terms(Terms).
+
+
+structure_bracket_terms(Terms) -->
 	"(",
 	spaces,
-	")".
+	structure_terms(Terms),
+	spaces,
+	")",
+	!.
 
-structure(s(Name, [Term|Terms])) -->
-	atom(a(Name)),
-	spaces,
-	"(",
-	spaces,
+
+structure_bracket_terms([]) -->
+	[].
+
+structure_terms([Term|Terms]) -->
 	term(Term),
-	comma_terms(Terms),
-	spaces,
-	")".
+	comma_terms(Terms).
+
+structure_terms([]) -->
+	[].
 
 
 atom(a(A)) -->
@@ -46,10 +51,17 @@ variable(v(V)) -->
 identifier(Type, Identifier) -->
 	type(H, Type),
 	types(T, prolog_identifier_continue),
+	!,
 	{
 	    atom_codes(Identifier, [H|T])
 	}.
 
+
+identifier(Type, Identifier) -->
+	type(H, Type),
+	{
+	    atom_codes(Identifier, [H])
+	}.
 
 comma_terms([Term|Terms]) -->
 	spaces,
