@@ -88,18 +88,6 @@ tokenise_structure_terms([Term|Terms], All_Allocations) -->
 	tokenise_structure_terms(Terms, All_Allocations).
 
 
-remove_external_names([], _, []).
-
-remove_external_names([X=s(F, Terms)|As], All_As, [X=s(F, Rs)|New_As]) :-
-	!,
-	lookup_allocations(Terms, Rs, All_As),
-	remove_external_names(As, All_As, New_As).
-
-
-remove_external_names([_=v(_)|Allocations], All_Allocations, New_Allocations) :-
-	remove_external_names(Allocations, All_Allocations, New_Allocations).
-
-
 lookup_allocations([], [], _).
 
 lookup_allocations([Term|Terms], [Register|Registers], Allocations) :-
