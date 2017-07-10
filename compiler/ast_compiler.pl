@@ -83,21 +83,10 @@ tokenise_structure_terms([], _) -->
 tokenise_structure_terms([Term|Terms], All_Allocations) -->
 	[Register],
 	{
-	    lookup_allocation(Term, Register, All_Allocations)
+	    member(Register=Term, All_Allocations),
+	    !
 	},
 	tokenise_structure_terms(Terms, All_Allocations).
-
-
-lookup_allocations([], [], _).
-
-lookup_allocations([Term|Terms], [Register|Registers], Allocations) :-
-	lookup_allocation(Term, Register, Allocations),
-	lookup_allocations(Terms, Registers, Allocations).
-
-
-lookup_allocation(Term, Register, Allocations) :-
-	member(Register=Term, Allocations),
-	!.
 
 
 allocate_term_registers(Term, Allocations) :-
