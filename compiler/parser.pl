@@ -1,9 +1,26 @@
 :- module(parser, [
+	      atoms//1,       % -Atoms
+	      atom//1,        % -Atom
 	      term//1,        % -Term
 	      structure//1,   % -Structure
 	      atom//1,	      % -Atom
 	      variable//1     % -Variable
 	  ]).
+
+atoms([]) -->
+	[].
+
+atoms([Atom|Atoms]) -->
+	atom(Atom),
+	spaces,
+	!,
+	atoms(Atoms).
+
+
+atom(S) -->
+	structure(S),
+	spaces,
+	".".
 
 
 term(S) -->
@@ -15,7 +32,7 @@ term(V) -->
 
 
 structure(s(Functor, Terms)) -->
-	atom(a(Functor)),
+	structure_functor(Functor),
 	spaces,
 	structure_bracket_terms(Terms).
 
@@ -40,7 +57,7 @@ structure_terms([]) -->
 	[].
 
 
-atom(a(A)) -->
+structure_functor(A) -->
 	identifier(prolog_atom_start, A).
 
 
