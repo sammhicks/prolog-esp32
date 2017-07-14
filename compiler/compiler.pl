@@ -1,6 +1,6 @@
 
 :- module(compiler, [
-	      compile/3    % +Query, +Program, -Codes
+	      compile/3     % +Query, +Program, -Codes
 	  ]).
 
 :- use_module(parser).
