@@ -1,10 +1,6 @@
 :- module(parser, [
 	      atoms//1,         % -Atoms
-	      atom//1,          % -Atom
-	      term//1,          % -Term
-	      structure//1,     % -Structure
-	      atom//1,	        % -Atom
-	      variable//1       % -Variable
+	      atom//1           % -Atom
 	  ]).
 
 atoms([]) -->
