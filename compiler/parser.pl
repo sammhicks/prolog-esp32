@@ -17,8 +17,8 @@ atoms([Atom|Atoms]) -->
 	atoms(Atoms).
 
 
-atom(S) -->
-	structure(S),
+atom(a(Functor, Terms)) -->
+	structure(s(Functor, Terms)),
 	spaces,
 	".".
 
