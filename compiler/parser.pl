@@ -1,19 +1,29 @@
 :- module(parser, [
-	      atoms//1,         % -Atoms
-	      atom//1           % -Atom
+	      clauses//1,	% -Atoms
+	      query//1		% -Query
 	  ]).
 
-atoms([]) -->
+clauses([]) -->
 	[].
 
-atoms([Atom|Atoms]) -->
-	atom(Atom),
+clauses([Clause|Clauses]) -->
+	program_clause(Clause),
 	spaces,
 	!,
-	atoms(Atoms).
+	clauses(Clauses).
 
 
-atom(a(Functor, Terms)) -->
+program_clause(Fact) -->
+	fact(Fact).
+
+
+fact(f(Functor, Terms)) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	".".
+
+
+query(q(Functor, Terms)) -->
 	structure(s(Functor, Terms)),
 	spaces,
 	".".

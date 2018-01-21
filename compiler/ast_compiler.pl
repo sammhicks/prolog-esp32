@@ -10,9 +10,9 @@
 
 % --- Query ---
 
-compile_query_ast(Query, Codes, Codes_Tail) :-
-	allocate_atom_registers(Query, Allocation),
-	tokenize_query_allocation(Allocation, Tokens, []),
+compile_query_ast(q(Functor, Terms), Codes, Codes_Tail) :-
+	allocate_atom_registers(Terms, Allocation),
+	tokenize_query_allocation(q(Functor, Allocation), Tokens, []),
 	convert_query_tokens(Tokens, [], Codes, Codes_Tail).
 
 
@@ -52,9 +52,17 @@ convert_query_token(x(X), Rs, [x(X)|Rs]) -->
 
 % --- Program ---
 
-compile_program_ast(Program, Codes, Codes_Tail) :-
-	allocate_atom_registers(Program, Allocation),
-	tokenize_program_allocation(Allocation, Tokens, []),
+compile_program_ast([]) -->
+	[].
+
+compile_program_ast([Clause|Clauses]) -->
+	compile_program_clause_ast(Clause),
+	compile_program_ast(Clauses).
+
+
+compile_program_clause_ast(f(Functor, Terms), Codes, Codes_Tail) :-
+	allocate_atom_registers(Terms, Allocation),
+	tokenize_program_allocation(f(Functor, Allocation), Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
 

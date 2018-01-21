@@ -3,9 +3,9 @@
 	      allocate_atom_registers/2     % -Abstarct_Syntax_Tree, Allocations
 	  ]).
 
-allocate_atom_registers(a(Functor, Terms), a(Functor, Bs)) :-
+allocate_atom_registers(Atom_Terms, Bs) :-
 	init_register_allocation(State0),
-	reserve_atom_arguments_registers(Terms, As, State0, State1),
+	reserve_atom_arguments_registers(Atom_Terms, As, State0, State1),
 	allocate_atom_terms_registers(As, Bs, State1, _).
 
 

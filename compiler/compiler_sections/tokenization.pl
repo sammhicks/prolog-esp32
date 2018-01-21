@@ -4,7 +4,7 @@
 	      tokenize_program_allocation//1    % -Program_Allocation
 	  ]).
 
-tokenize_query_allocation(a(Functor, Allocation)) -->
+tokenize_query_allocation(q(Functor, Allocation)) -->
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, query),
 	[call(Functor/Arity)],
@@ -12,7 +12,7 @@ tokenize_query_allocation(a(Functor, Allocation)) -->
 	    length(Allocation, Arity)
 	}.
 
-tokenize_program_allocation(a(Functor, Allocation)) -->
+tokenize_program_allocation(f(Functor, Allocation)) -->
 	[label(Functor/Arity)],
 	{
 	    length(Allocation, Arity)
