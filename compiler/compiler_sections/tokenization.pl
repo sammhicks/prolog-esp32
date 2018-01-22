@@ -1,10 +1,11 @@
 
 :- module(tokenization, [
-	      tokenize_query_allocation//1,     % -Query_Allocation
-	      tokenize_program_allocation//1    % -Program_Allocation
+	      tokenize_query_allocation//2,     % -Functor, -Allocation
+	      tokenize_fact_allocation//2,      % -Functor, -Allocation
+	      tokenize_rule_allocation//4       % -Functor, -Allocation, -Goals, -Permanent_Variables
 	  ]).
 
-tokenize_query_allocation(q(Functor, Allocation)) -->
+tokenize_query_allocation(Functor, Allocation) -->
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, query),
 	[call(Functor/Arity)],
@@ -12,7 +13,8 @@ tokenize_query_allocation(q(Functor, Allocation)) -->
 	    length(Allocation, Arity)
 	}.
 
-tokenize_program_allocation(f(Functor, Allocation)) -->
+
+tokenize_fact_allocation(Functor, Allocation) -->
 	[label(Functor/Arity)],
 	{
 	    length(Allocation, Arity)
@@ -20,6 +22,31 @@ tokenize_program_allocation(f(Functor, Allocation)) -->
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, program),
 	[proceed].
+
+
+tokenize_rule_allocation(Functor, Allocation, Goals, Permanent_Variables) -->
+	[label(Functor/Arity)],
+	[allocate(Frame_Size)],
+	{
+	    length(Allocation, Arity),
+	    length(Permanent_Variables, Frame_Size)
+	},
+	tokenize_atom_argument_allocation_list(Allocation),
+	tokenize_atom_argument_subterm_list(Allocation, program),
+	tokenize_goals_allocation(Goals),
+	[deallocate].
+
+
+tokenize_goals_allocation([]) -->
+	[].
+
+tokenize_goals_allocation([Goal|Goals]) -->
+	tokenize_goal_allocation(Goal),
+	tokenize_goals_allocation(Goals).
+
+
+tokenize_goal_allocation(goal(Functor, Allocation), [goal(Query_Tokens)|Tokens], Tokens) :-
+	tokenize_query_allocation(Functor, Allocation, Query_Tokens, []).
 
 
 tokenize_atom_argument_allocation_list([]) -->
@@ -87,6 +114,6 @@ tokenize_assignment(v(_), _, _Mode) -->
 tokenize_structure_term_registers([]) -->
 	[].
 
-tokenize_structure_term_registers([x(X)=_|Terms]) -->
-	[x(X)],
+tokenize_structure_term_registers([X=_|Terms]) -->
+	[X],
 	tokenize_structure_term_registers(Terms).

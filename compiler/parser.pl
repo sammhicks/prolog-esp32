@@ -16,14 +16,50 @@ clauses([Clause|Clauses]) -->
 program_clause(Fact) -->
 	fact(Fact).
 
+program_clause(Rule) -->
+	rule(Rule).
 
-fact(f(Functor, Terms)) -->
+
+rule(rule(head(Functor, Terms), [Goal|Goals])) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	":-",
+	spaces,
+	goal(Goal),
+	spaces,
+	goals(Goals).
+
+
+goals([]) -->
+	".".
+
+goals([Goal|Goals]) -->
+	",",
+	spaces,
+	goal(Goal),
+	spaces,
+	goals(Goals).
+
+
+goal(goal(Functor, Terms)) -->
+	structure(s(Functor, Terms)).
+
+
+fact(fact(Functor, Terms)) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	":-",
+	spaces,
+	".".
+
+
+fact(fact(Functor, Terms)) -->
 	structure(s(Functor, Terms)),
 	spaces,
 	".".
 
 
-query(q(Functor, Terms)) -->
+query(query(Functor, Terms)) -->
 	structure(s(Functor, Terms)),
 	spaces,
 	".".
