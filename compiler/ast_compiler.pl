@@ -50,6 +50,16 @@ convert_query_token(x(X), Rs, Rs) -->
 convert_query_token(x(X), Rs, [x(X)|Rs]) -->
 	[set_variable(x(X))].
 
+convert_query_token(y(Y), Rs, Rs) -->
+	[set_value(y(Y))],
+	{
+	    member(y(Y), Rs),
+	    !
+	}.
+
+convert_query_token(y(Y), Rs, [y(Y)|Rs]) -->
+	[set_variable(y(Y))].
+
 % --- Program ---
 
 compile_program_ast([]) -->
