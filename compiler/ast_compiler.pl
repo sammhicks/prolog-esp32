@@ -65,21 +65,46 @@ convert_query_token(y(Y), Rs, [y(Y)|Rs]) -->
 compile_program_ast([]) -->
 	[].
 
-compile_program_ast([Clause|Clauses]) -->
+compile_program_ast([definition(Functor, Clauses)|Definitions]) -->
+	compile_program_definition_ast(Functor, Clauses),
+	compile_program_ast(Definitions).
+
+
+compile_program_definition_ast(Functor, [Clause]) -->
+	!,
+	[label(Functor)],
+	compile_program_clause_ast(Clause).
+
+compile_program_definition_ast(Functor, [Clause|Clauses]) -->
+	[label(Functor)],
+	[try_me_else(retry(Functor))],
 	compile_program_clause_ast(Clause),
-	compile_program_ast(Clauses).
+	compile_program_definition_tail_ast(retry(Functor), Clauses).
 
 
-compile_program_clause_ast(rule(head(Functor, Terms), Goals), Codes, Codes_Tail) :-
+compile_program_definition_tail_ast(Label, [Clause]) -->
+	!,
+	[label(Label)],
+	[trust_me],
+	compile_program_clause_ast(Clause).
+
+compile_program_definition_tail_ast(Label, [Clause|Clauses]) -->
+	[label(Label)],
+	[retry_me_else(retry(Label))],
+	compile_program_clause_ast(Clause),
+	compile_program_definition_tail_ast(retry(Label), Clauses).
+
+
+compile_program_clause_ast(rule(head(Terms), Goals), Codes, Codes_Tail) :-
 	allocate_permanent_variables(Terms, Goals, Permanent_Variables),
 	allocate_atom_registers(Terms, Permanent_Variables, Terms_Allocation),
 	allocate_goals_registers(Goals, Permanent_Variables, Goals_Allocation),
-	tokenize_rule_allocation(Functor, Terms_Allocation, Goals_Allocation, Permanent_Variables, Tokens, []),
+	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
-compile_program_clause_ast(fact(Functor, Terms), Codes, Codes_Tail) :-
+compile_program_clause_ast(fact(Terms), Codes, Codes_Tail) :-
 	allocate_atom_registers(Terms, [], Allocation),
-	tokenize_fact_allocation(Functor, Allocation, Tokens, []),
+	tokenize_fact_allocation(Allocation, Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
 

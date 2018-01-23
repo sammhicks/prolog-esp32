@@ -1,34 +1,25 @@
 
 :- module(tokenization, [
 	      tokenize_query_allocation//2,     % -Functor, -Allocation
-	      tokenize_fact_allocation//2,      % -Functor, -Allocation
-	      tokenize_rule_allocation//4       % -Functor, -Allocation, -Goals, -Permanent_Variables
+	      tokenize_fact_allocation//1,      % -Allocation
+	      tokenize_rule_allocation//3       % -Allocation, -Goals, -Permanent_Variables
 	  ]).
 
 tokenize_query_allocation(Functor, Allocation) -->
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, query),
-	[call(Functor/Arity)],
-	{
-	    length(Allocation, Arity)
-	}.
+	[call(Functor)].
 
 
-tokenize_fact_allocation(Functor, Allocation) -->
-	[label(Functor/Arity)],
-	{
-	    length(Allocation, Arity)
-	},
+tokenize_fact_allocation(Allocation) -->
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, program),
 	[proceed].
 
 
-tokenize_rule_allocation(Functor, Allocation, Goals, Permanent_Variables) -->
-	[label(Functor/Arity)],
+tokenize_rule_allocation(Allocation, Goals, Permanent_Variables) -->
 	[allocate(Frame_Size)],
 	{
-	    length(Allocation, Arity),
 	    length(Permanent_Variables, Frame_Size)
 	},
 	tokenize_atom_argument_allocation_list(Allocation),
@@ -61,10 +52,7 @@ tokenize_atom_argument_allocation(X=v(_), A) -->
 	[xa(X, A)].
 
 tokenize_atom_argument_allocation(s(F, Ts), A) -->
-	[A=F/N],
-	{
-	    length(Ts, N)
-	},
+	[A=F],
 	tokenize_structure_term_registers(Ts).
 
 
@@ -93,17 +81,11 @@ tokenize_allocation_list([(X=T)|As], Mode) -->
 
 tokenize_assignment(s(F, Ts), X, query) -->
 	tokenize_allocation_list(Ts, query),
-	[X=F/N],
-	{
-	    length(Ts, N)
-	},
+	[X=F],
 	tokenize_structure_term_registers(Ts).
 
 tokenize_assignment(s(F, Ts), X, program) -->
-	[X=F/N],
-	{
-	    length(Ts, N)
-	},
+	[X=F],
 	tokenize_structure_term_registers(Ts),
 	tokenize_allocation_list(Ts, program).
 

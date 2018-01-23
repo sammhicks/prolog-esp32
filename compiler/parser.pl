@@ -1,33 +1,63 @@
 :- module(parser, [
-	      clauses//1,	% -Atoms
+	      definitions//1,	% -Definitions
 	      query//1		% -Query
 	  ]).
 
-clauses([]) -->
+definitions([]) -->
 	[].
 
-clauses([Clause|Clauses]) -->
-	program_clause(Clause),
+definitions([Definition|Definitions]) -->
+	definition(Definition),
+	definitions(Definitions).
+
+
+definition(definition(Functor, [Clause|Clauses])) -->
+	program_clause(Functor, Clause),
 	spaces,
+	definition_tail(Functor, Clauses).
+
+
+definition_tail(Functor, [Clause|Clauses]) -->
+	program_clause(Functor, Clause),
 	!,
-	clauses(Clauses).
+	spaces,
+	definition_tail(Functor, Clauses).
+
+definition_tail(_Functor, []) -->
+	[].
 
 
-program_clause(Fact) -->
-	fact(Fact).
+program_clause(Functor, Fact) -->
+	fact(Functor, Fact),
+	!.
 
-program_clause(Rule) -->
-	rule(Rule).
+program_clause(Functor, Rule) -->
+	rule(Functor, Rule).
 
 
-rule(rule(head(Functor, Terms), [Goal|Goals])) -->
+fact(Functor, fact(Terms)) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	":-",
+	spaces,
+	".".
+
+
+fact(Functor, fact(Terms)) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	".".
+
+
+rule(Functor, rule(head(Terms), [Goal|Goals])) -->
 	structure(s(Functor, Terms)),
 	spaces,
 	":-",
 	spaces,
 	goal(Goal),
 	spaces,
-	goals(Goals).
+	goals(Goals),
+	!.
 
 
 goals([]) -->
@@ -45,20 +75,6 @@ goal(goal(Functor, Terms)) -->
 	structure(s(Functor, Terms)).
 
 
-fact(fact(Functor, Terms)) -->
-	structure(s(Functor, Terms)),
-	spaces,
-	":-",
-	spaces,
-	".".
-
-
-fact(fact(Functor, Terms)) -->
-	structure(s(Functor, Terms)),
-	spaces,
-	".".
-
-
 query(query(Functor, Terms)) -->
 	structure(s(Functor, Terms)),
 	spaces,
@@ -73,10 +89,13 @@ term(V) -->
 	variable(V).
 
 
-structure(s(Functor, Terms)) -->
+structure(s(Functor/Arity, Terms)) -->
 	structure_functor(Functor),
 	spaces,
-	structure_bracket_terms(Terms).
+	structure_bracket_terms(Terms),
+	{
+	    length(Terms, Arity)
+	}.
 
 
 structure_bracket_terms(Terms) -->
