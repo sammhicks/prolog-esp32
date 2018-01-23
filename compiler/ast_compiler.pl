@@ -33,7 +33,7 @@ convert_query_token(X=S, Rs, [X|Rs]) -->
 convert_query_token(xa(X, A), Rs, [X|Rs]) -->
 	[put_value(X, A)],
 	{
-	    member(A, Rs),
+	    member(X, Rs),
 	    !
 	}.
 
