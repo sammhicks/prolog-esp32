@@ -1,19 +1,65 @@
 :- module(parser, [
-	      atoms//1,         % -Atoms
-	      atom//1           % -Atom
+	      clauses//1,	% -Atoms
+	      query//1		% -Query
 	  ]).
 
-atoms([]) -->
+clauses([]) -->
 	[].
 
-atoms([Atom|Atoms]) -->
-	atom(Atom),
+clauses([Clause|Clauses]) -->
+	program_clause(Clause),
 	spaces,
 	!,
-	atoms(Atoms).
+	clauses(Clauses).
 
 
-atom(a(Functor, Terms)) -->
+program_clause(Fact) -->
+	fact(Fact).
+
+program_clause(Rule) -->
+	rule(Rule).
+
+
+rule(rule(head(Functor, Terms), [Goal|Goals])) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	":-",
+	spaces,
+	goal(Goal),
+	spaces,
+	goals(Goals).
+
+
+goals([]) -->
+	".".
+
+goals([Goal|Goals]) -->
+	",",
+	spaces,
+	goal(Goal),
+	spaces,
+	goals(Goals).
+
+
+goal(goal(Functor, Terms)) -->
+	structure(s(Functor, Terms)).
+
+
+fact(fact(Functor, Terms)) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	":-",
+	spaces,
+	".".
+
+
+fact(fact(Functor, Terms)) -->
+	structure(s(Functor, Terms)),
+	spaces,
+	".".
+
+
+query(query(Functor, Terms)) -->
 	structure(s(Functor, Terms)),
 	spaces,
 	".".

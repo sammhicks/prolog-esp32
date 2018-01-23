@@ -18,9 +18,9 @@ compile(Query, Program) -->
 
 
 compile_query(Query, Query_Codes, Query_Codes_Tail) :-
-	atom(Query_Term, Query, []),
+	query(Query_Term, Query, []),
 	compile_query_ast(Query_Term, Query_Codes, Query_Codes_Tail).
 
 compile_program(Program, Program_Codes, Program_Codes_Tail) :-
-	atom(Program_Term, Program, []),
+	clauses(Program_Term, Program, []),
 	compile_program_ast(Program_Term, Program_Codes, Program_Codes_Tail).
