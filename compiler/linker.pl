@@ -16,8 +16,26 @@ link_calls([call(L)|Unlinked_Codes], [call(L, At)|Linked_Codes], Line, Labels) :
 	succ(Line, Next_Line),
 	link_calls(Unlinked_Codes, Linked_Codes, Next_Line, Labels).
 
+link_calls([try_me_else(L)|Unlinked_Codes], [try_me_else(L, At)|Linked_Codes], Line, Labels) :-
+	member(L=At, Labels),
+	!,
+	succ(Line, Next_Line),
+	link_calls(Unlinked_Codes, Linked_Codes, Next_Line, Labels).
+
+link_calls([retry_me_else(L)|Unlinked_Codes], [retry_me_else(L, At)|Linked_Codes], Line, Labels) :-
+	member(L=At, Labels),
+	!,
+	succ(Line, Next_Line),
+	link_calls(Unlinked_Codes, Linked_Codes, Next_Line, Labels).
+
 link_calls([label(Label)|Unlinked_Codes], Linked_Codes, Line, Labels) :-
-	member(Label=line(Line), Labels),
+	member(Label=line(Current_Line), Labels),
+	(   ground(Current_Line)
+	->  !,
+	    print_message(error, repeated_label(Label)),
+	    fail
+	;   Line = Current_Line
+	),
 	!,
 	link_calls(Unlinked_Codes, Linked_Codes, Line, Labels).
 

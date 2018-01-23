@@ -22,5 +22,5 @@ compile_query(Query, Query_Codes, Query_Codes_Tail) :-
 	compile_query_ast(Query_Term, Query_Codes, Query_Codes_Tail).
 
 compile_program(Program, Program_Codes, Program_Codes_Tail) :-
-	clauses(Program_Term, Program, []),
+	definitions(Program_Term, Program, []),
 	compile_program_ast(Program_Term, Program_Codes, Program_Codes_Tail).
