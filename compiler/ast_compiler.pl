@@ -77,22 +77,30 @@ compile_program_definition_ast(Functor, [Clause]) -->
 
 compile_program_definition_ast(Functor, [Clause|Clauses]) -->
 	[label(Functor)],
-	[try_me_else(retry(Functor))],
+	{
+	    Functor = Name/Arity,
+	    Next_Functor = retry(Name)/Arity
+	},
+	[try_me_else(Next_Functor)],
 	compile_program_clause_ast(Clause),
-	compile_program_definition_tail_ast(retry(Functor), Clauses).
+	compile_program_definition_tail_ast(Next_Functor, Clauses).
 
 
-compile_program_definition_tail_ast(Label, [Clause]) -->
+compile_program_definition_tail_ast(Functor, [Clause]) -->
 	!,
-	[label(Label)],
+	[label(Functor)],
 	[trust_me],
 	compile_program_clause_ast(Clause).
 
-compile_program_definition_tail_ast(Label, [Clause|Clauses]) -->
-	[label(Label)],
-	[retry_me_else(retry(Label))],
+compile_program_definition_tail_ast(Functor, [Clause|Clauses]) -->
+	[label(Functor)],
+	{
+	    Functor = Name/Arity,
+	    Next_Functor = retry(Name)/Arity
+	},
+	[retry_me_else(Next_Functor)],
 	compile_program_clause_ast(Clause),
-	compile_program_definition_tail_ast(retry(Label), Clauses).
+	compile_program_definition_tail_ast(Next_Functor, Clauses).
 
 
 compile_program_clause_ast(rule(head(Terms), Goals), Codes, Codes_Tail) :-
