@@ -33,6 +33,9 @@ convert_query_token(c_a(C, A), Rs, Rs) -->
 convert_query_token(s_x(S, X), Rs, Rs) -->
 	[put_structure(S, X)].
 
+convert_query_token(l_x(X), Rs, Rs) -->
+	[put_list(X)].
+
 convert_query_token(x_a(X, A), Rs, Rs) -->
 	[put_value(X, A)],
 	{
@@ -147,6 +150,9 @@ convert_program_token(c_a(C, A), Rs, Rs) -->
 
 convert_program_token(s_x(S, X), Rs, Rs) -->
 	[get_structure(S, X)].
+
+convert_program_token(l_x(X), Rs, Rs) -->
+	[get_list(X)].
 
 convert_program_token(x_a(X, A), Rs, Rs) -->
 	[get_value(X, A)],

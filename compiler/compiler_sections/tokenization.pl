@@ -6,8 +6,8 @@
 	  ]).
 
 tokenize_query_allocation(Functor, Allocation) -->
-	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, query),
+	tokenize_atom_argument_allocation_list(Allocation),
 	[call(Functor)].
 
 
@@ -55,10 +55,13 @@ tokenize_atom_argument_allocation(c(C), A) -->
 	!,
 	[c_a(C, A)].
 
-tokenize_atom_argument_allocation(s(F, Ts), A) -->
-	[s_x(F, A)],
-	tokenize_structure_term_registers(Ts).
+tokenize_atom_argument_allocation(s(Functor, Terms), A) -->
+	[s_x(Functor, A)],
+	tokenize_structure_term_registers(Terms).
 
+tokenize_atom_argument_allocation(l(Head, Tail), A) -->
+	[l_x(A)],
+	tokenize_structure_term_registers([Head, Tail]).
 
 tokenize_atom_argument_subterm_list([], _Mode) -->
 	[].
@@ -71,8 +74,11 @@ tokenize_atom_argument_subterm_list([_=T|As], Mode) -->
 tokenize_atom_argument_subterm(c(_), _Mode) -->
 	[].
 
-tokenize_atom_argument_subterm(s(_, Ts), Mode) -->
-	tokenize_allocation_list(Ts, Mode).
+tokenize_atom_argument_subterm(s(_, Terms), Mode) -->
+	tokenize_allocation_list(Terms, Mode).
+
+tokenize_atom_argument_subterm(l(Head, Tail), Mode) -->
+	tokenize_allocation_list([Head, Tail], Mode).
 
 tokenize_atom_argument_subterm(_=v(_), _Mode) -->
 	[].
@@ -94,21 +100,35 @@ tokenize_allocation(X=T, Mode) -->
 
 
 tokenize_assignment(s(Functor, Terms), X, Mode) -->
-	tokenize_structure_assignment(Mode, s(Functor, Terms), X).
+	tokenize_structure_assignment(Mode, Functor, Terms, X).
+
+tokenize_assignment(l(Head, Tail), X, Mode) -->
+	tokenize_list_assignment(Mode, [Head, Tail], X).
 
 tokenize_assignment(v(_), _, _Mode) -->
 	[].
 
 
-tokenize_structure_assignment(query, s(Functor, Terms), X) -->
+tokenize_structure_assignment(query, Functor, Terms, X) -->
 	tokenize_allocation_list(Terms, query),
 	[s_x(Functor, X)],
 	tokenize_structure_term_registers(Terms).
 
-tokenize_structure_assignment(program, s(Functor, Terms), X) -->
+tokenize_structure_assignment(program, Functor, Terms, X) -->
 	[s_x(Functor, X)],
 	tokenize_structure_term_registers(Terms),
 	tokenize_allocation_list(Terms, program).
+
+
+tokenize_list_assignment(query, Items, X) -->
+	tokenize_allocation_list(Items, query),
+	[l_x(X)],
+	tokenize_structure_term_registers(Items).
+
+tokenize_list_assignment(program, Items, X) -->
+	[l_x(X)],
+	tokenize_structure_term_registers(Items),
+	tokenize_allocation_list(Items, program).
 
 
 tokenize_structure_term_registers([]) -->
