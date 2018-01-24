@@ -41,20 +41,22 @@ allocate_atom_term_registers(v(V), A, State0, State) :-
 
 allocate_structure_terms_registers([], [], State, State).
 
-allocate_structure_terms_registers([c(C)|As], [c(C)|Bs], State0, State) :-
-	allocate_structure_terms_registers(As, Bs, State0, State).
-
-allocate_structure_terms_registers([(X=A)|As], [(X=B)|Bs], State0, State) :-
-	allocate_structure_term_registers(A, B, State0, State1),
-	allocate_structure_terms_registers(As, Bs, State1, State).
+allocate_structure_terms_registers([Term|Terms], [Term_Allocation|Terms_Allocation], State0, State) :-
+	allocate_structure_term_registers(Term, Term_Allocation, State0, State1),
+	allocate_structure_terms_registers(Terms, Terms_Allocation, State1, State).
 
 
-allocate_structure_term_registers(s(F, Ts), s(F, Bs), State0, State) :-
-	reserve_registers(Ts, As, State0, State1),
-	allocate_structure_terms_registers(As, Bs, State1, State).
+allocate_structure_term_registers(c(C), c(C), State, State).
 
-allocate_structure_term_registers(v(V), v(V), State, State) :-
-	true.
+allocate_structure_term_registers(X=A, X=B, State0, State) :-
+	allocate_structure_term_assignment_registers(A, B, State0, State).
+
+
+allocate_structure_term_assignment_registers(s(F, Terms), s(F, Terms_Allocation), State0, State) :-
+	reserve_registers(Terms, Intermediate_Terms_Allocation, State0, State1),
+	allocate_structure_terms_registers(Intermediate_Terms_Allocation, Terms_Allocation, State1, State).
+
+allocate_structure_term_assignment_registers(v(V), v(V), State, State).
 
 
 init_register_allocation(Permanent_Variables, State) :-
@@ -63,9 +65,9 @@ init_register_allocation(Permanent_Variables, State) :-
 	register_allocation_state(State, Variables, Next_Register).
 
 
-allocate_permanent_variables([X|Xs], A, [y(A)=X|Allocation]) :-
-	Next_A is A + 1,
-	allocate_permanent_variables(Xs, Next_A, Allocation).
+allocate_permanent_variables([X|Xs], Address, [y(Address)=X|Allocation]) :-
+	Next_Address is Address + 1,
+	allocate_permanent_variables(Xs, Next_Address, Allocation).
 
 allocate_permanent_variables([], _, []).
 

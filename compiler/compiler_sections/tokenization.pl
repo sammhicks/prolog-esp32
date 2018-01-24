@@ -49,14 +49,14 @@ tokenize_atom_argument_allocation_list([(A=T)|As]) -->
 
 
 tokenize_atom_argument_allocation(X=v(_), A) -->
-	[xa(X, A)].
+	[x_a(X, A)].
 
 tokenize_atom_argument_allocation(c(C), A) -->
 	!,
-	[A=c(C)].
+	[c_a(C, A)].
 
 tokenize_atom_argument_allocation(s(F, Ts), A) -->
-	[A=s(F)],
+	[s_x(F, A)],
 	tokenize_structure_term_registers(Ts).
 
 
@@ -81,39 +81,46 @@ tokenize_atom_argument_subterm(_=v(_), _Mode) -->
 tokenize_allocation_list([], _Mode) -->
 	[].
 
-tokenize_allocation_list([c(_)|As], Mode) -->
-	tokenize_allocation_list(As, Mode).
-
-tokenize_allocation_list([(X=T)|As], Mode) -->
-	tokenize_assignment(T, X, Mode),
+tokenize_allocation_list([A|As], Mode) -->
+	tokenize_allocation(A, Mode),
 	tokenize_allocation_list(As, Mode).
 
 
-tokenize_assignment(s(F, Ts), X, query) -->
-	tokenize_allocation_list(Ts, query),
-	[X=s(F)],
-	tokenize_structure_term_registers(Ts).
+tokenize_allocation(c(_), _) -->
+	[].
 
-tokenize_assignment(s(F, Ts), X, program) -->
-	[X=s(F)],
-	tokenize_structure_term_registers(Ts),
-	tokenize_allocation_list(Ts, program).
+tokenize_allocation(X=T, Mode) -->
+	tokenize_assignment(T, X, Mode).
+
+
+tokenize_assignment(s(Functor, Terms), X, Mode) -->
+	tokenize_structure_assignment(Mode, s(Functor, Terms), X).
 
 tokenize_assignment(v(_), _, _Mode) -->
 	[].
 
 
+tokenize_structure_assignment(query, s(Functor, Terms), X) -->
+	tokenize_allocation_list(Terms, query),
+	[s_x(Functor, X)],
+	tokenize_structure_term_registers(Terms).
+
+tokenize_structure_assignment(program, s(Functor, Terms), X) -->
+	[s_x(Functor, X)],
+	tokenize_structure_term_registers(Terms),
+	tokenize_allocation_list(Terms, program).
+
+
 tokenize_structure_term_registers([]) -->
 	[].
 
-tokenize_structure_term_registers([c(C)|Terms]) -->
-	[c(C)],
-	tokenize_structure_term_registers(Terms).
-
-tokenize_structure_term_registers([X=T|Terms]) -->
-	tokenize_structure_term_register(T, X),
+tokenize_structure_term_registers([Term|Terms]) -->
+	tokenize_structure_term_register(Term),
 	tokenize_structure_term_registers(Terms).
 
 
-tokenize_structure_term_register(_, X) -->
+tokenize_structure_term_register(c(C)) -->
+	[c(C)].
+
+tokenize_structure_term_register(X=_) -->
 	[X].
