@@ -21,8 +21,14 @@ items_variables([Item|Items]) -->
 	items_variables(Items).
 
 
+item_variables(c(_)) -->
+	[].
+
 item_variables(s(_, Terms)) -->
 	items_variables(Terms).
+
+item_variables(l(Head, Tail)) -->
+	items_variables([Head, Tail]).
 
 item_variables(v(V)) -->
 	[v(V)].

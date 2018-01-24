@@ -87,11 +87,13 @@ term(C) -->
 term(S) -->
 	structure(S).
 
+term(L) -->
+	list(L).
+
 term(V) -->
 	variable(V).
 
-
-constant(c(Constant)) -->
+constant(c(l(Constant))) -->
 	structure(s(Constant/0, [])).
 
 
@@ -112,9 +114,9 @@ structure_bracket_terms(Terms) -->
 	")",
 	!.
 
-
 structure_bracket_terms([]) -->
 	[].
+
 
 structure_terms([Term|Terms]) -->
 	term(Term),
@@ -126,6 +128,37 @@ structure_terms([]) -->
 
 structure_functor(A) -->
 	identifier(prolog_atom_start, A).
+
+
+list(c([])) -->
+	"[",
+	spaces,
+	"]",
+	!.
+
+list(l(Head, Tail)) -->
+	"[",
+	term(Head),
+	spaces,
+	list_tail(Tail),
+	spaces,
+	"]".
+
+
+list_tail(c([])) -->
+	[].
+
+list_tail(l(Head, Tail)) -->
+	",",
+	spaces,
+	term(Head),
+	spaces,
+	list_tail(Tail).
+
+list_tail(Tail) -->
+	"|",
+	spaces,
+	term(Tail).
 
 
 variable(v(V)) -->

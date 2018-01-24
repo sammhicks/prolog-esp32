@@ -34,9 +34,11 @@ allocate_atom_term_registers(s(F, Ts), s(F, Bs), State0, State) :-
 	reserve_registers(Ts, As, State0, State1),
 	allocate_structure_terms_registers(As, Bs, State1, State).
 
+allocate_atom_term_registers(l(Head, Tail), l(Head_Allocation, Tail_Allocation), State0, State) :-
+	allocate_atom_term_registers(s(_, [Head, Tail]), s(_, [Head_Allocation, Tail_Allocation]), State0, State).
+
 allocate_atom_term_registers(v(V), A, State0, State) :-
 	reserve_register(v(V), A, State0, State).
-
 
 
 allocate_structure_terms_registers([], [], State, State).
@@ -55,6 +57,9 @@ allocate_structure_term_registers(X=A, X=B, State0, State) :-
 allocate_structure_term_assignment_registers(s(F, Terms), s(F, Terms_Allocation), State0, State) :-
 	reserve_registers(Terms, Intermediate_Terms_Allocation, State0, State1),
 	allocate_structure_terms_registers(Intermediate_Terms_Allocation, Terms_Allocation, State1, State).
+
+allocate_structure_term_assignment_registers(l(Head, Tail), l(Head_Allocation, Tail_Allocation), State0, State) :-
+	allocate_structure_term_assignment_registers(s(_, [Head, Tail]), s(_, [Head_Allocation, Tail_Allocation]), State0, State).
 
 allocate_structure_term_assignment_registers(v(V), v(V), State, State).
 
@@ -102,6 +107,9 @@ reserve_register(s(F, T), x(Register)=s(F, T), State0, State) :-
 	Next_Register is Register + 1,
 	register_allocation_state(State, Variables, Next_Register).
 
+reserve_register(l(Head, Tail), x(Register)=l(Head, Tail), State0, State) :-
+	Structure = s(_, [Head, Tail]),
+	reserve_register(Structure, x(Register)=Structure, State0, State).
 
 reserve_register(v(V), Register=v(V), State, State) :-
 	register_allocation_state(State, Variables, _Next_Register),
