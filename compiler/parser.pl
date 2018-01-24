@@ -81,12 +81,18 @@ query(query(Functor, Terms)) -->
 	".".
 
 
+term(C) -->
+	constant(C).
+
 term(S) -->
-	structure(S),
-	!.
+	structure(S).
 
 term(V) -->
 	variable(V).
+
+
+constant(c(Constant)) -->
+	structure(s(Constant/0, [])).
 
 
 structure(s(Functor/Arity, Terms)) -->
@@ -146,7 +152,6 @@ comma_terms([Term|Terms]) -->
 	",",
 	spaces,
 	term(Term),
-	!,
 	comma_terms(Terms).
 
 comma_terms([]) -->

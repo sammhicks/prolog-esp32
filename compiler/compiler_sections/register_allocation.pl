@@ -28,6 +28,8 @@ allocate_atom_terms_registers([(a(Addr)=A)|As], [(a(Addr)=B)|Bs], State0, State)
 	allocate_atom_terms_registers(As, Bs, State1, State).
 
 
+allocate_atom_term_registers(c(C), c(C), State, State).
+
 allocate_atom_term_registers(s(F, Ts), s(F, Bs), State0, State) :-
 	reserve_registers(Ts, As, State0, State1),
 	allocate_structure_terms_registers(As, Bs, State1, State).
@@ -38,6 +40,9 @@ allocate_atom_term_registers(v(V), A, State0, State) :-
 
 
 allocate_structure_terms_registers([], [], State, State).
+
+allocate_structure_terms_registers([c(C)|As], [c(C)|Bs], State0, State) :-
+	allocate_structure_terms_registers(As, Bs, State0, State).
 
 allocate_structure_terms_registers([(X=A)|As], [(X=B)|Bs], State0, State) :-
 	allocate_structure_term_registers(A, B, State0, State1),
@@ -87,6 +92,8 @@ reserve_registers([Term|Terms], [Allocation|Allocations], State0, State) :-
 	reserve_register(Term, Allocation, State0, State1),
 	reserve_registers(Terms, Allocations, State1, State).
 
+
+reserve_register(c(C), c(C), State, State).
 
 reserve_register(s(F, T), x(Register)=s(F, T), State0, State) :-
 	register_allocation_state(State0, Variables, Register),

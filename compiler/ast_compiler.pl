@@ -27,18 +27,24 @@ convert_query_tokens([Token|Tokens], Rs0) -->
 convert_query_token(call(Atom), Rs, Rs) -->
 	[call(Atom)].
 
-convert_query_token(X=S, Rs, [X|Rs]) -->
+convert_query_token(X=c(C), Rs, [X|Rs]) -->
+	[put_constant(C,X)].
+
+convert_query_token(X=s(S), Rs, [X|Rs]) -->
 	[put_structure(S,X)].
 
 convert_query_token(xa(X, A), Rs, [X|Rs]) -->
 	[put_value(X, A)],
 	{
-	    member(A, Rs),
+	    member(X, Rs),
 	    !
 	}.
 
 convert_query_token(xa(X, A), Rs, [X|Rs]) -->
 	[put_variable(X, A)].
+
+convert_query_token(c(C), Rs, Rs) -->
+	[set_constant(C)].
 
 convert_query_token(x(X), Rs, Rs) -->
 	[set_value(x(X))],
@@ -127,9 +133,6 @@ convert_program_tokens([Token|Tokens], Rs0) -->
 convert_program_token(goal(Tokens), Rs, Rs) -->
 	convert_query_tokens(Tokens, []).
 
-convert_program_token(label(Label), Rs, Rs) -->
-	[label(Label)].
-
 convert_program_token(proceed, Rs, Rs) -->
 	[proceed].
 
@@ -139,7 +142,10 @@ convert_program_token(allocate(N), Rs, Rs) -->
 convert_program_token(deallocate, Rs, Rs) -->
 	[deallocate].
 
-convert_program_token(X=S, Rs, [X|Rs]) -->
+convert_program_token(X=c(C), Rs, [X|Rs]) -->
+	[get_constant(C,X)].
+
+convert_program_token(X=s(S), Rs, [X|Rs]) -->
 	[get_structure(S,X)].
 
 convert_program_token(xa(X, A), Rs, Rs) -->
@@ -151,6 +157,9 @@ convert_program_token(xa(X, A), Rs, Rs) -->
 
 convert_program_token(xa(X, A), Rs, [X|Rs]) -->
 	[get_variable(X, A)].
+
+convert_program_token(c(C), Rs, Rs) -->
+	[unify_constant(C)].
 
 convert_program_token(x(X), Rs, Rs) -->
 	[unify_value(x(X))],
