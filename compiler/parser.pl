@@ -7,7 +7,9 @@ definitions([]) -->
 	[].
 
 definitions([Definition|Definitions]) -->
+	spaces,
 	definition(Definition),
+	spaces,
 	definitions(Definitions).
 
 
