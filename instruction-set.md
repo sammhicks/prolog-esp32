@@ -22,7 +22,6 @@
 
 | Notation | Meaning           |
 | -------- | ----------------- |
-| Ignored           |
 |   `Ai`   | Argument Register |
 |   `Xn`   | Register          |
 |   `Yn`   | Stack Register    |
@@ -59,19 +58,19 @@
 | get list `Ai`                     |   `17`   |   `Ai`   |          |          |
 | get constant                      |   `18`   |   `c`    |   `c`    |   `Ai`   |
 | get integer `i`, `Ai`             |   `19`   |   `i`    |   `i`    |   `Ai`   |
-| set variable `Xn`, `Ai`           |   `20`   |   `Xn`   |          |          |
-| set variable `Yn`, `Ai`           |   `21`   |   `Yn`   |          |          |
-| set value `Xn`, `Ai`              |   `22`   |   `Xn`   |          |          |
-| set value `Yn`, `Ai`              |   `23`   |   `Yn`   |          |          |
+| set variable `Xn`                 |   `20`   |   `Xn`   |          |          |
+| set variable `Yn`                 |   `21`   |   `Yn`   |          |          |
+| set value `Xn`                    |   `22`   |   `Xn`   |          |          |
+| set value `Yn`                    |   `23`   |   `Yn`   |          |          |
 | set local value `Xn`              |   `24`   |   `Xn`   |          |          |
 | set local value `Yn`              |   `25`   |   `Yn`   |          |          |
 | set constant `c`                  |   `28`   |   `c`    |   `c`    |          |
 | set integer `i`                   |   `29`   |   `i`    |   `i`    |          |
 | set void `n`                      |   `2A`   |   `n`    |          |          |
-| unify variable `Xn`, `Ai`         |   `30`   |   `Xn`   |          |          |
-| unify variable `Yn`, `Ai`         |   `31`   |   `Yn`   |          |          |
-| unify value `Xn`, `Ai`            |   `32`   |   `Xn`   |          |          |
-| unify value `Yn`, `Ai`            |   `33`   |   `Yn`   |          |          |
+| unify variable `Xn`               |   `30`   |   `Xn`   |          |          |
+| unify variable `Yn`               |   `31`   |   `Yn`   |          |          |
+| unify value `Xn`                  |   `32`   |   `Xn`   |          |          |
+| unify value `Yn`                  |   `33`   |   `Yn`   |          |          |
 | unify local value `Xn`            |   `34`   |   `Xn`   |          |          |
 | unify local value `Yn`            |   `35`   |   `Yn`   |          |          |
 | unify constant `c`                |   `38`   |   `c`    |   `c`    |          |
