@@ -69,6 +69,13 @@ assemble_code(unify_variable(Vn)) -->
 assemble_code(unify_value(Vn)) -->
 	unify_value(Vn).
 
+assemble_code(allocate(N)) -->
+	[0x40],
+	uint8(N).
+
+assemble_code(deallocate) -->
+	[0x41].
+
 assemble_code(label(L)) -->
 	[label(L)].
 
@@ -78,6 +85,17 @@ assemble_code(call(ID)) -->
 
 assemble_code(proceed) -->
 	[0x44].
+
+assemble_code(try_me_else(J)) -->
+	[0x48],
+	jump(J).
+
+assemble_code(retry_me_else(J)) -->
+	[0x49],
+	jump(J).
+
+assemble_code(trust_me) -->
+	[0x49].
 
 
 put_variable(x(N), a(I)) -->
@@ -155,8 +173,10 @@ unify_value(y(N)) -->
 vn(N) -->
 	uint8(N).
 
+
 ai(I) -->
 	uint8(I).
+
 
 vnai(N, I) -->
 	vn(N),
@@ -167,8 +187,13 @@ structure(ID/Arity) -->
 	uint16(ID),
 	uint8(Arity).
 
+
 term_id(ID) -->
 	uint16(ID).
+
+
+jump(J) -->
+	uint16(J).
 
 
 assembly_state(state(Structures, Labels, Label_Table), Structures, Labels, Label_Table).
