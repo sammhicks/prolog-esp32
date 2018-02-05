@@ -1,11 +1,12 @@
 
 :- module(allocate_labels, [
-	      allocate_labels/2,        % +Codes, -Labels
-	      apply_labels/3            % +Codes, +Labels, -Mapped_Codes
+	      allocate_labels/2,                    % +Codes, -Labels
+	      apply_labels/3                        % +Codes, +Labels, -Mapped_Codes
 	  ]).
 
 allocate_labels(Codes, Labels) :-
 	codes_labels(Codes, Labels, []).
+
 
 apply_labels(Codes, Labels, Mapped_Codes) :-
 	map_codes(Codes, Mapped_Codes, Labels).
@@ -43,4 +44,3 @@ map_code(call(L), call(ID), Labels) :-
 	!.
 
 map_code(Code, Code, _Labels).
-

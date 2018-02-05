@@ -1,7 +1,8 @@
 
 :- module(assembler, [
 	      assemble_query/3,         % +Codes, +State, -Bytes
-	      assemble_program/3        % +Codes, -State, -Bytes
+	      assemble_program/3,       % +Codes, -State, -Bytes
+	      assemble_label_table/2    % +State, -Label_Table_Bytes
 	  ]).
 
 :- use_module(library(lists)).
@@ -30,6 +31,12 @@ assemble_program(Codes0, State, Bytes) :-
 	same_length(Labels, Label_Table),
 	remove_labels(Bytes_With_Labels, Bytes, Labels, Label_Table),
 	assembly_state(State, Structures, Constants, Labels, Label_Table).
+
+
+assemble_label_table(State, Label_Table_Bytes) :-
+	assembly_state(State, _Structures, _Constants, _Labels, Label_Table),
+	assemble_label_table_entries(Label_Table, Label_Table_Bytes, []).
+
 
 assemble_codes([]) -->
 	[].
@@ -198,6 +205,14 @@ unify_value(x(N)) -->
 unify_value(y(N)) -->
 	[0x33],
 	vn(y(N)).
+
+
+assemble_label_table_entries([]) -->
+	[].
+
+assemble_label_table_entries([Entry|Entries]) -->
+	structure(Entry),
+	assemble_label_table_entries(Entries).
 
 
 register_index(N) -->
