@@ -47,7 +47,7 @@
 | get value `Yn`, `Ai`              |   `13`   |   `Yn`   |   `Ai`   |          |          |
 | get structure `f`, `n`, `Ai`      |   `14`   |   `f`    |   `f`    |   `n`    |   `Ai`   |
 | get list `Ai`                     |   `15`   |   `Ai`   |          |          |          |
-| get constant                      |   `16`   |   `c`    |   `c`    |   `Ai`   |          |
+| get constant `c`, `Ai`            |   `16`   |   `c`    |   `c`    |   `Ai`   |          |
 | get integer `i`, `Ai`             |   `17`   |   `i`    |   `i`    |   `Ai`   |          |
 | set variable `Xn`                 |   `20`   |   `Xn`   |          |          |          |
 | set variable `Yn`                 |   `21`   |   `Yn`   |          |          |          |

@@ -9,23 +9,27 @@
 :- use_module(assembly_sections/allocate_labels).
 :- use_module(assembly_sections/remove_labels).
 :- use_module(assembly_sections/allocate_structures).
+:- use_module(assembly_sections/allocate_constants).
 :- use_module(utility/bytes).
 
 assemble_query(Codes0, State, Bytes) :-
-	assembly_state(State, Structures, Labels, _Label_Table),
+	assembly_state(State, Structures, Constants, Labels, _Label_Table),
 	allocate_structures(Codes0, Codes1, Structures, _Structures),
-	apply_labels(Codes1, Labels, Codes2),
-	assemble_codes(Codes2, Bytes, []).
+	allocate_constants(Codes1, Codes2, Constants, _Constants),
+	apply_labels(Codes2, Labels, Codes3),
+	assemble_codes(Codes3, Bytes, []).
 
 assemble_program(Codes0, State, Bytes) :-
 	init_structures_state(Structures0),
 	allocate_structures(Codes0, Codes1, Structures0, Structures),
-	allocate_labels(Codes1, Labels),
-	apply_labels(Codes1, Labels, Codes2),
-	assemble_codes(Codes2, Bytes_With_Labels, []),
+	init_constants_state(Constants0),
+	allocate_constants(Codes1, Codes2, Constants0, Constants),
+	allocate_labels(Codes2, Labels),
+	apply_labels(Codes2, Labels, Codes3),
+	assemble_codes(Codes3, Bytes_With_Labels, []),
 	same_length(Labels, Label_Table),
 	remove_labels(Bytes_With_Labels, Bytes, Labels, Label_Table),
-	assembly_state(State, Structures, Labels, Label_Table).
+	assembly_state(State, Structures, Constants, Labels, Label_Table).
 
 assemble_codes([]) -->
 	[].
@@ -42,8 +46,13 @@ assemble_code(put_value(Vn, Ai)) -->
 	put_value(Vn, Ai).
 
 assemble_code(put_structure(S, a(I))) -->
-	[0x06],
+	[0x04],
 	structure(S),
+	ai(I).
+
+assemble_code(put_constant(C, a(I))) -->
+	[0x06],
+	constant(C),
 	ai(I).
 
 assemble_code(get_variable(Vn, Ai)) -->
@@ -53,8 +62,13 @@ assemble_code(get_value(Vn, Ai)) -->
 	get_value(Vn, Ai).
 
 assemble_code(get_structure(S, a(I))) -->
-	[0x16],
+	[0x14],
 	structure(S),
+	ai(I).
+
+assemble_code(get_constant(C, a(I))) -->
+	[0x16],
+	constant(C),
 	ai(I).
 
 assemble_code(set_variable(Vn)) -->
@@ -63,11 +77,19 @@ assemble_code(set_variable(Vn)) -->
 assemble_code(set_value(Vn)) -->
 	set_value(Vn).
 
+assemble_code(set_constant(C)) -->
+	[0x26],
+	constant(C).
+
 assemble_code(unify_variable(Vn)) -->
 	unify_variable(Vn).
 
 assemble_code(unify_value(Vn)) -->
 	unify_value(Vn).
+
+assemble_code(unify_constant(C)) -->
+	[0x36],
+	constant(C).
 
 assemble_code(allocate(N)) -->
 	[0x40],
@@ -188,6 +210,10 @@ structure(ID/Arity) -->
 	uint8(Arity).
 
 
+constant(C) -->
+	uint16(C).
+
+
 term_id(ID) -->
 	uint16(ID).
 
@@ -196,4 +222,4 @@ jump(J) -->
 	uint16(J).
 
 
-assembly_state(state(Structures, Labels, Label_Table), Structures, Labels, Label_Table).
+assembly_state(state(Structures, Constants, Labels, Label_Table), Structures, Constants, Labels, Label_Table).

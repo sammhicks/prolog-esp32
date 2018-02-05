@@ -1,7 +1,7 @@
 
 :- module(allocate_structures, [
-	      init_structures_state/1,     % -State
-	      allocate_structures/4        % +Codes, -Mapped_Codes, +Current_State, -Final_State
+	      init_structures_state/1,      % -State
+	      allocate_structures/4         % +Codes, -Mapped_Codes, +Current_State, -Final_State
 	  ]).
 
 init_structures_state(State) :-

@@ -1,7 +1,7 @@
 
 :- module(allocate_labels, [
-	      allocate_labels/2,       % +Codes, -Labels
-	      apply_labels/3           % +Codes, +Labels, -Mapped_Codes
+	      allocate_labels/2,        % +Codes, -Labels
+	      apply_labels/3            % +Codes, +Labels, -Mapped_Codes
 	  ]).
 
 allocate_labels(Codes, Labels) :-

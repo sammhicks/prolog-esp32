@@ -1,8 +1,8 @@
 
 :- module(variables, [
-	      goals_variables/2,
-	      items_variables//1,
-	      item_variables//1
+	      goals_variables/2,    % +Goals, -Variables
+	      items_variables//1,   % +Items
+	      item_variables//1     % +Item
 	  ]).
 
 goals_variables([], []).
