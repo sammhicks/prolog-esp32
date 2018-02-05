@@ -45,15 +45,19 @@ assemble_code(put_variable(Vn, Ai)) -->
 assemble_code(put_value(Vn, Ai)) -->
 	put_value(Vn, Ai).
 
-assemble_code(put_structure(S, a(I))) -->
+assemble_code(put_structure(S, Ai)) -->
 	[0x04],
 	structure(S),
-	ai(I).
+	ai(Ai).
 
-assemble_code(put_constant(C, a(I))) -->
+assemble_code(put_list(Ai)) -->
+	[0x05],
+	ai(Ai).
+
+assemble_code(put_constant(C, Ai)) -->
 	[0x06],
 	constant(C),
-	ai(I).
+	ai(Ai).
 
 assemble_code(get_variable(Vn, Ai)) -->
 	get_variable(Vn, Ai).
@@ -61,15 +65,19 @@ assemble_code(get_variable(Vn, Ai)) -->
 assemble_code(get_value(Vn, Ai)) -->
 	get_value(Vn, Ai).
 
-assemble_code(get_structure(S, a(I))) -->
+assemble_code(get_structure(S, Ai)) -->
 	[0x14],
 	structure(S),
-	ai(I).
+	ai(Ai).
 
-assemble_code(get_constant(C, a(I))) -->
+assemble_code(get_list(Ai)) -->
+	[0x15],
+	ai(Ai).
+
+assemble_code(get_constant(C, Ai)) -->
 	[0x16],
 	constant(C),
-	ai(I).
+	ai(Ai).
 
 assemble_code(set_variable(Vn)) -->
 	set_variable(Vn).
@@ -120,84 +128,94 @@ assemble_code(trust_me) -->
 	[0x49].
 
 
-put_variable(x(N), a(I)) -->
+put_variable(x(N), Ai) -->
 	[0x00],
-	vnai(N, I).
+	vnai(x(N), Ai).
 
-put_variable(y(N), a(I)) -->
+put_variable(y(N), Ai) -->
 	[0x01],
-	vnai(N, I).
+	vnai(y(N), Ai).
 
 
-put_value(x(N), a(I)) -->
+put_value(x(N), Ai) -->
 	[0x02],
-	vnai(N, I).
+	vnai(x(N), Ai).
 
-put_value(y(N), a(I)) -->
+put_value(y(N), Ai) -->
 	[0x03],
-	vnai(N, I).
+	vnai(y(N), Ai).
 
 
-get_variable(x(N), a(I)) -->
+get_variable(x(N), Ai) -->
 	[0x10],
-	vnai(N, I).
+	vnai(x(N), Ai).
 
-get_variable(y(N), a(I)) -->
+get_variable(y(N), Ai) -->
 	[0x11],
-	vnai(N, I).
+	vnai(y(N), Ai).
 
 
-get_value(x(N), a(I)) -->
+get_value(x(N), Ai) -->
 	[0x12],
-	vnai(N, I).
+	vnai(x(N), Ai).
 
-get_value(y(N), a(I)) -->
+get_value(y(N), Ai) -->
 	[0x13],
-	vnai(N, I).
+	vnai(y(N), Ai).
 
 
 set_variable(x(N)) -->
 	[0x20],
-	vn(N).
+	vn(x(N)).
 
 set_variable(y(N)) -->
 	[0x21],
-	vn(N).
+	vn(y(N)).
 
 
 set_value(x(N)) -->
 	[0x22],
-	vn(N).
+	vn(x(N)).
 
 set_value(y(N)) -->
 	[0x23],
-	vn(N).
+	vn(y(N)).
 
 
 unify_variable(x(N)) -->
 	[0x30],
-	vn(N).
+	vn(x(N)).
 
 unify_variable(y(N)) -->
 	[0x31],
-	vn(N).
+	vn(y(N)).
 
 
 unify_value(x(N)) -->
 	[0x32],
-	vn(N).
+	vn(x(N)).
 
 unify_value(y(N)) -->
 	[0x33],
-	vn(N).
+	vn(y(N)).
 
 
-vn(N) -->
+register_index(N) -->
 	uint8(N).
 
 
-ai(I) -->
-	uint8(I).
+vn(x(N)) -->
+	register_index(N).
+
+vn(y(N)) -->
+	register_index(N).
+
+
+ai(a(I)) -->
+	register_index(I).
+
+ai(x(N)) -->
+	register_index(N).
 
 
 vnai(N, I) -->
