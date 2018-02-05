@@ -37,37 +37,32 @@
 | put variable `Yn`, `Ai`           |   `01`   |   `Yn`   |   `Ai`   |          |          |
 | put value `Xn`, `Ai`              |   `02`   |   `Xn`   |   `Ai`   |          |          |
 | put value `Yn`, `Ai`              |   `03`   |   `Yn`   |   `Ai`   |          |          |
-| put unsafe value `Yn`, `Ai`       |   `04`   |   `Yn`   |   `Ai`   |          |          |
-| put structure `f`, `n`, `Ai`      |   `06`   |   `f`    |   `f`    |   `n`    |   `Ai`   |
-| put list `Ai`                     |   `07`   |   `Ai`   |          |          |          |
-| put constant `c`, `Ai`            |   `08`   |   `c`    |   `c`    |   `Ai`   |          |
-| put integer `i`, `Ai`             |   `09`   |   `i`    |   `i`    |   `Ai`   |          |
+| put structure `f`, `n`, `Ai`      |   `04`   |   `f`    |   `f`    |   `n`    |   `Ai`   |
+| put list `Ai`                     |   `05`   |   `Ai`   |          |          |          |
+| put constant `c`, `Ai`            |   `06`   |   `c`    |   `c`    |   `Ai`   |          |
+| put integer `i`, `Ai`             |   `07`   |   `i`    |   `i`    |   `Ai`   |          |
 | get variable `Xn`, `Ai`           |   `10`   |   `Xn`   |   `Ai`   |          |          |
 | get variable `Yn`, `Ai`           |   `11`   |   `Yn`   |   `Ai`   |          |          |
 | get value `Xn`, `Ai`              |   `12`   |   `Xn`   |   `Ai`   |          |          |
 | get value `Yn`, `Ai`              |   `13`   |   `Yn`   |   `Ai`   |          |          |
-| get structure `f`, `n`, `Ai`      |   `16`   |   `f`    |   `f`    |   `n`    |   `Ai`   |
-| get list `Ai`                     |   `17`   |   `Ai`   |          |          |          |
-| get constant                      |   `18`   |   `c`    |   `c`    |   `Ai`   |          |
-| get integer `i`, `Ai`             |   `19`   |   `i`    |   `i`    |   `Ai`   |          |
+| get structure `f`, `n`, `Ai`      |   `14`   |   `f`    |   `f`    |   `n`    |   `Ai`   |
+| get list `Ai`                     |   `15`   |   `Ai`   |          |          |          |
+| get constant                      |   `16`   |   `c`    |   `c`    |   `Ai`   |          |
+| get integer `i`, `Ai`             |   `17`   |   `i`    |   `i`    |   `Ai`   |          |
 | set variable `Xn`                 |   `20`   |   `Xn`   |          |          |          |
 | set variable `Yn`                 |   `21`   |   `Yn`   |          |          |          |
 | set value `Xn`                    |   `22`   |   `Xn`   |          |          |          |
 | set value `Yn`                    |   `23`   |   `Yn`   |          |          |          |
-| set local value `Xn`              |   `24`   |   `Xn`   |          |          |          |
-| set local value `Yn`              |   `25`   |   `Yn`   |          |          |          |
-| set constant `c`                  |   `28`   |   `c`    |   `c`    |          |          |
-| set integer `i`                   |   `29`   |   `i`    |   `i`    |          |          |
-| set void `n`                      |   `2A`   |   `n`    |          |          |          |
+| set constant `c`                  |   `26`   |   `c`    |   `c`    |          |          |
+| set integer `i`                   |   `27`   |   `i`    |   `i`    |          |          |
+| set void `n`                      |   `28`   |   `n`    |          |          |          |
 | unify variable `Xn`               |   `30`   |   `Xn`   |          |          |          |
 | unify variable `Yn`               |   `31`   |   `Yn`   |          |          |          |
 | unify value `Xn`                  |   `32`   |   `Xn`   |          |          |          |
 | unify value `Yn`                  |   `33`   |   `Yn`   |          |          |          |
-| unify local value `Xn`            |   `34`   |   `Xn`   |          |          |          |
-| unify local value `Yn`            |   `35`   |   `Yn`   |          |          |          |
-| unify constant `c`                |   `38`   |   `c`    |   `c`    |          |          |
-| unify integer `i`                 |   `39`   |   `i`    |   `i`    |          |          |
-| unify void `n`                    |   `3A`   |   `n`    |          |          |          |
+| unify constant `c`                |   `36`   |   `c`    |   `c`    |          |          |
+| unify integer `i`                 |   `37`   |   `i`    |   `i`    |          |          |
+| unify void `n`                    |   `38`   |   `n`    |          |          |          |
 | allocate `N`                      |   `40`   |   `N`    |          |          |          |
 | deallocate                        |   `41`   |          |          |          |          |
 | call `P`                          |   `42`   |   `P`    |   `P`    |          |          |
