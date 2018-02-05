@@ -1,26 +1,21 @@
 
 :- module(compiler, [
-	      compile/3     % +Query, +Program, -Codes
+	      compile_query/3,    % +Query, +State, -Query_Bytes
+	      compile_program/4   % +Query, -State, -Program_Bytes, -Label_Table_Bytes
 	  ]).
 
 :- use_module(parser).
 :- use_module(ast_compiler).
-:- use_module(linker).
+:- use_module(assembler).
 
-compile(Query, Program, Codes) :-
-	compile(Query, Program, Unlinked_Codes, []),
-	link_calls(Unlinked_Codes, Codes).
-
-
-compile(Query, Program) -->
-	compile_query(Query),
-	compile_program(Program).
-
-
-compile_query(Query, Query_Codes, Query_Codes_Tail) :-
+compile_query(Query, State, Query_Bytes) :-
 	query(Query_Term, Query, []),
-	compile_query_ast(Query_Term, Query_Codes, Query_Codes_Tail).
+	compile_query_ast(Query_Term, Codes, []),
+	assemble_query(Codes, State, Query_Bytes).
 
-compile_program(Program, Program_Codes, Program_Codes_Tail) :-
+compile_program(Program, State, Program_Bytes, Label_Table_Bytes) :-
 	definitions(Program_Term, Program, []),
-	compile_program_ast(Program_Term, Program_Codes, Program_Codes_Tail).
+	!,
+	compile_program_ast(Program_Term, Codes, []),
+	assemble_program(Codes, State, Program_Bytes),
+	assemble_label_table(State, Label_Table_Bytes).

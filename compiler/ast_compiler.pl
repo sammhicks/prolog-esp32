@@ -4,6 +4,8 @@
 	      compile_program_ast//1    % +Program_AST
 	  ]).
 
+:- use_module(library(lists)).
+
 :- use_module(compiler_sections/register_allocation).
 :- use_module(compiler_sections/tokenization).
 :- use_module(compiler_sections/permanent_variables).
@@ -75,41 +77,38 @@ compile_program_ast([]) -->
 	[].
 
 compile_program_ast([definition(Functor, Clauses)|Definitions]) -->
-	compile_program_definition_ast(Functor, Clauses),
+	[label(Functor)],
+	compile_program_definition_ast(Clauses),
 	compile_program_ast(Definitions).
 
 
-compile_program_definition_ast(Functor, [Clause]) -->
+compile_program_definition_ast([Clause]) -->
 	!,
-	[label(Functor)],
 	compile_program_clause_ast(Clause).
 
-compile_program_definition_ast(Functor, [Clause|Clauses]) -->
-	[label(Functor)],
+compile_program_definition_ast([Clause|Clauses]) -->
+	[try_me_else(Clause_Length)],
 	{
-	    Functor = Name/Arity,
-	    Next_Functor = retry(Name)/Arity
+	    compile_program_clause_ast(Clause, Clause_Codes, []),
+	    length(Clause_Codes, Clause_Length)
 	},
-	[try_me_else(Next_Functor)],
-	compile_program_clause_ast(Clause),
-	compile_program_definition_tail_ast(Next_Functor, Clauses).
+	Clause_Codes,
+	compile_program_definition_tail_ast(Clauses).
 
 
-compile_program_definition_tail_ast(Functor, [Clause]) -->
+compile_program_definition_tail_ast([Clause]) -->
 	!,
-	[label(Functor)],
 	[trust_me],
 	compile_program_clause_ast(Clause).
 
-compile_program_definition_tail_ast(Functor, [Clause|Clauses]) -->
-	[label(Functor)],
+compile_program_definition_tail_ast([Clause|Clauses]) -->
+	[retry_me_else(Clause_Length)],
 	{
-	    Functor = Name/Arity,
-	    Next_Functor = retry(Name)/Arity
+	    compile_program_clause_ast(Clause, Clause_Codes, []),
+	    length(Clause_Codes, Clause_Length)
 	},
-	[retry_me_else(Next_Functor)],
-	compile_program_clause_ast(Clause),
-	compile_program_definition_tail_ast(Next_Functor, Clauses).
+	Clause_Codes,
+	compile_program_definition_tail_ast(Clauses).
 
 
 compile_program_clause_ast(rule(head(Terms), Goals), Codes, Codes_Tail) :-

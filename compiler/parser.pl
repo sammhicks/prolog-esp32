@@ -95,7 +95,7 @@ term(L) -->
 term(V) -->
 	variable(V).
 
-constant(c(l(Constant))) -->
+constant(c(Constant)) -->
 	structure(s(Constant/0, [])).
 
 

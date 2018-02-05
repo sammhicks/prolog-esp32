@@ -1,6 +1,6 @@
 
 :- module(permanent_variables, [
-	      allocate_permanent_variables/3	% -Head_Terms, -Goals, +Permanent_Variables
+	      allocate_permanent_variables/3    % -Head_Terms, -Goals, +Permanent_Variables
 	  ]).
 
 :- use_module(library(lists)).
