@@ -4,6 +4,8 @@
 
 #include "wifi-setup.h"
 
+#include "instruction.h"
+
 void setup();
 
 void loop();
