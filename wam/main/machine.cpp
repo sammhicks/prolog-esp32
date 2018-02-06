@@ -144,11 +144,21 @@ void executeInstruction() {
 }
 
 namespace Instructions {
-void putVariableXnAi(Xn xn, Ai ai) {}
+using Ancillary::backtrack;
+using Ancillary::bind;
+using Ancillary::deref;
+using Ancillary::unify;
+
+void putVariableXnAi(Xn xn, Ai ai) {
+  heap[h].makeReference(h);
+  registers[xn] = heap[h];
+  registers[ai] = heap[h];
+  h = h + 1;
+}
 
 // void putVariableYnAi(Yn yn, Ai ai) {}
 
-void putValueXnAi(Xn xn, Ai ai) {}
+void putValueXnAi(Xn xn, Ai ai) { registers[ai] = registers[xn]; }
 
 // void putValueYnAi(Yn yn, Ai ai) {}
 
@@ -162,22 +172,22 @@ void putConstant(Constant c, Ai ai) {}
 
 void putInteger(Integer i, Ai ai) {}
 
-void getVariableXnAi(Xn xn, Ai ai) {}
+void getVariableXnAi(Xn xn, Ai ai) { registers[xn] = registers[ai]; }
 
 // void getVariableYnAi(Yn yn, Ai ai) {}
 
-void getValueXnAi(Xn xn, Ai ai) {}
+void getValueXnAi(Xn xn, Ai ai) { unify(registers[xn], registers[ai]); }
 
 // void getValueYnAi(Yn yn, Ai ai) {}
 
 void getStructure(Functor f, Arity n, Ai ai) {
-  Value &derefAi = Ancillary::deref(registers[ai]);
+  Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
     heap[h].makeStructure(h + 1);
     heap[h + 1].makeFunctor(f, n);
-    Ancillary::bind(derefAi, heap[h]);
+    bind(derefAi, heap[h]);
     h = h + 2;
     mode = Modes::write;
     return;
@@ -186,11 +196,11 @@ void getStructure(Functor f, Arity n, Ai ai) {
       s = derefAi.h + 1;
       mode = Modes::read;
     } else {
-      Ancillary::backtrack();
+      backtrack();
     }
     return;
   default:
-    Ancillary::backtrack();
+    backtrack();
     return;
   }
 }
@@ -239,8 +249,8 @@ void unifyVariableXn(Xn xn) {
 void unifyValueXn(Xn xn) {
   switch (mode) {
   case Modes::read:
-    if (Ancillary::unify(registers[xn], heap[s])) {
-      Ancillary::backtrack();
+    if (unify(registers[xn], heap[s])) {
+      backtrack();
     };
     return;
   case Modes::write:
@@ -295,9 +305,23 @@ Value &deref(HeapIndex h) {
   }
 }
 
-// void bind(Value &a1, Value &a2);
+void bind(Value &a1, Value &a2) {
+  if (a1.type == Value::Type::reference && a2.type == Value::Type::reference &&
+      a1.h == a2.h) {
+    return;
+  }
 
-// void trail(const Value &a);
+  if (a1.type == Value::Type::reference &&
+      ((a2.type != Value::Type::reference) || a2.h < a1.h)) {
+    a1 = a2;
+    trail(a1);
+  } else {
+    a2 = a1;
+    trail(a2);
+  }
+}
+
+void trail(const Value &a) {}
 
 // void unwindTrail(const Value &a1, const Value &a2);
 
