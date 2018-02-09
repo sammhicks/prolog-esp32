@@ -1,37 +1,37 @@
 #include "machine.h"
 
-Modes mode;
+ExecuteModes executeMode;
+Stream *instructionSource;
+File programFile;
+File labelTableFile;
+
+RWModes rwMode;
+Arity argumentCount;
 HeapIndex h;
 HeapIndex s;
-
-Stream *instructionSource;
+CodeIndex cp;
+Environment *e;
 
 Value registers[registerCount];
 Value heap[heapSize];
 uint8_t stack[stackSize];
 
 namespace Read {
-namespace Raw {
-uint8_t uint8() { return instructionSource->read(); }
-uint16_t uint16() {
-  uint16_t major = instructionSource->read();
-  uint16_t minor = instructionSource->read();
-  return major * 0x100 + minor;
-}
-} // namespace Raw
-Opcode opcode() { return static_cast<Opcode>(Raw::uint8()); }
-Xn xn() { return static_cast<Xn>(Raw::uint8()); }
-Yn yn() { return static_cast<Yn>(Raw::uint8()); }
-Ai ai() { return static_cast<Ai>(Raw::uint8()); }
-Functor f() { return static_cast<Functor>(Raw::uint16()); }
-Arity n() { return static_cast<Arity>(Raw::uint8()); }
-Constant c() { return static_cast<Constant>(Raw::uint16()); }
-Integer i() { return static_cast<Integer>(Raw::uint16()); }
+Opcode opcode() { return static_cast<Opcode>(Raw::uint8(*instructionSource)); }
+Xn xn() { return static_cast<Xn>(Raw::uint8(*instructionSource)); }
+Yn yn() { return static_cast<Yn>(Raw::uint8(*instructionSource)); }
+Ai ai() { return static_cast<Ai>(Raw::uint8(*instructionSource)); }
+Functor f() { return static_cast<Functor>(Raw::uint16(*instructionSource)); }
+Arity n() { return static_cast<Arity>(Raw::uint8(*instructionSource)); }
+Constant c() { return static_cast<Constant>(Raw::uint16(*instructionSource)); }
+Integer i() { return static_cast<Integer>(Raw::uint16(*instructionSource)); }
 EnvironmentSize environmentSize() {
-  return static_cast<EnvironmentSize>(Raw::uint8());
+  return static_cast<EnvironmentSize>(Raw::uint8(*instructionSource));
 }
-ProgramIndex programIndex() { return static_cast<ProgramIndex>(Raw::uint16()); }
-Jump jump() { return static_cast<Jump>(Raw::uint16()); }
+ProgramIndex programIndex() {
+  return static_cast<ProgramIndex>(Raw::uint16(*instructionSource));
+}
+Jump jump() { return static_cast<Jump>(Raw::uint16(*instructionSource)); }
 } // namespace Read
 
 void executeInstruction() {
@@ -189,12 +189,12 @@ void getStructure(Functor f, Arity n, Ai ai) {
     heap[h + 1].makeFunctor(f, n);
     bind(derefAi, heap[h]);
     h = h + 2;
-    mode = Modes::write;
+    rwMode = RWModes::write;
     return;
   case Value::Type::structure:
     if (heap[derefAi.h].f == f && heap[derefAi.h].n == n) {
       s = derefAi.h + 1;
-      mode = Modes::read;
+      rwMode = RWModes::read;
     } else {
       backtrack();
     }
@@ -231,11 +231,11 @@ void setConstant(Constant c) {}
 void setInteger(Integer i) {}
 
 void unifyVariableXn(Xn xn) {
-  switch (mode) {
-  case Modes::read:
+  switch (rwMode) {
+  case RWModes::read:
     registers[xn] = heap[s];
     break;
-  case Modes::write:
+  case RWModes::write:
     heap[h].makeReference(h);
     registers[xn] = heap[h];
     h = h + 1;
@@ -247,13 +247,13 @@ void unifyVariableXn(Xn xn) {
 // void unifyVariableYn(Yn yn) {}
 
 void unifyValueXn(Xn xn) {
-  switch (mode) {
-  case Modes::read:
+  switch (rwMode) {
+  case RWModes::read:
     if (unify(registers[xn], heap[s])) {
       backtrack();
     };
     return;
-  case Modes::write:
+  case RWModes::write:
     heap[h] = registers[xn];
     h = h + 1;
     break;
@@ -269,13 +269,43 @@ void unifyConstant(Constant c) {}
 
 void unifyInteger(Integer i) {}
 
-// void allocate(EnvironmentSize n) {}
+void allocate(EnvironmentSize n) {
+  Environment *newEnvironment = reinterpret_cast<Environment *>(e->ys + e->n);
 
-// void deallocate() {}
+  newEnvironment->ce = e;
+  newEnvironment->cp = cp;
+  newEnvironment->n = n;
 
-void call(ProgramIndex p) {}
+  e = newEnvironment;
+}
 
-void proceed() {}
+void deallocate() {
+  programFile.seek(e->cp);
+  e = e->ce;
+}
+
+void call(ProgramIndex p) {
+  switch (executeMode) {
+  case ExecuteModes::query:
+    executeMode = ExecuteModes::program;
+    cp = haltIndex;
+    break;
+  case ExecuteModes::program:
+    cp = programFile.position();
+    break;
+  }
+
+  LabelTableEntry entry;
+
+  labelTableFile.seek(p * sizeof(entry));
+
+  labelTableFile.read(reinterpret_cast<uint8_t *>(&entry), sizeof(entry));
+
+  programFile.seek(entry.entryPoint);
+  argumentCount = entry.arity;
+}
+
+void proceed() { programFile.seek(cp); }
 
 } // namespace Instructions
 

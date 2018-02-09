@@ -1,33 +1,54 @@
 #pragma once
 #pragma pack(push, 1)
 
-#include "Arduino.h"
+#include <limits>
+
+#define _GLIBCXX_VECTOR
+#include "FS.h"
 
 #include "instruction.h"
+#include "raw-int.h"
 #include "value.h"
 
 const Xn registerCount = 32;
 const size_t heapSize = 256;
 const size_t stackSize = 1024;
 
-enum class Modes : uint8_t { read, write };
+const CodeIndex haltIndex = std::numeric_limits<CodeIndex>::max();
 
-extern Modes mode;
+enum class ExecuteModes : uint8_t { query, program };
+
+enum class RWModes : uint8_t { read, write };
+
+struct LabelTableEntry {
+  CodeIndex entryPoint;
+  Arity arity;
+};
+
+struct Environment {
+  Environment *ce;
+  CodeIndex cp;
+  Arity n;
+  Value ys[0];
+};
+
+extern ExecuteModes executeMode;
+extern Stream *instructionSource;
+extern File programFile;
+extern File labelTableFile;
+
+extern RWModes rwMode;
+extern Arity argumentCount;
 extern HeapIndex h;
 extern HeapIndex s;
-
-extern Stream *instructionSource;
+extern CodeIndex cp;
+extern Environment *e;
 
 extern Value registers[registerCount];
 extern Value heap[heapSize];
 extern uint8_t stack[stackSize];
 
 namespace Read {
-namespace Raw {
-uint8_t uint8();
-uint16_t uint16();
-} // namespace Raw
-
 Opcode opcode();
 Xn xn();
 Yn yn();

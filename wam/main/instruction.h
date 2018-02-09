@@ -1,5 +1,4 @@
 #pragma once
-#pragma pack(push, 1)
 
 #include "value.h"
 
@@ -48,5 +47,3 @@ typedef uint8_t Ai;
 typedef uint8_t EnvironmentSize;
 typedef uint16_t ProgramIndex;
 typedef uint16_t Jump;
-
-#pragma pack(pop)

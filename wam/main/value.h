@@ -1,9 +1,12 @@
 #pragma once
 #pragma pack(push, 1)
 
+#include <cstddef>
 #include <cstdint>
 
+typedef size_t CodeIndex;
 typedef uint16_t HeapIndex;
+typedef uint16_t StackIndex;
 typedef uint16_t Functor;
 typedef uint8_t Arity;
 typedef uint16_t Constant;

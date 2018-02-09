@@ -1,10 +1,12 @@
 #pragma once
 
-#include <Arduino.h>
-
+#include "commands.h"
+#include "hash.h"
+#include "machine.h"
 #include "wifi-setup.h"
 
-#include "instruction.h"
+const char *codePath = "/code";
+const char *labelTablePath = "/label-table";
 
 void setup();
 
