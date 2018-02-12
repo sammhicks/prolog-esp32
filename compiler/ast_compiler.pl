@@ -32,6 +32,9 @@ convert_query_token(call(Atom), Rs, Rs) -->
 convert_query_token(c_a(C, A), Rs, Rs) -->
 	[put_constant(C, A)].
 
+convert_query_token(i_a(I, A), Rs, Rs) -->
+	[put_integer(I, A)].
+
 convert_query_token(s_x(S, X), Rs, Rs) -->
 	[put_structure(S, X)].
 
@@ -50,6 +53,9 @@ convert_query_token(x_a(X, A), Rs, [X|Rs]) -->
 
 convert_query_token(c(C), Rs, Rs) -->
 	[set_constant(C)].
+
+convert_query_token(i(I), Rs, Rs) -->
+	[set_integer(I)].
 
 convert_query_token(x(X), Rs, Rs) -->
 	[set_value(x(X))],
@@ -76,51 +82,71 @@ convert_query_token(y(Y), Rs, [y(Y)|Rs]) -->
 compile_program_ast([]) -->
 	[].
 
-compile_program_ast([definition(Functor, Clauses)|Definitions]) -->
-	[label(Functor)],
-	compile_program_definition_ast(Clauses),
+compile_program_ast([Definition|Definitions]) -->
+	compile_definition_ast(Definition),
 	compile_program_ast(Definitions).
 
 
-compile_program_definition_ast([Clause]) -->
-	!,
-	compile_program_clause_ast(Clause).
+compile_definition_ast(fact(Functor, Arguments)) -->
+	[label(Functor)],
+	compile_fact_ast(Arguments).
 
-compile_program_definition_ast([Clause|Clauses]) -->
+compile_definition_ast(rule(head(Functor, Arguments), Goals)) -->
+	[label(Functor)],
+	compile_rule_ast(Arguments, Goals).
+
+compile_definition_ast(disjunction(Functor, Clauses)) -->
+	[label(Functor)],
+	compile_disjunction_ast(Clauses).
+
+
+compile_disjunction_ast([Clause]) -->
+	!,
+	compile_disjunction_ast(Clause).
+
+compile_disjunction_ast([Clause|Clauses]) -->
 	[try_me_else(Clause_Length)],
 	{
 	    compile_program_clause_ast(Clause, Clause_Codes, []),
 	    length(Clause_Codes, Clause_Length)
 	},
 	Clause_Codes,
-	compile_program_definition_tail_ast(Clauses).
+	compile_disjunction_tail_ast(Clauses).
 
 
-compile_program_definition_tail_ast([Clause]) -->
+compile_disjunction_tail_ast([Clause]) -->
 	!,
 	[trust_me],
 	compile_program_clause_ast(Clause).
 
-compile_program_definition_tail_ast([Clause|Clauses]) -->
+compile_disjunction_tail_ast([Clause|Clauses]) -->
 	[retry_me_else(Clause_Length)],
 	{
 	    compile_program_clause_ast(Clause, Clause_Codes, []),
 	    length(Clause_Codes, Clause_Length)
 	},
 	Clause_Codes,
-	compile_program_definition_tail_ast(Clauses).
+	compile_disjunction_tail_ast(Clauses).
 
 
-compile_program_clause_ast(rule(head(Terms), Goals), Codes, Codes_Tail) :-
+compile_program_clause_ast(fact(Terms)) -->
+	compile_fact_ast(Terms).
+
+compile_program_clause_ast(rule(head(Terms), Goals)) -->
+	compile_rule_ast(Terms, Goals).
+
+
+compile_fact_ast(Terms, Codes, Codes_Tail) :-
+	allocate_atom_registers(Terms, [], Allocation),
+	tokenize_fact_allocation(Allocation, Tokens, []),
+	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
+
+
+compile_rule_ast(Terms, Goals, Codes, Codes_Tail) :-
 	allocate_permanent_variables(Terms, Goals, Permanent_Variables),
 	allocate_atom_registers(Terms, Permanent_Variables, Terms_Allocation),
 	allocate_goals_registers(Goals, Permanent_Variables, Goals_Allocation),
 	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Tokens, []),
-	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
-
-compile_program_clause_ast(fact(Terms), Codes, Codes_Tail) :-
-	allocate_atom_registers(Terms, [], Allocation),
-	tokenize_fact_allocation(Allocation, Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
 
@@ -147,6 +173,9 @@ convert_program_token(deallocate, Rs, Rs) -->
 convert_program_token(c_a(C, A), Rs, Rs) -->
 	[get_constant(C, A)].
 
+convert_program_token(i_a(I, A), Rs, Rs) -->
+	[get_integer(I, A)].
+
 convert_program_token(s_x(S, X), Rs, Rs) -->
 	[get_structure(S, X)].
 
@@ -165,6 +194,9 @@ convert_program_token(x_a(X, A), Rs, [X|Rs]) -->
 
 convert_program_token(c(C), Rs, Rs) -->
 	[unify_constant(C)].
+
+convert_program_token(i(I), Rs, Rs) -->
+	[unify_integer(I)].
 
 convert_program_token(x(X), Rs, Rs) -->
 	[unify_value(x(X))],

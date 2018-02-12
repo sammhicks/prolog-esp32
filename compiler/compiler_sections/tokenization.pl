@@ -55,6 +55,10 @@ tokenize_atom_argument_allocation(c(C), A) -->
 	!,
 	[c_a(C, A)].
 
+tokenize_atom_argument_allocation(i(I), A) -->
+	!,
+	[i_a(I, A)].
+
 tokenize_atom_argument_allocation(s(Functor, Terms), A) -->
 	[s_x(Functor, A)],
 	tokenize_structure_term_registers(Terms).
@@ -72,6 +76,9 @@ tokenize_atom_argument_subterm_list([_=T|As], Mode) -->
 
 
 tokenize_atom_argument_subterm(c(_), _Mode) -->
+	[].
+
+tokenize_atom_argument_subterm(i(_), _Mode) -->
 	[].
 
 tokenize_atom_argument_subterm(s(_, Terms), Mode) -->
@@ -93,6 +100,9 @@ tokenize_allocation_list([A|As], Mode) -->
 
 
 tokenize_allocation(c(_), _) -->
+	[].
+
+tokenize_allocation(i(_), _) -->
 	[].
 
 tokenize_allocation(X=T, Mode) -->
@@ -141,6 +151,9 @@ tokenize_structure_term_registers([Term|Terms]) -->
 
 tokenize_structure_term_register(c(C)) -->
 	[c(C)].
+
+tokenize_structure_term_register(i(I)) -->
+	[i(I)].
 
 tokenize_structure_term_register(X=_) -->
 	[X].

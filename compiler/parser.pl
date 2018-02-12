@@ -1,210 +1,135 @@
 :- module(parser, [
-	      definitions//1,	% -Definitions
-	      query//1		% -Query
+	      read_options/1,   % -Options
+	      program/2,        % +Stream, -Definitions
+	      query/3           % +Term, +Options, -Query
 	  ]).
 
-definitions([]) -->
-	[].
+:- use_module(parser_sections/program_joiner).
 
-definitions([Definition|Definitions]) -->
-	spaces,
-	definition(Definition),
-	spaces,
-	definitions(Definitions).
+read_options([backquoted_string(false), double_quotes(codes), singletons(_), variables(_), variable_names(_), term_position(_)]).
 
 
-definition(definition(Functor, [Clause|Clauses])) -->
-	program_clause(Functor, Clause),
-	spaces,
-	definition_tail(Functor, Clauses).
+program(Stream, Definitions) :-
+	read_terms(Stream, Terms, Options),
+	program_clauses(Terms, Options, Clauses),
+	join_program(Clauses, Definitions).
 
 
-definition_tail(Functor, [Clause|Clauses]) -->
-	program_clause(Functor, Clause),
+query(Term, Options, query(Functor, Arguments)) :-
+	structure(Term, Options, s(Functor, Arguments)).
+
+
+read_terms(Stream, Terms, Options) :-
+	read_options(Current_Options),
+	read_term(Stream, Current_Term, Current_Options),
+	read_terms_tail(Stream, Current_Term, Current_Options, Terms, Options).
+
+
+read_terms_tail(Stream, Current_Term, Current_Options, Terms, Options) :-
+	read_options(New_Options),
+	read_term(Stream, New_Term, New_Options),
+	(   Current_Options == New_Options
+	->  Terms = [],
+	    Options = []
+	;   Terms = [Current_Term|Remaining_Terms],
+	    Options = [Current_Options|Remaining_Options],
+	    read_terms_tail(Stream, New_Term, New_Options, Remaining_Terms, Remaining_Options)
+	).
+
+
+program_clauses([], [], []).
+
+program_clauses([Term|Terms], [Options|Options_Tail], [Clause|Clauses]) :-
+	program_clause(Term, Options, Clause),
+	program_clauses(Terms, Options_Tail, Clauses).
+
+
+program_clause(Head_Term :- Body_Term, Options, rule(head(Functor, Arguments), Body)) :-
 	!,
-	spaces,
-	definition_tail(Functor, Clauses).
+	fact(Head_Term, Options, fact(Functor, Arguments)),
+	goals(Body_Term, Options, Body).
 
-definition_tail(_Functor, []) -->
-	[].
-
-
-program_clause(Functor, Fact) -->
-	fact(Functor, Fact),
-	!.
-
-program_clause(Functor, Rule) -->
-	rule(Functor, Rule).
+program_clause(Term, Options, Fact) :-
+	fact(Term, Options, Fact).
 
 
-fact(Functor, fact(Terms)) -->
-	structure(s(Functor, Terms)),
-	spaces,
-	":-",
-	spaces,
-	".".
+fact(Term, Options, fact(Functor, Arguments)) :-
+	structure(Term, Options, s(Functor, Arguments)).
 
 
-fact(Functor, fact(Terms)) -->
-	structure(s(Functor, Terms)),
-	spaces,
-	".".
-
-
-rule(Functor, rule(head(Terms), [Goal|Goals])) -->
-	structure(s(Functor, Terms)),
-	spaces,
-	":-",
-	spaces,
-	goal(Goal),
-	spaces,
-	goals(Goals),
-	!.
-
-
-goals([]) -->
-	".".
-
-goals([Goal|Goals]) -->
-	",",
-	spaces,
-	goal(Goal),
-	spaces,
-	goals(Goals).
-
-
-goal(goal(Functor, Terms)) -->
-	structure(s(Functor, Terms)).
-
-
-query(query(Functor, Terms)) -->
-	structure(s(Functor, Terms)),
-	spaces,
-	".".
-
-
-term(C) -->
-	constant(C).
-
-term(S) -->
-	structure(S).
-
-term(L) -->
-	list(L).
-
-term(V) -->
-	variable(V).
-
-constant(c(Constant)) -->
-	structure(s(Constant/0, [])).
-
-
-structure(s(Functor/Arity, Terms)) -->
-	structure_functor(Functor),
-	spaces,
-	structure_bracket_terms(Terms),
-	{
-	    length(Terms, Arity)
-	}.
-
-
-structure_bracket_terms(Terms) -->
-	"(",
-	spaces,
-	structure_terms(Terms),
-	spaces,
-	")",
-	!.
-
-structure_bracket_terms([]) -->
-	[].
-
-
-structure_terms([Term|Terms]) -->
-	term(Term),
-	comma_terms(Terms).
-
-structure_terms([]) -->
-	[].
-
-
-structure_functor(A) -->
-	identifier(prolog_atom_start, A).
-
-
-list(c([])) -->
-	"[",
-	spaces,
-	"]",
-	!.
-
-list(l(Head, Tail)) -->
-	"[",
-	term(Head),
-	spaces,
-	list_tail(Tail),
-	spaces,
-	"]".
-
-
-list_tail(c([])) -->
-	[].
-
-list_tail(l(Head, Tail)) -->
-	",",
-	spaces,
-	term(Head),
-	spaces,
-	list_tail(Tail).
-
-list_tail(Tail) -->
-	"|",
-	spaces,
-	term(Tail).
-
-
-variable(v(V)) -->
-	identifier(prolog_var_start, V).
-
-
-identifier(Type, Identifier) -->
-	type(H, Type),
-	types(T, prolog_identifier_continue),
+goals((Head_Term, Tail_Term), Options, [Head|Tail]) :-
 	!,
-	{
-	    atom_codes(Identifier, [H|T])
-	}.
+	goal(Head_Term, Options, Head),
+	goals(Tail_Term, Options, Tail).
+
+goals(Term, Options, [Goal]) :-
+	goal(Term, Options, Goal).
 
 
-identifier(Type, Identifier) -->
-	type(H, Type),
-	{
-	    atom_codes(Identifier, [H])
-	}.
-
-comma_terms([Term|Terms]) -->
-	spaces,
-	",",
-	spaces,
-	term(Term),
-	comma_terms(Terms).
-
-comma_terms([]) -->
-	"".
+goal(Term, Options, goal(Functor, Arguments)) :-
+	structure(Term, Options, s(Functor, Arguments)).
 
 
-spaces -->
-	types(_, space).
+compound_arguments([], _, []).
+
+compound_arguments([Term|Terms], Options, [Argument|Arguments]) :-
+	compound_argument(Term, Options, Argument),
+	compound_arguments(Terms, Options, Arguments).
 
 
-type(Char, Type, [Char|Rest], Rest) :-
-	code_type(Char, Type).
+compound_argument(Term, Options, Argument) :-
+	variable(Term, Options, Argument),
+	!.
+
+compound_argument(Term, Options, Argument) :-
+	constant(Term, Options, Argument),
+	!.
+
+compound_argument(Term, Options, Argument) :-
+	integer(Term, Options, Argument),
+	!.
+
+compound_argument(Term, Options, Argument) :-
+	list(Term, Options, Argument),
+	!.
+
+compound_argument(Term, Options, Argument) :-
+	structure(Term, Options, Argument),
+	!.
 
 
-types([Char|Chars], Type) -->
-	type(Char, Type),
-	!,
-	types(Chars, Type).
+variable(Term, Options, v(Name)) :-
+	var(Term),
+	lookup_variable(Options, Term, Name).
 
-types([], _) -->
-	[].
+
+constant([], _Options, c([])).
+
+constant(Term, _Options, c(Term)) :-
+	atom(Term).
+
+
+integer(Term, _Options, i(Term)) :-
+	integer(Term).
+
+
+list([Head|Tail], Options, l(Head_Argument, Tail_Argument)) :-
+	compound_argument(Head, Options, Head_Argument),
+	compound_argument(Tail, Options, Tail_Argument).
+
+
+structure(Term, _Options, s(Term/0, [])) :-
+	atom(Term).
+
+structure(Term, Options, s(Functor/Arity, Arguments)) :-
+	compound_name_arity(Term, Functor, Arity),
+	compound_name_arguments(Term, Functor, Arguments_Terms),
+	compound_arguments(Arguments_Terms, Options, Arguments).
+
+
+lookup_variable(Options, Variable, Name) :-
+	memberchk(variable_names(Names), Options),
+	member(Name=Current_Variable, Names),
+	Variable==Current_Variable,
+	!.
+
