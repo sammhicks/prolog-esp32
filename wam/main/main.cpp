@@ -12,6 +12,7 @@ void loop() {
   WiFiClient client = wifiServer.available();
 
   if (client) {
+    Serial.println("Client connected");
     while (client.connected()) {
       if (commandWaiting(client)) {
         switch (Command command = nextCommand(client)) {
