@@ -66,6 +66,11 @@ assemble_code(put_constant(C, Ai)) -->
 	constant(C),
 	ai(Ai).
 
+assemble_code(put_integer(I, Ai)) -->
+	[0x07],
+	integer(I),
+	ai(Ai).
+
 assemble_code(get_variable(Vn, Ai)) -->
 	get_variable(Vn, Ai).
 
@@ -86,6 +91,11 @@ assemble_code(get_constant(C, Ai)) -->
 	constant(C),
 	ai(Ai).
 
+assemble_code(get_integer(I, Ai)) -->
+	[0x17],
+	integer(I),
+	ai(Ai).
+
 assemble_code(set_variable(Vn)) -->
 	set_variable(Vn).
 
@@ -96,6 +106,10 @@ assemble_code(set_constant(C)) -->
 	[0x26],
 	constant(C).
 
+assemble_code(set_integer(I)) -->
+	[0x27],
+	constant(I).
+
 assemble_code(unify_variable(Vn)) -->
 	unify_variable(Vn).
 
@@ -105,6 +119,10 @@ assemble_code(unify_value(Vn)) -->
 assemble_code(unify_constant(C)) -->
 	[0x36],
 	constant(C).
+
+assemble_code(unify_integer(I)) -->
+	[0x37],
+	integer(I).
 
 assemble_code(allocate(N)) -->
 	[0x40],
@@ -245,6 +263,10 @@ structure(ID/Arity) -->
 
 constant(C) -->
 	uint16(C).
+
+
+integer(I) -->
+	uint16(I).
 
 
 term_id(ID) -->
