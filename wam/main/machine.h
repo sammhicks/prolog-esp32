@@ -60,7 +60,6 @@ Constant c();
 Integer i();
 EnvironmentSize environmentSize();
 ProgramIndex programIndex();
-Jump jump();
 } // namespace Read
 
 void executeInstruction();

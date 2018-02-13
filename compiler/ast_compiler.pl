@@ -96,37 +96,29 @@ compile_definition_ast(rule(head(Functor, Arguments), Goals)) -->
 	compile_rule_ast(Arguments, Goals).
 
 compile_definition_ast(disjunction(Functor, Clauses)) -->
+	compile_disjunction_ast(Functor, Clauses).
+
+
+compile_disjunction_ast(Functor, [Clause|Clauses]) -->
 	[label(Functor)],
-	compile_disjunction_ast(Clauses).
+	disjunction_retry(Functor, Next_Functor),
+	[try_me_else(Next_Functor)],
+	compile_program_clause_ast(Clause),
+	compile_disjunction_tail_ast(Next_Functor, Clauses).
 
 
-compile_disjunction_ast([Clause]) -->
+compile_disjunction_tail_ast(Functor, [Clause]) -->
 	!,
-	compile_disjunction_ast(Clause).
-
-compile_disjunction_ast([Clause|Clauses]) -->
-	[try_me_else(Clause_Length)],
-	{
-	    compile_program_clause_ast(Clause, Clause_Codes, []),
-	    length(Clause_Codes, Clause_Length)
-	},
-	Clause_Codes,
-	compile_disjunction_tail_ast(Clauses).
-
-
-compile_disjunction_tail_ast([Clause]) -->
-	!,
+	[label(Functor)],
 	[trust_me],
 	compile_program_clause_ast(Clause).
 
-compile_disjunction_tail_ast([Clause|Clauses]) -->
-	[retry_me_else(Clause_Length)],
-	{
-	    compile_program_clause_ast(Clause, Clause_Codes, []),
-	    length(Clause_Codes, Clause_Length)
-	},
-	Clause_Codes,
-	compile_disjunction_tail_ast(Clauses).
+compile_disjunction_tail_ast(Functor, [Clause|Clauses]) -->
+	[label(Functor)],
+	disjunction_retry(Functor, Next_Functor),
+	[retry_me_else(Next_Functor)],
+	compile_program_clause_ast(Clause),
+	compile_disjunction_tail_ast(Next_Functor, Clauses).
 
 
 compile_program_clause_ast(fact(Terms)) -->
@@ -217,3 +209,7 @@ convert_program_token(y(Y), Rs, Rs) -->
 
 convert_program_token(y(Y), Rs, [y(Y)|Rs]) -->
 	[unify_variable(y(Y))].
+
+
+disjunction_retry(Functor/Arity, retry(Functor)/Arity) -->
+	[].

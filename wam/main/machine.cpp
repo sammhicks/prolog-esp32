@@ -31,7 +31,6 @@ EnvironmentSize environmentSize() {
 ProgramIndex programIndex() {
   return static_cast<ProgramIndex>(Raw::uint16(*instructionSource));
 }
-Jump jump() { return static_cast<Jump>(Raw::uint16(*instructionSource)); }
 } // namespace Read
 
 void executeInstruction() {

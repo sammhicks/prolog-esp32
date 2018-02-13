@@ -141,16 +141,16 @@ assemble_code(call(ID)) -->
 assemble_code(proceed) -->
 	[0x44].
 
-assemble_code(try_me_else(J)) -->
+assemble_code(try_me_else(ID)) -->
 	[0x48],
-	jump(J).
+	term_id(ID).
 
-assemble_code(retry_me_else(J)) -->
+assemble_code(retry_me_else(ID)) -->
 	[0x49],
-	jump(J).
+	term_id(ID).
 
 assemble_code(trust_me) -->
-	[0x49].
+	[0x4A].
 
 
 put_variable(x(N), Ai) -->
@@ -271,10 +271,6 @@ integer(I) -->
 
 term_id(ID) -->
 	uint16(ID).
-
-
-jump(J) -->
-	uint16(J).
 
 
 assembly_state(state(Structures, Constants, Labels, Label_Table), Structures, Constants, Labels, Label_Table).
