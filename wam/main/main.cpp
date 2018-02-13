@@ -31,6 +31,16 @@ void loop() {
         case Command::updateLabelTable:
           updateLabelTable(client);
           break;
+        case Command::resetMachine:
+          resetMachine();
+          Raw::write<bool>(client, true);
+          break;
+        case Command::readRegister:
+          readRegister(client);
+          break;
+        case Command::readMemory:
+          readMemory(client);
+          break;
         default:
           Serial.printf("Unknown command %x\n",
                         static_cast<unsigned int>(command));
@@ -55,9 +65,9 @@ void runPing(Client &client) {
       Serial.println("failed");
     }
   }
-  uint8_t body = Read::Raw::uint8(client);
+  auto body = Raw::read<uint8_t>(client);
   Serial.println(body, HEX);
-  Write::Raw::uint8(client, body);
+  Raw::write(client, body);
 }
 
 void updateCode(Client &client) {
@@ -69,14 +79,14 @@ void updateCode(Client &client) {
     }
   }
 
-  CodeIndex codeLength = Read::Raw::uint32(client);
+  CodeIndex codeLength = Raw::read<CodeIndex>(client);
 
   Serial.printf("code length: %x\n", codeLength);
 
   if (updateFile(codePath, codeLength, client)) {
-    client.write(1);
+    Raw::write<bool>(client, true);
   } else {
-    client.write(0);
+    Raw::write<bool>(client, false);
     deleteHash();
   }
 
@@ -92,16 +102,28 @@ void updateLabelTable(Client &client) {
     }
   }
 
-  CodeIndex labelTableLength = Read::Raw::uint32(client);
+  CodeIndex labelTableLength = Raw::read<CodeIndex>(client);
 
   Serial.printf("label table length: %x\n", labelTableLength);
 
   if (updateFile(labelTablePath, labelTableLength, client)) {
-    client.write(1);
+    Raw::write<bool>(client, true);
   } else {
-    client.write(0);
+    Raw::write<bool>(client, false);
     deleteHash();
   }
 
   Serial.println("label table update complete");
+}
+
+void readRegister(Client &client) {
+  Xn xn = Raw::read<Xn>(client);
+  Value &value = registers[xn];
+  Raw::write<Value>(client, value);
+}
+
+void readMemory(Client &client) {
+  HeapIndex hi = Raw::read<HeapIndex>(client);
+  Value &value = registers[hi];
+  Raw::write<Value>(client, value);
 }

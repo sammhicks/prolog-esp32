@@ -3,8 +3,10 @@
 #include "Client.h"
 #include "SPIFFS.h"
 
-#include "raw-int.h"
+#include "raw-io.h"
 #include "update-file.h"
+
+typedef uint8_t HashLength;
 
 extern const char *hashPath;
 

@@ -17,3 +17,7 @@ void runPing(Client &client);
 void updateCode(Client &client);
 
 void updateLabelTable(Client &client);
+
+void readRegister(Client &client);
+
+void readMemory(Client &client);

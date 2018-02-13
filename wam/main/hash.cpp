@@ -4,15 +4,15 @@ const char *hashPath = "/hash";
 
 bool checkHash(Client &client) {
   Serial.println("check hash:");
-  uint8_t hashSize = Read::Raw::uint8(client);
+  HashLength hashlength = Raw::read<HashLength>(client);
 
-  Serial.printf("hash length: %u\n", hashSize);
+  Serial.printf("hash length: %u\n", hashlength);
 
   File hashFile = SPIFFS.open(hashPath);
 
   bool hashCorrect = true;
 
-  for (uint8_t n = 0; n < hashSize; ++n) {
+  for (HashLength n = 0; n < hashlength; ++n) {
     while (client.available() == 0) {
       if (!client.connected()) {
         Serial.println("client disconnected during hash check");
@@ -34,16 +34,15 @@ bool checkHash(Client &client) {
 
 void updateHash(Client &client) {
   Serial.println("hash update");
-  uint8_t hashLength;
 
-  while (client.available() < sizeof(hashLength)) {
+  while (client.available() < sizeof(HashLength)) {
     if (!client.connected()) {
       return;
     }
     yieldProcessor();
   }
 
-  hashLength = Read::Raw::uint8(client);
+  HashLength hashLength = Raw::read<HashLength>(client);
 
   if (updateFile(hashPath, hashLength, client)) {
     client.write(1);

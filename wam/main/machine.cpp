@@ -16,112 +16,105 @@ Value registers[registerCount];
 Value heap[heapSize];
 uint8_t stack[stackSize];
 
-namespace Read {
-Opcode opcode() { return static_cast<Opcode>(Raw::uint8(*instructionSource)); }
-Xn xn() { return static_cast<Xn>(Raw::uint8(*instructionSource)); }
-Yn yn() { return static_cast<Yn>(Raw::uint8(*instructionSource)); }
-Ai ai() { return static_cast<Ai>(Raw::uint8(*instructionSource)); }
-Functor f() { return static_cast<Functor>(Raw::uint16(*instructionSource)); }
-Arity n() { return static_cast<Arity>(Raw::uint8(*instructionSource)); }
-Constant c() { return static_cast<Constant>(Raw::uint16(*instructionSource)); }
-Integer i() { return static_cast<Integer>(Raw::uint16(*instructionSource)); }
-EnvironmentSize environmentSize() {
-  return static_cast<EnvironmentSize>(Raw::uint8(*instructionSource));
+template <typename T> T read() { return Raw::read<T>(*instructionSource); }
+
+void resetMachine() {
+  h = 0;
+  e = reinterpret_cast<Environment *>(stack);
+  e->ce = nullptr;
+  e->cp = 0;
+  e->n = 0;
 }
-ProgramIndex programIndex() {
-  return static_cast<ProgramIndex>(Raw::uint16(*instructionSource));
-}
-} // namespace Read
 
 void executeInstruction() {
-  Opcode opcode = Read::opcode();
+  Opcode opcode = Raw::read<Opcode>(*instructionSource);
   Serial.print("Executing opcode ");
   Serial.println(static_cast<int>(opcode), HEX);
 
   switch (opcode) {
   case Opcode::putVariableXnAi:
-    Instructions::putVariableXnAi(Read::xn(), Read::ai());
+    Instructions::putVariableXnAi(read<Xn>(), read<Ai>());
     break;
   /*case Opcode::putVariableYnAi:
-    Instructions::putVariableYnAi(Read::yn(), Read::ai());
+    Instructions::putVariableYnAi(read<Yn>(), read<Ai>());
     break;*/
   case Opcode::putValueXnAi:
-    Instructions::putValueXnAi(Read::xn(), Read::ai());
+    Instructions::putValueXnAi(read<Xn>(), read<Ai>());
     break;
   /*case Opcode::putValueYnAi:
-    Instructions::putValueYnAi(Read::xn(), Read::ai());
+    Instructions::putValueYnAi(read<Xn>(), read<Ai>());
     break;*/
   case Opcode::putStructure:
-    Instructions::putStructure(Read::f(), Read::n(), Read::ai());
+    Instructions::putStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::putList:
-    Instructions::putList(Read::ai());
+    Instructions::putList(read<Ai>());
     break;
   case Opcode::putConstant:
-    Instructions::putConstant(Read::c(), Read::ai());
+    Instructions::putConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::putInteger:
-    Instructions::putInteger(Read::i(), Read::ai());
+    Instructions::putInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::getVariableXnAi:
-    Instructions::getVariableXnAi(Read::xn(), Read::ai());
+    Instructions::getVariableXnAi(read<Xn>(), read<Ai>());
     break;
   /*case Opcode::getVariableYnAi:
-    Instructions::getVariableYnAi(Read::yn(), Read::ai());
+    Instructions::getVariableYnAi(read<Yn>(), read<Ai>());
     break;*/
   case Opcode::getValueXnAi:
-    Instructions::getValueXnAi(Read::xn(), Read::ai());
+    Instructions::getValueXnAi(read<Xn>(), read<Ai>());
     break;
   /*case Opcode::getValueYnAi:
-    Instructions::getValueYnAi(Read::xn(), Read::ai());
+    Instructions::getValueYnAi(read<Xn>(), read<Ai>());
     break;*/
   case Opcode::getStructure:
-    Instructions::getStructure(Read::f(), Read::n(), Read::ai());
+    Instructions::getStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::getList:
-    Instructions::getList(Read::ai());
+    Instructions::getList(read<Ai>());
     break;
   case Opcode::getConstant:
-    Instructions::getConstant(Read::c(), Read::ai());
+    Instructions::getConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::getInteger:
-    Instructions::getInteger(Read::i(), Read::ai());
+    Instructions::getInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::setVariableXn:
-    Instructions::setVariableXn(Read::xn());
+    Instructions::setVariableXn(read<Xn>());
     break;
   /*case Opcode::setVariableYn:
-    Instructions::setVariableYn(Read::yn());
+    Instructions::setVariableYn(read<Yn>());
     break;*/
   case Opcode::setValueXn:
-    Instructions::setValueXn(Read::xn());
+    Instructions::setValueXn(read<Xn>());
     break;
   /*case Opcode::setValueYn:
-    Instructions::setValueYn(Read::yn());
+    Instructions::setValueYn(read<Yn>());
     break;*/
   case Opcode::setConstant:
-    Instructions::setConstant(Read::c());
+    Instructions::setConstant(read<Constant>());
     break;
   case Opcode::setInteger:
-    Instructions::setInteger(Read::i());
+    Instructions::setInteger(read<Integer>());
     break;
   case Opcode::unifyVariableXn:
-    Instructions::unifyVariableXn(Read::xn());
+    Instructions::unifyVariableXn(read<Xn>());
     break;
   /*case Opcode::unifyVariableYn:
-    Instructions::unifyVariableYn(Read::yn());
+    Instructions::unifyVariableYn(read<Yn>());
     break;*/
   case Opcode::unifyValueXn:
-    Instructions::unifyValueXn(Read::xn());
+    Instructions::unifyValueXn(read<Xn>());
     break;
   /*case Opcode::unifyValueYn:
-    Instructions::unifyValueYn(Read::yn());
+    Instructions::unifyValueYn(read<Yn>());
     break;*/
   case Opcode::unifyConstant:
-    Instructions::unifyConstant(Read::c());
+    Instructions::unifyConstant(read<Constant>());
     break;
   case Opcode::unifyInteger:
-    Instructions::unifyInteger(Read::i());
+    Instructions::unifyInteger(read<Integer>());
     break;
   /*case Opcode::allocate:
     Instructions::allocate(Read::environmentSize());
@@ -130,7 +123,7 @@ void executeInstruction() {
     Instructions::deallocate();
     break;*/
   case Opcode::call:
-    Instructions::call(Read::programIndex());
+    Instructions::call(read<ProgramIndex>());
     break;
   case Opcode::proceed:
     Instructions::proceed();

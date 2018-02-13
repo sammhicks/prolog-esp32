@@ -1,21 +1,18 @@
 #pragma once
 #pragma pack(push, 1)
 
-#include <limits>
-
-#define _GLIBCXX_VECTOR
 #include "Arduino.h"
 #include "FS.h"
 
 #include "instruction.h"
-#include "raw-int.h"
+#include "raw-io.h"
 #include "value.h"
 
 const Xn registerCount = 32;
 const size_t heapSize = 256;
 const size_t stackSize = 1024;
 
-const CodeIndex haltIndex = std::numeric_limits<CodeIndex>::max();
+const CodeIndex haltIndex = 3;
 
 enum class ExecuteModes : uint8_t { query, program };
 
@@ -49,18 +46,7 @@ extern Value registers[registerCount];
 extern Value heap[heapSize];
 extern uint8_t stack[stackSize];
 
-namespace Read {
-Opcode opcode();
-Xn xn();
-Yn yn();
-Ai ai();
-Functor f();
-Arity n();
-Constant c();
-Integer i();
-EnvironmentSize environmentSize();
-ProgramIndex programIndex();
-} // namespace Read
+void resetMachine();
 
 void executeInstruction();
 

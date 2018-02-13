@@ -3,7 +3,8 @@
 	      open_connection/0,
 	      close_connection/0,
 	      ping/1,                   % -Result
-	      compile_program/2         % +Terms, -Result
+	      compile_program/2,        % +Terms, -Result
+	      run_query/1               % +Query
 	  ]).
 
 
@@ -43,9 +44,9 @@ ping(Result) :-
 	;   Result = failure(Body, Response)).
 
 
-compile_program(Terms, Result) :-
+compile_program(Program, Result) :-
 	retractall(program_compile_state(_)),
-	compile_program(Terms, State, Program_Bytes, Label_Table_Bytes),
+	compile_program(Program, State, Program_Bytes, Label_Table_Bytes),
 	assertz(program_compile_state(State)),
 	append(Program_Bytes, Label_Table_Bytes, All_Bytes),
 	sha_hash(All_Bytes, Hash, [algorithm(sha256)]),
@@ -57,6 +58,14 @@ compile_program(Terms, Result) :-
 	    update_label_table(Stream, Label_Table_Bytes),
 	    Result = updated_program
 	).
+
+
+run_query(Query) :-
+	program_compile_state(State),
+	compile_query(Query, State, Bytes),
+	current_connection(Stream),
+	reset_machine(Stream),
+	run_query_section(Stream, Bytes).
 
 
 check_hash(Stream, Hash) :-
@@ -83,6 +92,18 @@ update_label_table(Stream, Label_Table_Bytes) :-
 	put_byte_block(Stream, update_label_table, Bytes).
 
 
+reset_machine(Stream) :-
+	command(reset_machine, Header),
+	put_bytes([Header], Stream),
+	get_byte([1], Stream).
+
+
+run_query_section(Stream, Query_Bytes) :-
+	length(Query_Bytes, Length),
+	uint32(Length, Bytes, Query_Bytes),
+	put_byte_block(Stream, run_query, Bytes).
+
+
 put_byte_block(Stream, Command, Block) :-
 	command(Command, Header),
 	put_bytes([Header|Block], Stream),
@@ -106,10 +127,3 @@ put_bytes([], Stream) :-
 put_bytes([Code|Codes], Stream) :-
 	put_byte(Stream, Code),
 	put_bytes(Codes, Stream).
-
-
-get_bytes([], _Stream).
-
-get_bytes([Code|Codes], Stream) :-
-	get_byte(Stream, Code),
-	get_bytes(Codes, Stream).

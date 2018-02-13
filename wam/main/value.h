@@ -10,7 +10,7 @@ typedef uint16_t StackIndex;
 typedef uint16_t Functor;
 typedef uint8_t Arity;
 typedef uint16_t Constant;
-typedef uint16_t Integer;
+typedef int16_t Integer;
 
 struct Value {
   enum class Type : uint8_t { reference, structure, list, constant, integer };

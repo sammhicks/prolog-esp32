@@ -1,5 +1,5 @@
 #pragma once
 
-#include "Arduino.h"
+#include "esp32-hal.h"
 
 void yieldProcessor();
