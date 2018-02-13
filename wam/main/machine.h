@@ -4,6 +4,7 @@
 #include <limits>
 
 #define _GLIBCXX_VECTOR
+#include "Arduino.h"
 #include "FS.h"
 
 #include "instruction.h"

@@ -11,7 +11,7 @@
 :- use_module(assembly_sections/remove_labels).
 :- use_module(assembly_sections/allocate_structures).
 :- use_module(assembly_sections/allocate_constants).
-:- use_module(utility/bytes).
+:- use_module('..'/utility/bytes).
 
 assemble_query(Codes0, State, Bytes) :-
 	assembly_state(State, Structures, Constants, Labels, _Label_Table),

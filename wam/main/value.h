@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-typedef size_t CodeIndex;
+typedef uint32_t CodeIndex;
 typedef uint16_t HeapIndex;
 typedef uint16_t StackIndex;
 typedef uint16_t Functor;
