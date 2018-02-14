@@ -124,7 +124,7 @@ void readRegister(Client &client) {
   Xn xn = Raw::read<Xn>(client);
   Serial.println(xn, HEX);
   Value &value = registers[xn];
-  Raw::writeBlock<Value>(client, value);
+  Raw::writeBlock<Value>(client, Ancillary::deref(value));
 }
 
 void readMemory(Client &client) {
@@ -132,5 +132,5 @@ void readMemory(Client &client) {
   HeapIndex hi = Raw::read<HeapIndex>(client);
   Serial.println(hi, HEX);
   Value &value = heap[hi];
-  Raw::writeBlock<Value>(client, value);
+  Raw::writeBlock<Value>(client, Ancillary::deref(value));
 }

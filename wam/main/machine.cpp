@@ -5,7 +5,7 @@ const char *labelTablePath = "/label-table";
 
 ExecuteModes executeMode;
 Stream *instructionSource;
-File programFile;
+File *programFile;
 
 RWModes rwMode;
 Arity argumentCount;
@@ -34,8 +34,21 @@ void executeInstructions(Client *client) {
   executeMode = ExecuteModes::query;
   instructionSource = client;
 
+  File actualProgramFile = SPIFFS.open(codePath);
+  programFile = &actualProgramFile;
+
+  haltIndex = programFile->size();
+
   while (executeMode == ExecuteModes::query) {
     executeInstruction();
+  }
+
+  Serial.println("Executing Program");
+  instructionSource = programFile;
+
+  while (programFile->available() > 0) {
+    executeInstruction();
+    delay(1000);
   }
 
   Serial.println("Done");
@@ -178,6 +191,7 @@ namespace Instructions {
 using Ancillary::backtrack;
 using Ancillary::bind;
 using Ancillary::deref;
+using Ancillary::trail;
 using Ancillary::unify;
 
 void putVariableXnAi(Xn xn, Ai ai) {
@@ -259,13 +273,18 @@ void getList(Ai ai) {
 }
 
 void getConstant(Constant c, Ai ai) {
+  Serial.printf("Constant: %u\n", c);
+  Serial.printf("Ai: %u\n", ai);
   Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
+    Serial.printf("Reference to %u\n", derefAi.h);
+    trail(derefAi);
     derefAi.makeConstant(c);
     return;
   case Value::Type::constant:
+    Serial.printf("Constant %u\n", derefAi.c);
     if (c != derefAi.c) {
       backtrack();
     }
@@ -281,6 +300,7 @@ void getInteger(Integer i, Ai ai) {
 
   switch (derefAi.type) {
   case Value::Type::reference:
+    trail(derefAi);
     derefAi.makeInteger(i);
     return;
   case Value::Type::integer:
@@ -341,7 +361,7 @@ void unifyValueXn(Xn xn) {
     if (unify(registers[xn], heap[s])) {
       backtrack();
     };
-    return;
+    break;
   case RWModes::write:
     heap[h] = registers[xn];
     h = h + 1;
@@ -352,9 +372,57 @@ void unifyValueXn(Xn xn) {
 
 // void unifyValueYn(Yn yn) {}
 
-void unifyConstant(Constant c) {}
+void unifyConstant(Constant c) {
+  switch (rwMode) {
+  case RWModes::read: {
+    Value &derefS = deref(heap[s]);
+    switch (derefS.type) {
+    case Value::Type::reference:
+      trail(derefS);
+      derefS.makeConstant(c);
+      break;
+    case Value::Type::constant:
+      if (c != derefS.c) {
+        backtrack();
+      }
+      break;
+    default:
+      backtrack();
+      break;
+    }
+  } break;
+  case RWModes::write:
+    heap[h].makeConstant(c);
+    h = h + 1;
+    break;
+  }
+}
 
-void unifyInteger(Integer i) {}
+void unifyInteger(Integer i) {
+  switch (rwMode) {
+  case RWModes::read: {
+    Value &derefS = deref(heap[s]);
+    switch (derefS.type) {
+    case Value::Type::reference:
+      trail(derefS);
+      derefS.makeInteger(i);
+      break;
+    case Value::Type::integer:
+      if (i != derefS.i) {
+        backtrack();
+      }
+      break;
+    default:
+      backtrack();
+      break;
+    }
+  } break;
+  case RWModes::write:
+    heap[h].makeInteger(i);
+    h = h + 1;
+    break;
+  }
+}
 
 void allocate(EnvironmentSize n) {
   Environment *newEnvironment = reinterpret_cast<Environment *>(e->ys + e->n);
@@ -367,7 +435,7 @@ void allocate(EnvironmentSize n) {
 }
 
 void deallocate() {
-  programFile.seek(e->cp);
+  programFile->seek(e->cp);
   e = e->ce;
 }
 
@@ -378,9 +446,11 @@ void call(ProgramIndex p) {
     cp = haltIndex;
     break;
   case ExecuteModes::program:
-    cp = programFile.position();
+    cp = programFile->position();
     break;
   }
+
+  Serial.printf("Program index: %u\n", p);
 
   File labelTableFile = SPIFFS.open(labelTablePath);
 
@@ -390,11 +460,14 @@ void call(ProgramIndex p) {
 
   labelTableFile.read(reinterpret_cast<uint8_t *>(&entry), sizeof(entry));
 
-  programFile.seek(entry.entryPoint);
+  Serial.printf("Entry Point: %u\n", entry.entryPoint);
+  Serial.printf("Arity: %u\n", entry.arity);
+
+  programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
 }
 
-void proceed() { programFile.seek(cp); }
+void proceed() { programFile->seek(cp); }
 
 } // namespace Instructions
 
@@ -409,18 +482,23 @@ void failAndExit() {
 }
 
 Value &deref(Value &a) {
+  Serial.println("Dereferencing value");
   if (a.type == Value::Type::reference) {
+    Serial.printf("Points to %u\n", a.h);
     return deref(a.h);
   } else {
+    Serial.println("Not a reference");
     return a;
   }
 }
 
-Value &deref(HeapIndex h) {
-  if (heap[h].type == Value::Type::reference && heap[h].h != h) {
-    return deref(heap[h].h);
+Value &deref(HeapIndex derefH) {
+  if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
+    Serial.printf("%u points to %u\n", derefH, heap[derefH].h);
+    return deref(heap[derefH].h);
   } else {
-    return heap[h];
+    Serial.println("Done");
+    return heap[derefH];
   }
 }
 

@@ -35,7 +35,7 @@ struct Environment {
 
 extern ExecuteModes executeMode;
 extern Stream *instructionSource;
-extern File programFile;
+extern File *programFile;
 
 extern RWModes rwMode;
 extern Arity argumentCount;

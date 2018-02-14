@@ -231,8 +231,9 @@ unify_value(y(N)) -->
 assemble_label_table_entries([]) -->
 	[].
 
-assemble_label_table_entries([Entry|Entries]) -->
-	structure(Entry),
+assemble_label_table_entries([ID/Arity|Entries]) -->
+	uint32(ID),
+	uint8(Arity),
 	assemble_label_table_entries(Entries).
 
 
