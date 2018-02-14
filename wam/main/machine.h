@@ -15,11 +15,11 @@ const Xn registerCount = 32;
 const size_t heapSize = 256;
 const size_t stackSize = 1024;
 
-const CodeIndex haltIndex = 3;
-
 enum class ExecuteModes : uint8_t { query, program };
 
 enum class RWModes : uint8_t { read, write };
+
+enum class Results : uint8_t { failure, success, choicePoints };
 
 struct LabelTableEntry {
   CodeIndex entryPoint;
@@ -42,6 +42,7 @@ extern Arity argumentCount;
 extern HeapIndex h;
 extern HeapIndex s;
 extern CodeIndex cp;
+extern CodeIndex haltIndex;
 extern Environment *e;
 
 extern Value registers[registerCount];

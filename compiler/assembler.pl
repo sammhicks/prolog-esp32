@@ -1,6 +1,6 @@
 
 :- module(assembler, [
-	      assemble_query/3,         % +Codes, +State, -Bytes
+	      assemble_query/5,         % +Codes, +State, -Bytes, -Constants, -Structures
 	      assemble_program/3,       % +Codes, -State, -Bytes
 	      assemble_label_table/2    % +State, -Label_Table_Bytes
 	  ]).
@@ -13,12 +13,15 @@
 :- use_module(assembly_sections/allocate_constants).
 :- use_module('..'/utility/bytes).
 
-assemble_query(Codes0, State, Bytes) :-
+assemble_query(Codes0, State, Bytes, Constant_Allocation, Structure_Allocation) :-
 	assembly_state(State, Structures, Constants, Labels, _Label_Table),
-	allocate_structures(Codes0, Codes1, Structures, _Structures),
-	allocate_constants(Codes1, Codes2, Constants, _Constants),
+	allocate_structures(Codes0, Codes1, Structures, All_Structures),
+	structure_allocation(All_Structures, Structure_Allocation),
+	allocate_constants(Codes1, Codes2, Constants, All_Constants),
+	constant_allocation(All_Constants, Constant_Allocation),
 	apply_labels(Codes2, Labels, Codes3),
 	assemble_codes(Codes3, Bytes, []).
+
 
 assemble_program(Codes0, State, Bytes) :-
 	init_structures_state(Structures0),
@@ -142,15 +145,15 @@ assemble_code(proceed) -->
 	[0x44].
 
 assemble_code(try_me_else(ID)) -->
-	[0x48],
+	[0x50],
 	term_id(ID).
 
 assemble_code(retry_me_else(ID)) -->
-	[0x49],
+	[0x51],
 	term_id(ID).
 
 assemble_code(trust_me) -->
-	[0x4A].
+	[0x52].
 
 
 put_variable(x(N), Ai) -->

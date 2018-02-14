@@ -1,7 +1,8 @@
 
 :- module(allocate_structures, [
 	      init_structures_state/1,      % -State
-	      allocate_structures/4         % +Codes, -Mapped_Codes, +Current_State, -Final_State
+	      allocate_structures/4,        % +Codes, -Mapped_Codes, +Current_State, -Final_State
+	      structure_allocation/2	    % +State, -Allocation
 	  ]).
 
 init_structures_state(State) :-
@@ -12,6 +13,10 @@ allocate_structures(Codes, Mapped_Codes, State0, State) :-
 	codes_structures(Codes, Structures, []),
 	add_structures(Structures, State0, State),
 	map_codes(Codes, Mapped_Codes, State).
+
+
+structure_allocation(State, Allocation) :-
+	state(State, _, Allocation).
 
 
 codes_structures([]) -->

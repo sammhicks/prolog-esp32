@@ -1,6 +1,7 @@
 
 :- module(value, [
-	      value//1          % ?Value
+	      value//1,         % ?Value
+	      functor_arity//2  % ?Functor, ?Arity
 	  ]).
 
 
@@ -26,6 +27,11 @@ value(Constant) -->
 value(Integer) -->
 	integer(Integer),
 	!.
+
+
+functor_arity(Functor, Arity) -->
+	uint16(Functor),
+	uint8(Arity).
 
 
 reference(reference(H)) -->
