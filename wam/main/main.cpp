@@ -42,7 +42,10 @@ void loop() {
           readRegister(client);
           break;
         case Command::readMemory:
-          readMemory(client);
+          readMemory(client, true);
+          break;
+        case Command::readFunctor:
+          readMemory(client, false);
           break;
         default:
           Serial.printf("Unknown command %x\n",
@@ -127,10 +130,11 @@ void readRegister(Client &client) {
   Raw::writeBlock<Value>(client, Ancillary::deref(value));
 }
 
-void readMemory(Client &client) {
+void readMemory(Client &client, bool followReference) {
   Serial.print("Reading Memory: ");
   HeapIndex hi = Raw::read<HeapIndex>(client);
   Serial.println(hi, HEX);
   Value &value = heap[hi];
-  Raw::writeBlock<Value>(client, Ancillary::deref(value));
+  Value &valueToWrite = followReference ? Ancillary::deref(value) : value;
+  Raw::writeBlock<Value>(client, valueToWrite);
 }

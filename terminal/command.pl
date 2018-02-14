@@ -26,6 +26,7 @@ command(reset_machine, 0x30).
 command(run_query, 0x31).
 command(read_register, 0x40).
 command(read_memory, 0x41).
+command(read_functor, 0x42).
 
 
 command(Command, [Code|Tail], Tail) :-

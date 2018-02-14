@@ -17,4 +17,4 @@ void updateLabelTable(Client &client);
 
 void readRegister(Client &client);
 
-void readMemory(Client &client);
+void readMemory(Client &client, bool followReference);

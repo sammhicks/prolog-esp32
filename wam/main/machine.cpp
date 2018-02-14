@@ -48,7 +48,6 @@ void executeInstructions(Client *client) {
 
   while (programFile->available() > 0) {
     executeInstruction();
-    delay(1000);
   }
 
   Serial.println("Done");
@@ -482,22 +481,17 @@ void failAndExit() {
 }
 
 Value &deref(Value &a) {
-  Serial.println("Dereferencing value");
   if (a.type == Value::Type::reference) {
-    Serial.printf("Points to %u\n", a.h);
     return deref(a.h);
   } else {
-    Serial.println("Not a reference");
     return a;
   }
 }
 
 Value &deref(HeapIndex derefH) {
   if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
-    Serial.printf("%u points to %u\n", derefH, heap[derefH].h);
     return deref(heap[derefH].h);
   } else {
-    Serial.println("Done");
     return heap[derefH];
   }
 }

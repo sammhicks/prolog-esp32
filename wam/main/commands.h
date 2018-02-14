@@ -11,7 +11,8 @@ enum class Command : uint8_t {
   resetMachine = 0x30,
   runQuery,
   readRegister = 0x40,
-  readMemory
+  readMemory,
+  readFunctor,
 };
 
 bool commandWaiting(Stream &s);

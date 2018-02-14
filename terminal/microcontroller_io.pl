@@ -73,7 +73,7 @@ read_memory(Stream, H, Value) :-
 
 read_functor(Stream, H, Functor, Arity) :-
 	uint16(H, TxBytes, []),
-	put_command_with_block(Stream, read_memory, TxBytes),
+	put_command_with_block(Stream, read_functor, TxBytes),
 	get_byte_block(Stream, RxBytes),
 	functor_arity(Functor, Arity, RxBytes, []).
 
