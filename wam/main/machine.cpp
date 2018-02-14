@@ -1,9 +1,11 @@
 #include "machine.h"
 
+const char *codePath = "/code";
+const char *labelTablePath = "/label-table";
+
 ExecuteModes executeMode;
 Stream *instructionSource;
 File programFile;
-File labelTableFile;
 
 RWModes rwMode;
 Arity argumentCount;
@@ -19,11 +21,21 @@ uint8_t stack[stackSize];
 template <typename T> T read() { return Raw::read<T>(*instructionSource); }
 
 void resetMachine() {
+  Serial.println("Reset");
   h = 0;
   e = reinterpret_cast<Environment *>(stack);
   e->ce = nullptr;
   e->cp = 0;
   e->n = 0;
+}
+
+void executeInstructions(Client *client) {
+  executeMode = ExecuteModes::query;
+  instructionSource = client;
+
+  while (executeMode == ExecuteModes::query) {
+    executeInstruction();
+  }
 }
 
 void executeInstruction() {
@@ -160,9 +172,11 @@ void putStructure(Functor f, Arity n, Ai ai) {
   h = h + 1;
 }
 
-void putConstant(Constant c, Ai ai) {}
+void putList(Ai ai) { registers[ai].makeList(h); }
 
-void putInteger(Integer i, Ai ai) {}
+void putConstant(Constant c, Ai ai) { registers[ai].makeConstant(c); }
+
+void putInteger(Integer i, Ai ai) { registers[ai].makeInteger(i); }
 
 void getVariableXnAi(Xn xn, Ai ai) { registers[xn] = registers[ai]; }
 
@@ -197,9 +211,61 @@ void getStructure(Functor f, Arity n, Ai ai) {
   }
 }
 
-void getConstant(Constant c, Ai ai) {}
+void getList(Ai ai) {
+  Value &derefAi = deref(registers[ai]);
 
-void getInteger(Integer i, Ai ai) {}
+  switch (derefAi.type) {
+  case Value::Type::reference:
+    heap[h].makeList(h + 1);
+    bind(derefAi, heap[h]);
+    h = h + 1;
+    rwMode = RWModes::write;
+    return;
+  case Value::Type::list:
+    s = derefAi.h;
+    rwMode = RWModes::read;
+    return;
+  default:
+    backtrack();
+    return;
+  }
+}
+
+void getConstant(Constant c, Ai ai) {
+  Value &derefAi = deref(registers[ai]);
+
+  switch (derefAi.type) {
+  case Value::Type::reference:
+    derefAi.makeConstant(c);
+    return;
+  case Value::Type::constant:
+    if (c != derefAi.c) {
+      backtrack();
+    }
+    return;
+  default:
+    backtrack();
+    return;
+  }
+}
+
+void getInteger(Integer i, Ai ai) {
+  Value &derefAi = deref(registers[ai]);
+
+  switch (derefAi.type) {
+  case Value::Type::reference:
+    derefAi.makeInteger(i);
+    return;
+  case Value::Type::integer:
+    if (i != derefAi.i) {
+      backtrack();
+    }
+    return;
+  default:
+    backtrack();
+    return;
+  }
+}
 
 void setVariableXn(Xn xn) {
   heap[h].makeReference(h);
@@ -286,6 +352,8 @@ void call(ProgramIndex p) {
     cp = programFile.position();
     break;
   }
+
+  File labelTableFile = SPIFFS.open(labelTablePath);
 
   LabelTableEntry entry;
 

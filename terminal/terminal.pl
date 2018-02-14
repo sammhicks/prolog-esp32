@@ -4,7 +4,9 @@
 	      close_connection/0,
 	      ping/1,                   % -Result
 	      compile_program/2,        % +Terms, -Result
-	      run_query/1               % +Query
+	      run_query/1,              % +Query
+	      read_register/2,          % +Xn, -Value
+	      read_memory/2             % +H, -Value
 	  ]).
 
 
@@ -13,6 +15,8 @@
 
 :- use_module('..'/compiler/compiler).
 :- use_module('..'/utility/bytes).
+:- use_module(command).
+:- use_module(value).
 
 :- dynamic(current_connection/1).
 :- dynamic(program_compile_state/1).
@@ -68,57 +72,71 @@ run_query(Query) :-
 	run_query_section(Stream, Bytes).
 
 
+read_register(Xn, Value) :-
+	current_connection(Stream),
+	read_register(Stream, Xn, Value).
+
+
+read_memory(H, Value) :-
+	current_connection(Stream),
+	read_memory(Stream, H, Value).
+
+
 check_hash(Stream, Hash) :-
 	length(Hash, Length),
 	uint8(Length, Bytes, Hash),
-	put_byte_block(Stream, check_hash, Bytes).
+	put_command_with_block(Stream, check_hash, Bytes),
+	get_boolean(Stream).
 
 
 update_hash(Stream, Hash) :-
 	length(Hash, Length),
 	uint8(Length, Bytes, Hash),
-	put_byte_block(Stream, update_hash, Bytes).
+	put_command_with_block(Stream, update_hash, Bytes),
+	get_boolean(Stream).
 
 
 update_program(Stream, Program_Bytes) :-
 	length(Program_Bytes, Length),
 	uint32(Length, Bytes, Program_Bytes),
-	put_byte_block(Stream, update_program, Bytes).
+	put_command_with_block(Stream, update_program, Bytes),
+	get_boolean(Stream).
 
 
 update_label_table(Stream, Label_Table_Bytes) :-
 	length(Label_Table_Bytes, Length),
 	uint32(Length, Bytes, Label_Table_Bytes),
-	put_byte_block(Stream, update_label_table, Bytes).
+	put_command_with_block(Stream, update_label_table, Bytes),
+	get_boolean(Stream).
 
 
 reset_machine(Stream) :-
-	command(reset_machine, Header),
-	put_bytes([Header], Stream),
-	get_byte([1], Stream).
+	put_command_with_block(Stream, reset_machine, []),
+	get_boolean(Stream).
 
 
-run_query_section(Stream, Query_Bytes) :-
-	length(Query_Bytes, Length),
-	uint32(Length, Bytes, Query_Bytes),
-	put_byte_block(Stream, run_query, Bytes).
+run_query_section(Stream, Bytes) :-
+	put_command_with_block(Stream, run_query, Bytes).
 
 
-put_byte_block(Stream, Command, Block) :-
+read_register(Stream, Xn, Value) :-
+	uint8(Xn, TxBytes, []),
+	put_command_with_block(Stream, read_register, TxBytes),
+	get_byte_block(Stream, RxBytes),
+	value(Value, RxBytes, []).
+
+
+read_memory(Stream, H, Value) :-
+	uint16(H, TxBytes, []),
+	put_command_with_block(Stream, read_memory, TxBytes),
+	get_byte_block(Stream, RxBytes),
+	value(Value, RxBytes, []).
+
+
+
+put_command_with_block(Stream, Command, Block) :-
 	command(Command, Header),
-	put_bytes([Header|Block], Stream),
-	get_byte(Stream, 1).
-
-
-command(ping, 0x00).
-command(check_hash, 0x10).
-command(update_hash, 0x20).
-command(update_program, 0x21).
-command(update_label_table, 0x22).
-command(reset_machine, 0x30).
-command(run_query, 0x31).
-command(read_register, 0x40).
-command(read_memory, 0x41).
+	put_bytes([Header|Block], Stream).
 
 
 put_bytes([], Stream) :-
@@ -127,3 +145,26 @@ put_bytes([], Stream) :-
 put_bytes([Code|Codes], Stream) :-
 	put_byte(Stream, Code),
 	put_bytes(Codes, Stream).
+
+
+get_byte_block(Stream, Block) :-
+	get_byte(Stream, Length),
+	length(Block, Length),
+	get_bytes(Block, Stream).
+
+
+get_bytes([], _Stream).
+
+get_bytes([Code|Codes], Stream) :-
+	get_byte(Stream, Code),
+	get_bytes(Codes, Stream).
+
+
+get_boolean(Stream) :-
+	get_byte(Stream, Code),
+	(   Code = 1
+	->  true
+	;   Code = 0
+	->  fail
+	;   throw(invalid_boolean(Code))
+	).

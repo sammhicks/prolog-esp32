@@ -15,7 +15,10 @@ void Value::makeFunctor(Functor newF, Arity newN) {
   n = newN;
 }
 
-void Value::makeList() { type = Type::list; };
+void Value::makeList(HeapIndex newH) {
+  type = Type::list;
+  h = newH;
+};
 
 void Value::makeConstant(Constant newC) {
   type = Type::constant;

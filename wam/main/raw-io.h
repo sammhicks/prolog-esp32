@@ -25,4 +25,9 @@ template <typename T> T read(Stream &stream) {
 template <typename T> void write(Client &client, T value) {
   client.write(reinterpret_cast<uint8_t *>(&value), sizeof(T));
 }
+
+template <typename T> void writeBlock(Client &client, T value) {
+  client.write(sizeof(T));
+  client.write(reinterpret_cast<uint8_t *>(&value), sizeof(T));
+}
 } // namespace Raw

@@ -266,7 +266,7 @@ constant(C) -->
 
 
 integer(I) -->
-	uint16(I).
+	int16(I).
 
 
 term_id(ID) -->

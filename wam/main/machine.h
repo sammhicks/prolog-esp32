@@ -2,11 +2,14 @@
 #pragma pack(push, 1)
 
 #include "Arduino.h"
-#include "FS.h"
+#include "SPIFFS.h"
 
 #include "instruction.h"
 #include "raw-io.h"
 #include "value.h"
+
+extern const char *codePath;
+extern const char *labelTablePath;
 
 const Xn registerCount = 32;
 const size_t heapSize = 256;
@@ -33,7 +36,6 @@ struct Environment {
 extern ExecuteModes executeMode;
 extern Stream *instructionSource;
 extern File programFile;
-extern File labelTableFile;
 
 extern RWModes rwMode;
 extern Arity argumentCount;
@@ -47,6 +49,8 @@ extern Value heap[heapSize];
 extern uint8_t stack[stackSize];
 
 void resetMachine();
+
+void executeInstructions(Client *client);
 
 void executeInstruction();
 

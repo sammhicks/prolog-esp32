@@ -34,7 +34,7 @@ struct Value {
   void makeReference(HeapIndex h);
   void makeStructure(HeapIndex h);
   void makeFunctor(Functor f, Arity n);
-  void makeList();
+  void makeList(HeapIndex h);
   void makeConstant(Constant c);
   void makeInteger(Integer i);
 };

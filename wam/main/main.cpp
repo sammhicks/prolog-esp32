@@ -35,6 +35,9 @@ void loop() {
           resetMachine();
           Raw::write<bool>(client, true);
           break;
+        case Command::runQuery:
+          executeInstructions(&client);
+          break;
         case Command::readRegister:
           readRegister(client);
           break;
@@ -117,13 +120,17 @@ void updateLabelTable(Client &client) {
 }
 
 void readRegister(Client &client) {
+  Serial.print("Reading Register: ");
   Xn xn = Raw::read<Xn>(client);
+  Serial.println(xn, HEX);
   Value &value = registers[xn];
-  Raw::write<Value>(client, value);
+  Raw::writeBlock<Value>(client, value);
 }
 
 void readMemory(Client &client) {
+  Serial.print("Reading Memory: ");
   HeapIndex hi = Raw::read<HeapIndex>(client);
-  Value &value = registers[hi];
-  Raw::write<Value>(client, value);
+  Serial.println(hi, HEX);
+  Value &value = heap[hi];
+  Raw::writeBlock<Value>(client, value);
 }
