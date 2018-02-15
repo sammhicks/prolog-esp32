@@ -69,8 +69,8 @@ allocate_structure_term_assignment_registers(v(V), v(V), State, State).
 
 
 init_register_allocation(Permanent_Variables, State) :-
-	allocate_permanent_variables(Permanent_Variables, 1, Variables),
-	Next_Register = 1,
+	allocate_permanent_variables(Permanent_Variables, 0, Variables),
+	Next_Register = 0,
 	register_allocation_state(State, Variables, Next_Register).
 
 
