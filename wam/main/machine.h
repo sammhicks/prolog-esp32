@@ -34,6 +34,7 @@ struct Environment {
 };
 
 extern ExecuteModes executeMode;
+extern bool querySucceeded;
 extern Stream *instructionSource;
 extern File *programFile;
 

@@ -4,6 +4,7 @@ const char *codePath = "/code";
 const char *labelTablePath = "/label-table";
 
 ExecuteModes executeMode;
+bool querySucceeded;
 Stream *instructionSource;
 File *programFile;
 
@@ -32,6 +33,7 @@ void resetMachine() {
 
 void executeInstructions(Client *client) {
   executeMode = ExecuteModes::query;
+  querySucceeded = true;
   instructionSource = client;
 
   File actualProgramFile = SPIFFS.open(codePath);
@@ -46,12 +48,17 @@ void executeInstructions(Client *client) {
   Serial.println("Executing Program");
   instructionSource = programFile;
 
-  while (programFile->available() > 0) {
+  while (querySucceeded && programFile->available() > 0) {
     executeInstruction();
   }
 
-  Serial.println("Done");
-  Raw::write(*client, Results::success);
+  if (querySucceeded) {
+    Serial.println("Done");
+    Raw::write(*client, Results::success);
+  } else {
+    Serial.println("Failure!");
+    Raw::write(*client, Results::failure);
+  }
 }
 
 void executeInstruction() {
@@ -222,7 +229,12 @@ void getVariableXnAi(Xn xn, Ai ai) { registers[xn] = registers[ai]; }
 
 // void getVariableYnAi(Yn yn, Ai ai) {}
 
-void getValueXnAi(Xn xn, Ai ai) { unify(registers[xn], registers[ai]); }
+void getValueXnAi(Xn xn, Ai ai) {
+  Serial.printf("unifying registers %u and %u\n", xn, ai);
+  if (unify(registers[xn], registers[ai])) {
+    backtrack();
+  }
+}
 
 // void getValueYnAi(Yn yn, Ai ai) {}
 
@@ -473,12 +485,7 @@ void proceed() { programFile->seek(cp); }
 namespace Ancillary {
 void backtrack() { failAndExit(); }
 
-void failAndExit() {
-  Serial.println("Failed!");
-  while (true) {
-    delay(10);
-  }
-}
+void failAndExit() { querySucceeded = false; }
 
 Value &deref(Value &a) {
   if (a.type == Value::Type::reference) {
@@ -522,7 +529,7 @@ bool unify(Value &a1, Value &a2) {
   Value &d1 = deref(a1);
   Value &d2 = deref(a2);
 
-  if (d1.type == Value::Type::reference || d1.type == Value::Type::reference) {
+  if (d1.type == Value::Type::reference || d2.type == Value::Type::reference) {
     bind(d1, d2);
     return false;
   }
