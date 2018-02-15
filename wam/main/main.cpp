@@ -38,6 +38,9 @@ void loop() {
         case Command::runQuery:
           executeInstructions(&client);
           break;
+        case Command::getNextAnswer:
+          getNextAnswer(&client);
+          break;
         case Command::readRegister:
           readRegister(client);
           break;

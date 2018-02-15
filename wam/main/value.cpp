@@ -29,3 +29,25 @@ void Value::makeInteger(Integer newI) {
   type = Type::integer;
   i = newI;
 }
+
+void Value::dump() {
+  switch (type) {
+  case Value::Type::reference:
+    Serial.printf("reference to %u\n", h);
+    break;
+  case Value::Type::structure:
+    Serial.printf("structure starting at %u\n", h);
+    break;
+  case Value::Type::list:
+    Serial.printf("list starting at %u\n", h);
+    break;
+  case Value::Type::constant:
+    Serial.printf("constant %u\n", c);
+    break;
+  case Value::Type::integer:
+    Serial.printf("integer %i\n", i);
+    break;
+  default:
+    Serial.printf("Unknown type %u\n", static_cast<uint8_t>(type));
+  }
+}

@@ -4,9 +4,12 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "HardwareSerial.h"
+
 typedef uint32_t CodeIndex;
 typedef uint16_t HeapIndex;
 typedef uint16_t StackIndex;
+typedef uint16_t TrailIndex;
 typedef uint16_t Functor;
 typedef uint8_t Arity;
 typedef uint16_t Constant;
@@ -37,6 +40,8 @@ struct Value {
   void makeList(HeapIndex h);
   void makeConstant(Constant c);
   void makeInteger(Integer i);
+
+  void dump();
 };
 
 #pragma pack(pop)

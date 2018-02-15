@@ -71,8 +71,7 @@ run_query(Query) :-
 	current_connection(Stream),
 	reset_machine(Stream),
 	run_query(Stream, Bytes, Results),
-	\+ Results = failure,
-	read_solution(Stream, Query, Constants, Structures).
+	process_results(Results, Stream, Query, Constants, Structures).
 
 
 read_register(Xn, Value) :-
@@ -88,3 +87,14 @@ read_memory(H, Value) :-
 read_functor(H, Functor/Arity) :-
 	current_connection(Stream),
 	read_functor(Stream, H, Functor, Arity).
+
+
+process_results(success, Stream, Query, Constants, Structures) :-
+	read_solution(Stream, Query, Constants, Structures).
+
+process_results(choice_points, Stream, Query, Constants, Structures) :-
+	read_solution(Stream, Query, Constants, Structures).
+
+process_results(choice_points, Stream, Query, Constants, Structures) :-
+	get_next_answer(Stream, Results),
+	process_results(Results, Stream, Query, Constants, Structures).

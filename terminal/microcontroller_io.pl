@@ -6,6 +6,7 @@
 	      update_label_table/2,
 	      reset_machine/1,
 	      run_query/3,
+	      get_next_answer/2,
 	      read_register/3,
 	      read_memory/3,
 	      read_functor/4,
@@ -54,6 +55,11 @@ reset_machine(Stream) :-
 
 run_query(Stream, Bytes, Results) :-
 	put_command_with_block(Stream, run_query, Bytes),
+	get_results(Stream, Results).
+
+
+get_next_answer(Stream, Results) :-
+	put_command_with_block(Stream, get_next_answer, []),
 	get_results(Stream, Results).
 
 

@@ -11,24 +11,39 @@ File *programFile;
 RWModes rwMode;
 Arity argumentCount;
 HeapIndex h;
+HeapIndex hb;
 HeapIndex s;
 CodeIndex cp;
 CodeIndex haltIndex;
+TrailIndex tr;
 Environment *e;
+ChoicePoint *b;
 
 Value registers[registerCount];
 Value heap[heapSize];
 uint8_t stack[stackSize];
+HeapIndex trail[trailSize];
 
 template <typename T> T read() { return Raw::read<T>(*instructionSource); }
 
 void resetMachine() {
   Serial.println("Reset");
   h = 0;
+  tr = 0;
+
   e = reinterpret_cast<Environment *>(stack);
   e->ce = nullptr;
   e->cp = 0;
   e->n = 0;
+
+  b = reinterpret_cast<ChoicePoint *>(stack);
+  b->ce = nullptr;
+  b->cp = 0;
+  b->b = nullptr;
+  b->bp = 0;
+  b->tr = 0;
+  b->h = 0;
+  b->n = 0;
 }
 
 void executeInstructions(Client *client) {
@@ -53,6 +68,18 @@ void executeInstructions(Client *client) {
     e->ys[n] = registers[n];
   }
 
+  executeProgram(client);
+}
+
+void getNextAnswer(Client *client) {
+  File actualProgramFile = SPIFFS.open(codePath);
+  programFile = &actualProgramFile;
+
+  Ancillary::backtrack();
+  executeProgram(client);
+}
+
+void executeProgram(Client *client) {
   while (querySucceeded && programFile->available() > 0) {
     executeInstruction();
   }
@@ -61,8 +88,13 @@ void executeInstructions(Client *client) {
     for (Arity n = 0; n < e->n; ++n) {
       registers[n] = e->ys[n];
     }
-    Serial.println("Done");
-    Raw::write(*client, Results::success);
+    if (static_cast<void *>(b) == static_cast<void *>(stack)) {
+      Serial.println("Done");
+      Raw::write(*client, Results::success);
+    } else {
+      Serial.println("Choice Points");
+      Raw::write(*client, Results::choicePoints);
+    }
   } else {
     Serial.println("Failure!");
     Raw::write(*client, Results::failure);
@@ -198,11 +230,23 @@ void executeInstruction() {
     break;
   case Opcode::call:
     Serial.println("call");
-    Instructions::call(read<ProgramIndex>());
+    Instructions::call(read<LabelIndex>());
     break;
   case Opcode::proceed:
     Serial.println("proceed");
     Instructions::proceed();
+    break;
+  case Opcode::tryMeElse:
+    Serial.println("tryMeElse");
+    Instructions::tryMeElse(read<LabelIndex>());
+    break;
+  case Opcode::retryMeElse:
+    Serial.println("retryMeElse");
+    Instructions::retryMeElse(read<LabelIndex>());
+    break;
+  case Opcode::trustMe:
+    Serial.println("trustMe");
+    Instructions::trustMe();
     break;
   default:
     Serial.print("Unknown opcode ");
@@ -213,11 +257,14 @@ void executeInstruction() {
 }
 
 namespace Instructions {
+using Ancillary::addToTrail;
 using Ancillary::backtrack;
 using Ancillary::bind;
 using Ancillary::deref;
-using Ancillary::trail;
+using Ancillary::lookupLabel;
+using Ancillary::topOfStack;
 using Ancillary::unify;
+using Ancillary::unwindTrail;
 
 void putVariableXnAi(Xn xn, Ai ai) {
   heap[h].makeReference(h);
@@ -315,7 +362,7 @@ void getConstant(Constant c, Ai ai) {
 
   switch (derefAi.type) {
   case Value::Type::reference:
-    trail(derefAi);
+    addToTrail(derefAi.h);
     derefAi.makeConstant(c);
     return;
   case Value::Type::constant:
@@ -334,7 +381,7 @@ void getInteger(Integer i, Ai ai) {
 
   switch (derefAi.type) {
   case Value::Type::reference:
-    trail(derefAi);
+    addToTrail(derefAi.h);
     derefAi.makeInteger(i);
     return;
   case Value::Type::integer:
@@ -444,7 +491,7 @@ void unifyConstant(Constant c) {
     Value &derefS = deref(heap[s]);
     switch (derefS.type) {
     case Value::Type::reference:
-      trail(derefS);
+      addToTrail(derefS.h);
       derefS.makeConstant(c);
       break;
     case Value::Type::constant:
@@ -470,7 +517,7 @@ void unifyInteger(Integer i) {
     Value &derefS = deref(heap[s]);
     switch (derefS.type) {
     case Value::Type::reference:
-      trail(derefS);
+      addToTrail(derefS.h);
       derefS.makeInteger(i);
       break;
     case Value::Type::integer:
@@ -492,7 +539,7 @@ void unifyInteger(Integer i) {
 
 void allocate(EnvironmentSize n) {
   Serial.printf("Allocating %u values\n", static_cast<uint8_t>(n));
-  Environment *newEnvironment = reinterpret_cast<Environment *>(e->ys + e->n);
+  Environment *newEnvironment = reinterpret_cast<Environment *>(topOfStack());
 
   newEnvironment->ce = e;
   newEnvironment->cp = cp;
@@ -506,7 +553,7 @@ void deallocate() {
   e = e->ce;
 }
 
-void call(ProgramIndex p) {
+void call(LabelIndex p) {
   switch (executeMode) {
   case ExecuteModes::query:
     executeMode = ExecuteModes::program;
@@ -516,6 +563,64 @@ void call(ProgramIndex p) {
     cp = programFile->position();
     break;
   }
+  LabelTableEntry entry = lookupLabel(p);
+
+  programFile->seek(entry.entryPoint);
+  argumentCount = entry.arity;
+}
+
+void proceed() { programFile->seek(cp); }
+
+void tryMeElse(LabelIndex l) {
+  ChoicePoint *newChoicePoint = reinterpret_cast<ChoicePoint *>(topOfStack());
+
+  newChoicePoint->ce = e;
+  newChoicePoint->cp = cp;
+  newChoicePoint->b = b;
+  newChoicePoint->bp = l;
+  newChoicePoint->tr = tr;
+  newChoicePoint->h = h;
+  newChoicePoint->n = argumentCount;
+  for (Arity n = 0; n < argumentCount; ++n) {
+    newChoicePoint->args[n] = registers[n];
+  }
+
+  b = newChoicePoint;
+  hb = h;
+}
+
+void retryMeElse(LabelIndex l) {
+  for (Arity n = 0; n < b->n; ++n) {
+    registers[n] = b->args[n];
+  }
+
+  e = b->ce;
+  cp = b->cp;
+  b->bp = l;
+  unwindTrail(b->tr, tr);
+  tr = b->tr;
+  h = b->h;
+  hb = h;
+}
+
+void trustMe() {
+  for (Arity n = 0; n < b->n; ++n) {
+    registers[n] = b->args[n];
+  }
+
+  e = b->ce;
+  cp = b->cp;
+  unwindTrail(b->tr, tr);
+  tr = b->tr;
+  h = b->h;
+  b = b->b;
+  hb = h;
+}
+
+} // namespace Instructions
+
+namespace Ancillary {
+LabelTableEntry lookupLabel(LabelIndex p) {
   File labelTableFile = SPIFFS.open(labelTablePath);
 
   LabelTableEntry entry;
@@ -524,20 +629,35 @@ void call(ProgramIndex p) {
 
   labelTableFile.read(reinterpret_cast<uint8_t *>(&entry), sizeof(entry));
 
-  programFile->seek(entry.entryPoint);
-  argumentCount = entry.arity;
+  return entry;
 }
 
-void proceed() { programFile->seek(cp); }
+void *topOfStack() {
+  if (static_cast<void *>(e) >= static_cast<void *>(b)) {
+    // Serial.println("e higher");
+    return e->ys + e->n;
+  } else {
+    // Serial.println("b higher");
+    return b->args + b->n;
+  }
+}
 
-} // namespace Instructions
+void backtrack() {
+  Serial.println("Backtrack!");
+  if (static_cast<void *>(b) == static_cast<void *>(stack)) {
+    failAndExit();
+    return;
+  }
 
-namespace Ancillary {
-void backtrack() { failAndExit(); }
+  // b0 = b;
+  programFile->seek(lookupLabel(b->bp).entryPoint);
+}
 
 void failAndExit() { querySucceeded = false; }
 
 Value &deref(Value &a) {
+  // Serial.print("Dereferencing value:");
+  // a.dump();
   if (a.type == Value::Type::reference) {
     return deref(a.h);
   } else {
@@ -546,6 +666,8 @@ Value &deref(Value &a) {
 }
 
 Value &deref(HeapIndex derefH) {
+  // Serial.printf("Heap index %u:", static_cast<uint16_t>(derefH));
+  // heap[derefH].dump();
   if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
     return deref(heap[derefH].h);
   } else {
@@ -560,24 +682,48 @@ void bind(Value &a1, Value &a2) {
   }
 
   if (a1.type == Value::Type::reference &&
-      ((a2.type != Value::Type::reference) || a2.h < a1.h)) {
+      ((a2.type != Value::Type::reference) || (a2.h < a1.h))) {
+    addToTrail(a1.h);
     a1 = a2;
-    trail(a1);
   } else {
+    addToTrail(a2.h);
     a2 = a1;
-    trail(a2);
   }
 }
 
-void trail(const Value &a) {}
+void addToTrail(HeapIndex a) {
+  // Serial.printf("Adding %u to the trail\n", static_cast<uint8_t>(a));
+  if (a < hb) {
+    trail[tr] = a;
+    tr = tr + 1;
+  }
+}
 
-// void unwindTrail(const Value &a1, const Value &a2);
+void unwindTrail(TrailIndex a1, TrailIndex a2) {
+  // Serial.printf("Unwinding from %u to %u\n", static_cast<uint8_t>(a1),
+  //               static_cast<uint8_t>(a2));
+  for (TrailIndex i = a1; i < a2; ++i) {
+    // Serial.printf("Resetting address %u\n", static_cast<uint16_t>(trail[i]));
+    heap[trail[i]].makeReference(trail[i]);
+  }
+}
 
 // void tidyTrail();
 
 bool unify(Value &a1, Value &a2) {
+  // Serial.println("Unify:");
+  // Serial.print("a1: ");
+  // a1.dump();
+  // Serial.print("a2: ");
+  // a2.dump();
+
   Value &d1 = deref(a1);
   Value &d2 = deref(a2);
+
+  // Serial.print("d1: ");
+  // d1.dump();
+  // Serial.print("d2: ");
+  // d2.dump();
 
   if (d1.type == Value::Type::reference || d2.type == Value::Type::reference) {
     bind(d1, d2);

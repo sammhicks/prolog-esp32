@@ -24,6 +24,7 @@ command(update_program, 0x21).
 command(update_label_table, 0x22).
 command(reset_machine, 0x30).
 command(run_query, 0x31).
+command(get_next_answer, 0x32).
 command(read_register, 0x40).
 command(read_memory, 0x41).
 command(read_functor, 0x42).
