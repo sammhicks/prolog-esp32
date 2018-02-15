@@ -68,8 +68,8 @@
 | call `P`                          |   `42`   |   `P`    |   `P`    |          |          |
 | execute `P`                       |   `43`   |   `P`    |   `P`    |          |          |
 | proceed                           |   `44`   |          |          |          |          |
-| try me else `J`                   |   `48`   |   `J`    |   `J`    |          |          |
-| retry me else `J`                 |   `49`   |   `J`    |   `J`    |          |          |
+| try me else `P`                   |   `48`   |   `P`    |   `P`    |          |          |
+| retry me else `P`                 |   `49`   |   `P`    |   `P`    |          |          |
 | trust me                          |   `4A`   |          |          |          |          |
 | neck cut                          |   `4C`   |          |          |          |          |
 | get level `Yn`                    |   `4D`   |   `Yn`   |          |          |          |

@@ -1,11 +1,15 @@
 #pragma once
 
+#include "Client.h"
 #include "SPIFFS.h"
 
-#include "raw-int.h"
-#include "yield.h"
+#include "raw-io.h"
+#include "update-file.h"
 
-const char *hashPath = "/hash";
+typedef uint8_t HashLength;
 
-bool checkHash(Stream &s);
-void updateHash(Stream &s);
+extern const char *hashPath;
+
+bool checkHash(Client &client);
+void updateHash(Client &client);
+void deleteHash();

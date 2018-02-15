@@ -1,16 +1,18 @@
 #pragma once
 
-#include "raw-int.h"
+#include "raw-io.h"
 
 enum class Command : uint8_t {
   ping = 0x00,
   checkHash = 0x10,
-  updateHash,
-  updateLabelTable = 0x20,
+  updateHash = 0x20,
   updateProgram,
-  runQuery = 0x30,
+  updateLabelTable,
+  resetMachine = 0x30,
+  runQuery,
   readRegister = 0x40,
-  readMemory
+  readMemory,
+  readFunctor,
 };
 
 bool commandWaiting(Stream &s);

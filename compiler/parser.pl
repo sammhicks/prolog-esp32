@@ -102,7 +102,8 @@ list([Head|Tail], l(Head_Argument, Tail_Argument)) :-
 
 
 structure(Term, s(Term/0, [])) :-
-	atom(Term).
+	atom(Term),
+	!.
 
 structure(Term, s(Functor/Arity, Arguments)) :-
 	compound_name_arity(Term, Functor, Arity),

@@ -1,7 +1,8 @@
 
 :- module(allocate_constants, [
 	      init_constants_state/1,       % -State
-	      allocate_constants/4          % +Codes, -Mapped_Codes, +Current_State, -Final_State
+	      allocate_constants/4,         % +Codes, -Mapped_Codes, +Current_State, -Final_State
+	      constant_allocation/2         % +State, -Allocation
 	  ]).
 
 
@@ -13,6 +14,10 @@ allocate_constants(Codes, Mapped_Codes, State0, State) :-
 	codes_constants(Codes, Constants, []),
 	add_constants(Constants, State0, State),
 	map_codes(Codes, Mapped_Codes, State).
+
+
+constant_allocation(State, Allocation) :-
+	state(State, _, Allocation).
 
 
 codes_constants([]) -->

@@ -1,7 +1,7 @@
 
 :- module(register_allocation, [
-	      allocate_goals_registers/3,   % -Goals, -Permanent_Variables, +Allocation
-	      allocate_atom_registers/3     % -Atom_Terms, -Permanent_Variables, +Allocation
+	      allocate_goals_registers/3,   % +Goals, +Permanent_Variables, -Allocation
+	      allocate_atom_registers/3     % +Atom_Terms, +Permanent_Variables, -Allocation
 	  ]).
 
 allocate_goals_registers([], _, []).
@@ -69,16 +69,16 @@ allocate_structure_term_assignment_registers(v(V), v(V), State, State).
 
 
 init_register_allocation(Permanent_Variables, State) :-
-	allocate_permanent_variables(Permanent_Variables, 1, Variables),
-	Next_Register = 1,
+	allocate_permanent_variables(Permanent_Variables, 0, Variables),
+	Next_Register = 0,
 	register_allocation_state(State, Variables, Next_Register).
 
+
+allocate_permanent_variables([], _, []).
 
 allocate_permanent_variables([X|Xs], Address, [y(Address)=X|Allocation]) :-
 	Next_Address is Address + 1,
 	allocate_permanent_variables(Xs, Next_Address, Allocation).
-
-allocate_permanent_variables([], _, []).
 
 
 register_allocation_state(state(Variables, Next_Register), Variables, Next_Register).

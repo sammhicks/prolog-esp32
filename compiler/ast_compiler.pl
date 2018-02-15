@@ -96,37 +96,29 @@ compile_definition_ast(rule(head(Functor, Arguments), Goals)) -->
 	compile_rule_ast(Arguments, Goals).
 
 compile_definition_ast(disjunction(Functor, Clauses)) -->
+	compile_disjunction_ast(Functor, Clauses).
+
+
+compile_disjunction_ast(Functor, [Clause|Clauses]) -->
 	[label(Functor)],
-	compile_disjunction_ast(Clauses).
+	disjunction_retry(Functor, Next_Functor),
+	[try_me_else(Next_Functor)],
+	compile_program_clause_ast(Clause),
+	compile_disjunction_tail_ast(Next_Functor, Clauses).
 
 
-compile_disjunction_ast([Clause]) -->
+compile_disjunction_tail_ast(Functor, [Clause]) -->
 	!,
-	compile_disjunction_ast(Clause).
-
-compile_disjunction_ast([Clause|Clauses]) -->
-	[try_me_else(Clause_Length)],
-	{
-	    compile_program_clause_ast(Clause, Clause_Codes, []),
-	    length(Clause_Codes, Clause_Length)
-	},
-	Clause_Codes,
-	compile_disjunction_tail_ast(Clauses).
-
-
-compile_disjunction_tail_ast([Clause]) -->
-	!,
+	[label(Functor)],
 	[trust_me],
 	compile_program_clause_ast(Clause).
 
-compile_disjunction_tail_ast([Clause|Clauses]) -->
-	[retry_me_else(Clause_Length)],
-	{
-	    compile_program_clause_ast(Clause, Clause_Codes, []),
-	    length(Clause_Codes, Clause_Length)
-	},
-	Clause_Codes,
-	compile_disjunction_tail_ast(Clauses).
+compile_disjunction_tail_ast(Functor, [Clause|Clauses]) -->
+	[label(Functor)],
+	disjunction_retry(Functor, Next_Functor),
+	[retry_me_else(Next_Functor)],
+	compile_program_clause_ast(Clause),
+	compile_disjunction_tail_ast(Next_Functor, Clauses).
 
 
 compile_program_clause_ast(fact(Terms)) -->
@@ -143,10 +135,10 @@ compile_fact_ast(Terms, Codes, Codes_Tail) :-
 
 
 compile_rule_ast(Terms, Goals, Codes, Codes_Tail) :-
-	allocate_permanent_variables(Terms, Goals, Permanent_Variables),
+	allocate_permanent_variables(Terms, Goals, Permanent_Variables, Already_Declared_Permanent_Variables),
 	allocate_atom_registers(Terms, Permanent_Variables, Terms_Allocation),
 	allocate_goals_registers(Goals, Permanent_Variables, Goals_Allocation),
-	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Tokens, []),
+	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Already_Declared_Permanent_Variables, Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
 
@@ -158,8 +150,8 @@ convert_program_tokens([Token|Tokens], Rs0) -->
 	convert_program_tokens(Tokens, Rs1).
 
 
-convert_program_token(goal(Tokens), Rs, Rs) -->
-	convert_query_tokens(Tokens, []).
+convert_program_token(goal(Tokens, Already_Declared_Permanent_Variables), Rs, Rs) -->
+	convert_query_tokens(Tokens, Already_Declared_Permanent_Variables).
 
 convert_program_token(proceed, Rs, Rs) -->
 	[proceed].
@@ -217,3 +209,7 @@ convert_program_token(y(Y), Rs, Rs) -->
 
 convert_program_token(y(Y), Rs, [y(Y)|Rs]) -->
 	[unify_variable(y(Y))].
+
+
+disjunction_retry(Functor/Arity, retry(Functor)/Arity) -->
+	[].

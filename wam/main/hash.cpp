@@ -1,41 +1,56 @@
 #include "hash.h"
 
-bool checkHash(Stream &s) {
-  uint8_t hashSize = Read::Raw::uint8(s);
+const char *hashPath = "/hash";
+
+bool checkHash(Client &client) {
+  Serial.println("check hash:");
+  HashLength hashlength = Raw::read<HashLength>(client);
+
+  Serial.printf("hash length: %u\n", hashlength);
 
   File hashFile = SPIFFS.open(hashPath);
 
-  if (hashFile.size() != hashSize) {
-    return false;
-  }
+  bool hashCorrect = true;
 
-  uint8_t n = 0;
-  while (n < hashSize) {
-    if (s.available() > 0) {
-      if (s.read() != hashFile.read()) {
+  for (HashLength n = 0; n < hashlength; ++n) {
+    while (client.available() == 0) {
+      if (!client.connected()) {
+        Serial.println("client disconnected during hash check");
         return false;
       }
-      ++n;
-    } else {
       yieldProcessor();
+    }
+    if (client.read() != hashFile.read()) {
+      hashCorrect = false;
     }
   }
 
-  return true;
+  client.write(hashCorrect ? 1 : 0);
+
+  Serial.println(hashCorrect ? "hash matches" : "hash does not match");
+
+  return hashCorrect;
 }
 
-void updateHash(Stream &s) {
-  uint8_t hashSize = Read::Raw::uint8(s);
+void updateHash(Client &client) {
+  Serial.println("hash update");
 
-  File hashFile = SPIFFS.open(hashPath, FILE_WRITE);
-
-  uint8_t n = 0;
-  while (n < hashSize) {
-    if (s.available() > 0) {
-      hashFile.write(s.read());
-      ++n;
-    } else {
-      yieldProcessor();
+  while (client.available() < sizeof(HashLength)) {
+    if (!client.connected()) {
+      return;
     }
+    yieldProcessor();
   }
+
+  HashLength hashLength = Raw::read<HashLength>(client);
+
+  if (updateFile(hashPath, hashLength, client)) {
+    client.write(1);
+  } else {
+    deleteHash();
+    client.write(0);
+  }
+  Serial.println("hash update complete");
 }
+
+void deleteHash() { SPIFFS.remove(hashPath); }

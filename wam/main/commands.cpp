@@ -1,7 +1,7 @@
 #include "commands.h"
 
-bool commandWaiting(Stream &s) { return s.available() > 0; }
-
-Command nextCommand(Stream &s) {
-  return static_cast<Command>(Read::Raw::uint8(s));
+bool commandWaiting(Stream &stream) {
+  return stream.available() >= sizeof(Command);
 }
+
+Command nextCommand(Stream &stream) { return Raw::read<Command>(stream); }

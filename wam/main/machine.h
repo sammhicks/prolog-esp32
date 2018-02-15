@@ -1,24 +1,25 @@
 #pragma once
 #pragma pack(push, 1)
 
-#include <limits>
-
-#define _GLIBCXX_VECTOR
-#include "FS.h"
+#include "Arduino.h"
+#include "SPIFFS.h"
 
 #include "instruction.h"
-#include "raw-int.h"
+#include "raw-io.h"
 #include "value.h"
+
+extern const char *codePath;
+extern const char *labelTablePath;
 
 const Xn registerCount = 32;
 const size_t heapSize = 256;
 const size_t stackSize = 1024;
 
-const CodeIndex haltIndex = std::numeric_limits<CodeIndex>::max();
-
 enum class ExecuteModes : uint8_t { query, program };
 
 enum class RWModes : uint8_t { read, write };
+
+enum class Results : uint8_t { failure, success, choicePoints };
 
 struct LabelTableEntry {
   CodeIndex entryPoint;
@@ -33,34 +34,25 @@ struct Environment {
 };
 
 extern ExecuteModes executeMode;
+extern bool querySucceeded;
 extern Stream *instructionSource;
-extern File programFile;
-extern File labelTableFile;
+extern File *programFile;
 
 extern RWModes rwMode;
 extern Arity argumentCount;
 extern HeapIndex h;
 extern HeapIndex s;
 extern CodeIndex cp;
+extern CodeIndex haltIndex;
 extern Environment *e;
 
 extern Value registers[registerCount];
 extern Value heap[heapSize];
 extern uint8_t stack[stackSize];
 
-namespace Read {
-Opcode opcode();
-Xn xn();
-Yn yn();
-Ai ai();
-Functor f();
-Arity n();
-Constant c();
-Integer i();
-EnvironmentSize environmentSize();
-ProgramIndex programIndex();
-Jump jump();
-} // namespace Read
+void resetMachine();
+
+void executeInstructions(Client *client);
 
 void executeInstruction();
 
