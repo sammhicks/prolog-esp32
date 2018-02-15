@@ -135,10 +135,10 @@ compile_fact_ast(Terms, Codes, Codes_Tail) :-
 
 
 compile_rule_ast(Terms, Goals, Codes, Codes_Tail) :-
-	allocate_permanent_variables(Terms, Goals, Permanent_Variables),
+	allocate_permanent_variables(Terms, Goals, Permanent_Variables, Already_Declared_Permanent_Variables),
 	allocate_atom_registers(Terms, Permanent_Variables, Terms_Allocation),
 	allocate_goals_registers(Goals, Permanent_Variables, Goals_Allocation),
-	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Tokens, []),
+	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Already_Declared_Permanent_Variables, Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
 
@@ -150,8 +150,8 @@ convert_program_tokens([Token|Tokens], Rs0) -->
 	convert_program_tokens(Tokens, Rs1).
 
 
-convert_program_token(goal(Tokens), Rs, Rs) -->
-	convert_query_tokens(Tokens, []).
+convert_program_token(goal(Tokens, Already_Declared_Permanent_Variables), Rs, Rs) -->
+	convert_query_tokens(Tokens, Already_Declared_Permanent_Variables).
 
 convert_program_token(proceed, Rs, Rs) -->
 	[proceed].

@@ -1,8 +1,8 @@
 
 :- module(tokenization, [
-	      tokenize_query_allocation//2,     % -Functor, -Allocation
-	      tokenize_fact_allocation//1,      % -Allocation
-	      tokenize_rule_allocation//3       % -Allocation, -Goals, -Permanent_Variables
+	      tokenize_query_allocation//2,     % +Functor, +Allocation
+	      tokenize_fact_allocation//1,      % +Allocation
+	      tokenize_rule_allocation//4       % +Allocation, +Goals, +Permanent_Variables, +Already_Declared_Permanent_Variables
 	  ]).
 
 tokenize_query_allocation(Functor, Allocation) -->
@@ -17,26 +17,26 @@ tokenize_fact_allocation(Allocation) -->
 	[proceed].
 
 
-tokenize_rule_allocation(Allocation, Goals, Permanent_Variables) -->
+tokenize_rule_allocation(Allocation, Goals, Permanent_Variables, Already_Declared_Permanent_Variables) -->
 	[allocate(Frame_Size)],
 	{
 	    length(Permanent_Variables, Frame_Size)
 	},
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, program),
-	tokenize_goals_allocation(Goals),
+	tokenize_goals_allocation(Goals, Already_Declared_Permanent_Variables),
 	[deallocate].
 
 
-tokenize_goals_allocation([]) -->
+tokenize_goals_allocation([], []) -->
 	[].
 
-tokenize_goals_allocation([Goal|Goals]) -->
-	tokenize_goal_allocation(Goal),
-	tokenize_goals_allocation(Goals).
+tokenize_goals_allocation([Goal|Goals], [Goal_Already_Declared_Permanent_Variables|Goals_Already_Declared_Permanent_Variables]) -->
+	tokenize_goal_allocation(Goal, Goal_Already_Declared_Permanent_Variables),
+	tokenize_goals_allocation(Goals, Goals_Already_Declared_Permanent_Variables).
 
 
-tokenize_goal_allocation(goal(Functor, Allocation), [goal(Query_Tokens)|Tokens], Tokens) :-
+tokenize_goal_allocation(goal(Functor, Allocation), Already_Declared_Permanent_Variables, [goal(Query_Tokens, Already_Declared_Permanent_Variables)|Tokens], Tokens) :-
 	tokenize_query_allocation(Functor, Allocation, Query_Tokens, []).
 
 

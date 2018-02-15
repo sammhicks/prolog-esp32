@@ -10,7 +10,7 @@ read_solution(Stream, Query, Constants, Structures) :-
 	setup_state(Empty_State, Constants, Structures),
 	functor(Query, Name, Arity),
 	length(Arguments, Arity),
-	fetch_registers(Arguments, 1, Stream, Empty_State, State),
+	fetch_registers(Arguments, 0, Stream, Empty_State, State),
 	fetch_heap_values(Stream, State),
 	compound_name_arguments(Query, Name, Arguments).
 

@@ -25,3 +25,8 @@ Running Prolog code on a microcontroller
     + No clash of functor id
     + Minimal wasted space
         + We probably don't need 65280 different functor ids
++ Base Stack Frame contains register state after query runs
+    + Registers recovered on success
+    + Allows results to be read from the microcontroller
++ Register and Stack value indexes start at 0
+    + Translates more naturally into C arrays

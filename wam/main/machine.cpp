@@ -48,11 +48,19 @@ void executeInstructions(Client *client) {
   Serial.println("Executing Program");
   instructionSource = programFile;
 
+  e->n = argumentCount;
+  for (Arity n = 0; n < argumentCount; ++n) {
+    e->ys[n] = registers[n];
+  }
+
   while (querySucceeded && programFile->available() > 0) {
     executeInstruction();
   }
 
   if (querySucceeded) {
+    for (Arity n = 0; n < e->n; ++n) {
+      registers[n] = e->ys[n];
+    }
     Serial.println("Done");
     Raw::write(*client, Results::success);
   } else {
@@ -72,16 +80,18 @@ void executeInstruction() {
     Serial.println("putVariableXnAi");
     Instructions::putVariableXnAi(read<Xn>(), read<Ai>());
     break;
-  /*case Opcode::putVariableYnAi:Serial.println("putVariableYnAi");
+  case Opcode::putVariableYnAi:
+    Serial.println("putVariableYnAi");
     Instructions::putVariableYnAi(read<Yn>(), read<Ai>());
-    break;*/
+    break;
   case Opcode::putValueXnAi:
     Serial.println("putValueXnAi");
     Instructions::putValueXnAi(read<Xn>(), read<Ai>());
     break;
-  /*case Opcode::putValueYnAi:Serial.println("putValueYnAi");
-    Instructions::putValueYnAi(read<Xn>(), read<Ai>());
-    break;*/
+  case Opcode::putValueYnAi:
+    Serial.println("putValueYnAi");
+    Instructions::putValueYnAi(read<Yn>(), read<Ai>());
+    break;
   case Opcode::putStructure:
     Serial.println("putStructure");
     Instructions::putStructure(read<Functor>(), read<Arity>(), read<Ai>());
@@ -102,16 +112,18 @@ void executeInstruction() {
     Serial.println("getVariableXnAi");
     Instructions::getVariableXnAi(read<Xn>(), read<Ai>());
     break;
-  /*case Opcode::getVariableYnAi:Serial.println("getVariableYnAi");
+  case Opcode::getVariableYnAi:
+    Serial.println("getVariableYnAi");
     Instructions::getVariableYnAi(read<Yn>(), read<Ai>());
-    break;*/
+    break;
   case Opcode::getValueXnAi:
     Serial.println("getValueXnAi");
     Instructions::getValueXnAi(read<Xn>(), read<Ai>());
     break;
-  /*case Opcode::getValueYnAi:Serial.println("getValueYnAi");
-    Instructions::getValueYnAi(read<Xn>(), read<Ai>());
-    break;*/
+  case Opcode::getValueYnAi:
+    Serial.println("getValueYnAi");
+    Instructions::getValueYnAi(read<Yn>(), read<Ai>());
+    break;
   case Opcode::getStructure:
     Serial.println("getStructure");
     Instructions::getStructure(read<Functor>(), read<Arity>(), read<Ai>());
@@ -132,16 +144,18 @@ void executeInstruction() {
     Serial.println("setVariableXn");
     Instructions::setVariableXn(read<Xn>());
     break;
-  /*case Opcode::setVariableYn:Serial.println("setVariableYn");
+  case Opcode::setVariableYn:
+    Serial.println("setVariableYn");
     Instructions::setVariableYn(read<Yn>());
-    break;*/
+    break;
   case Opcode::setValueXn:
     Serial.println("setValueXn");
     Instructions::setValueXn(read<Xn>());
     break;
-  /*case Opcode::setValueYn:Serial.println("setValueYn");
+  case Opcode::setValueYn:
+    Serial.println("setValueYn");
     Instructions::setValueYn(read<Yn>());
-    break;*/
+    break;
   case Opcode::setConstant:
     Serial.println("setConstant");
     Instructions::setConstant(read<Constant>());
@@ -154,16 +168,18 @@ void executeInstruction() {
     Serial.println("unifyVariableXn");
     Instructions::unifyVariableXn(read<Xn>());
     break;
-  /*case Opcode::unifyVariableYn:Serial.println("unifyVariableYn");
+  case Opcode::unifyVariableYn:
+    Serial.println("unifyVariableYn");
     Instructions::unifyVariableYn(read<Yn>());
-    break;*/
+    break;
   case Opcode::unifyValueXn:
     Serial.println("unifyValueXn");
     Instructions::unifyValueXn(read<Xn>());
     break;
-  /*case Opcode::unifyValueYn:Serial.println("unifyValueYn");
+  case Opcode::unifyValueYn:
+    Serial.println("unifyValueYn");
     Instructions::unifyValueYn(read<Yn>());
-    break;*/
+    break;
   case Opcode::unifyConstant:
     Serial.println("unifyConstant");
     Instructions::unifyConstant(read<Constant>());
@@ -172,12 +188,14 @@ void executeInstruction() {
     Serial.println("unifyInteger");
     Instructions::unifyInteger(read<Integer>());
     break;
-  /*case Opcode::allocate:Serial.println("allocate");
-    Instructions::allocate(Read::environmentSize());
+  case Opcode::allocate:
+    Serial.println("allocate");
+    Instructions::allocate(read<EnvironmentSize>());
     break;
-  case Opcode::deallocate:Serial.println("deallocate");
+  case Opcode::deallocate:
+    Serial.println("deallocate");
     Instructions::deallocate();
-    break;*/
+    break;
   case Opcode::call:
     Serial.println("call");
     Instructions::call(read<ProgramIndex>());
@@ -189,6 +207,7 @@ void executeInstruction() {
   default:
     Serial.print("Unknown opcode ");
     Serial.println(static_cast<int>(opcode), HEX);
+    Ancillary::backtrack();
     break;
   }
 }
@@ -207,11 +226,16 @@ void putVariableXnAi(Xn xn, Ai ai) {
   h = h + 1;
 }
 
-// void putVariableYnAi(Yn yn, Ai ai) {}
+void putVariableYnAi(Yn yn, Ai ai) {
+  heap[h].makeReference(h);
+  e->ys[yn] = heap[h];
+  registers[ai] = heap[h];
+  h = h + 1;
+}
 
 void putValueXnAi(Xn xn, Ai ai) { registers[ai] = registers[xn]; }
 
-// void putValueYnAi(Yn yn, Ai ai) {}
+void putValueYnAi(Yn yn, Ai ai) { registers[ai] = e->ys[yn]; }
 
 void putStructure(Functor f, Arity n, Ai ai) {
   heap[h].makeFunctor(f, n);
@@ -227,16 +251,19 @@ void putInteger(Integer i, Ai ai) { registers[ai].makeInteger(i); }
 
 void getVariableXnAi(Xn xn, Ai ai) { registers[xn] = registers[ai]; }
 
-// void getVariableYnAi(Yn yn, Ai ai) {}
+void getVariableYnAi(Yn yn, Ai ai) { e->ys[yn] = registers[ai]; }
 
 void getValueXnAi(Xn xn, Ai ai) {
-  Serial.printf("unifying registers %u and %u\n", xn, ai);
-  if (unify(registers[xn], registers[ai])) {
+  if (!unify(registers[xn], registers[ai])) {
     backtrack();
   }
 }
 
-// void getValueYnAi(Yn yn, Ai ai) {}
+void getValueYnAi(Yn yn, Ai ai) {
+  if (!unify(e->ys[yn], registers[ai])) {
+    backtrack();
+  }
+}
 
 void getStructure(Functor f, Arity n, Ai ai) {
   Value &derefAi = deref(registers[ai]);
@@ -284,18 +311,14 @@ void getList(Ai ai) {
 }
 
 void getConstant(Constant c, Ai ai) {
-  Serial.printf("Constant: %u\n", c);
-  Serial.printf("Ai: %u\n", ai);
   Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
-    Serial.printf("Reference to %u\n", derefAi.h);
     trail(derefAi);
     derefAi.makeConstant(c);
     return;
   case Value::Type::constant:
-    Serial.printf("Constant %u\n", derefAi.c);
     if (c != derefAi.c) {
       backtrack();
     }
@@ -331,14 +354,21 @@ void setVariableXn(Xn xn) {
   h = h + 1;
 }
 
-// void setVariableYn(Yn yn) {}
+void setVariableYn(Yn yn) {
+  heap[h].makeReference(h);
+  e->ys[yn] = heap[h];
+  h = h + 1;
+}
 
 void setValueXn(Xn xn) {
   heap[h] = registers[xn];
   h = h + 1;
 }
 
-// void setValueYn(Yn yn) {}
+void setValueYn(Yn yn) {
+  heap[h] = e->ys[yn];
+  h = h + 1;
+}
 
 void setConstant(Constant c) {
   heap[h].makeConstant(c);
@@ -364,12 +394,24 @@ void unifyVariableXn(Xn xn) {
   s = s + 1;
 }
 
-// void unifyVariableYn(Yn yn) {}
+void unifyVariableYn(Yn yn) {
+  switch (rwMode) {
+  case RWModes::read:
+    e->ys[yn] = heap[s];
+    break;
+  case RWModes::write:
+    heap[h].makeReference(h);
+    e->ys[yn] = heap[h];
+    h = h + 1;
+    break;
+  }
+  s = s + 1;
+}
 
 void unifyValueXn(Xn xn) {
   switch (rwMode) {
   case RWModes::read:
-    if (unify(registers[xn], heap[s])) {
+    if (!unify(registers[xn], heap[s])) {
       backtrack();
     };
     break;
@@ -381,7 +423,20 @@ void unifyValueXn(Xn xn) {
   s = s + 1;
 }
 
-// void unifyValueYn(Yn yn) {}
+void unifyValueYn(Yn yn) {
+  switch (rwMode) {
+  case RWModes::read:
+    if (!unify(e->ys[yn], heap[s])) {
+      backtrack();
+    };
+    break;
+  case RWModes::write:
+    heap[h] = e->ys[yn];
+    h = h + 1;
+    break;
+  }
+  s = s + 1;
+}
 
 void unifyConstant(Constant c) {
   switch (rwMode) {
@@ -436,6 +491,7 @@ void unifyInteger(Integer i) {
 }
 
 void allocate(EnvironmentSize n) {
+  Serial.printf("Allocating %u values\n", static_cast<uint8_t>(n));
   Environment *newEnvironment = reinterpret_cast<Environment *>(e->ys + e->n);
 
   newEnvironment->ce = e;
@@ -460,9 +516,6 @@ void call(ProgramIndex p) {
     cp = programFile->position();
     break;
   }
-
-  Serial.printf("Program index: %u\n", p);
-
   File labelTableFile = SPIFFS.open(labelTablePath);
 
   LabelTableEntry entry;
@@ -470,9 +523,6 @@ void call(ProgramIndex p) {
   labelTableFile.seek(p * sizeof(entry));
 
   labelTableFile.read(reinterpret_cast<uint8_t *>(&entry), sizeof(entry));
-
-  Serial.printf("Entry Point: %u\n", entry.entryPoint);
-  Serial.printf("Arity: %u\n", entry.arity);
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
@@ -531,37 +581,39 @@ bool unify(Value &a1, Value &a2) {
 
   if (d1.type == Value::Type::reference || d2.type == Value::Type::reference) {
     bind(d1, d2);
-    return false;
+    return true;
   }
 
   if (d1.type != d2.type) {
-    return true;
+    return false;
   }
 
   switch (d1.type) {
   case Value::Type::constant:
-    return d1.c != d2.c;
+    return d1.c == d2.c;
   case Value::Type::integer:
-    return d1.i != d2.i;
+    return d1.i == d2.i;
   case Value::Type::list:
-    return unify(heap[d1.h], heap[d2.h]) ||
+    return unify(heap[d1.h], heap[d2.h]) &&
            unify(heap[d1.h + 1], heap[d2.h + 1]);
   case Value::Type::structure: {
     Value &h1 = heap[d1.h];
     Value &h2 = heap[d2.h];
 
     if (h1.f != h2.f) {
-      return true;
+      return false;
     }
 
     for (Arity n = 1; n <= h1.n; ++n) {
-      if (unify(heap[d1.h + n], heap[d2.h + n])) {
-        return true;
+      if (!unify(heap[d1.h + n], heap[d2.h + n])) {
+        return false;
       }
     }
-    return false;
+    return true;
   }
   default:
+    Serial.printf("Error during unify. Unknown type %u\n",
+                  static_cast<uint8_t>(d1.type));
     return false;
   }
 }
