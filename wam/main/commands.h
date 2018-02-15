@@ -10,6 +10,7 @@ enum class Command : uint8_t {
   updateLabelTable,
   resetMachine = 0x30,
   runQuery,
+  getNextAnswer,
   readRegister = 0x40,
   readMemory,
   readFunctor,

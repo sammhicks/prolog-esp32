@@ -12,8 +12,9 @@ extern const char *codePath;
 extern const char *labelTablePath;
 
 const Xn registerCount = 32;
-const size_t heapSize = 256;
-const size_t stackSize = 1024;
+const HeapIndex heapSize = 512;
+const size_t stackSize = 2048;
+const TrailIndex trailSize = 128;
 
 enum class ExecuteModes : uint8_t { query, program };
 
@@ -33,6 +34,17 @@ struct Environment {
   Value ys[0];
 };
 
+struct ChoicePoint {
+  Environment *ce;
+  CodeIndex cp;
+  ChoicePoint *b;
+  LabelIndex bp;
+  TrailIndex tr;
+  HeapIndex h;
+  Arity n;
+  Value args[0];
+};
+
 extern ExecuteModes executeMode;
 extern bool querySucceeded;
 extern Stream *instructionSource;
@@ -44,15 +56,23 @@ extern HeapIndex h;
 extern HeapIndex s;
 extern CodeIndex cp;
 extern CodeIndex haltIndex;
+extern TrailIndex tr;
+extern HeapIndex hb;
 extern Environment *e;
+extern ChoicePoint *b;
 
 extern Value registers[registerCount];
 extern Value heap[heapSize];
 extern uint8_t stack[stackSize];
+extern HeapIndex trail[trailSize];
 
 void resetMachine();
 
 void executeInstructions(Client *client);
+
+void getNextAnswer(Client *client);
+
+void executeProgram(Client *client);
 
 void executeInstruction();
 
@@ -91,19 +111,25 @@ void unifyInteger(Integer i);
 
 void allocate(EnvironmentSize n);
 void deallocate();
-void call(ProgramIndex p);
+void call(LabelIndex p);
 void proceed();
+
+void tryMeElse(LabelIndex l);
+void retryMeElse(LabelIndex l);
+void trustMe();
 } // namespace Instructions
 
 namespace Ancillary {
+LabelTableEntry lookupLabel(LabelIndex l);
+void *topOfStack();
 void backtrack();
 void failAndExit();
 Value &deref(Value &a);
 Value &deref(HeapIndex h);
 void bind(Value &a1, Value &a2);
-void trail(const Value &a);
-void unwindTrail(const Value &a1, const Value &a2);
-void tidyTrail();
+void addToTrail(HeapIndex a);
+void unwindTrail(TrailIndex a1, TrailIndex a2);
+// void tidyTrail();
 bool unify(Value &a1, Value &a2);
 } // namespace Ancillary
 
