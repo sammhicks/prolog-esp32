@@ -26,8 +26,9 @@ convert_query_tokens([Token|Tokens], Rs0) -->
 	convert_query_tokens(Tokens, Rs1).
 
 
-convert_query_token(call(Atom), Rs, Rs) -->
-	[call(Atom)].
+convert_query_token(Token, Rs, Rs, [Token|Tokens], Tokens) :-
+	unchanged_token(Token),
+	!.
 
 convert_query_token(c_a(C, A), Rs, Rs) -->
 	[put_constant(C, A)].
@@ -35,7 +36,7 @@ convert_query_token(c_a(C, A), Rs, Rs) -->
 convert_query_token(i_a(I, A), Rs, Rs) -->
 	[put_integer(I, A)].
 
-convert_query_token(s_x(S, X), Rs, Rs) -->
+convert_query_token(s_x(S, X), Rs, [X|Rs]) -->
 	[put_structure(S, X)].
 
 convert_query_token(l_x(X), Rs, Rs) -->
@@ -76,6 +77,20 @@ convert_query_token(y(Y), Rs, Rs) -->
 
 convert_query_token(y(Y), Rs, [y(Y)|Rs]) -->
 	[set_variable(y(Y))].
+
+
+unchanged_token(call(_)).
+unchanged_token(>).
+unchanged_token(<).
+unchanged_token(=<).
+unchanged_token(>=).
+unchanged_token(=\=).
+unchanged_token(=:=).
+unchanged_token(is).
+unchanged_token(true).
+unchanged_token(fail).
+unchanged_token(=).
+
 
 % --- Program ---
 

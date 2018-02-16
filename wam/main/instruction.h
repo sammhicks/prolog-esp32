@@ -44,7 +44,23 @@ enum class Opcode : uint8_t {
   // Choice
   tryMeElse = 0x50,
   retryMeElse = 0x51,
-  trustMe = 0x52
+  trustMe = 0x52,
+  neckCut = 0x53,
+  getLevel = 0x54,
+  cut = 0x55,
+  // Arithmetic Operations
+  greaterThan = 0x60,
+  lessThan = 0x61,
+  lessThanOrEqualTo = 0x62,
+  greaterThanOrEqualTo = 0x63,
+  notEqual = 0x64,
+  equals = 0x65,
+  is = 0x66,
+  // Misc
+  noOp = 0x70,
+  fail = 0x71,
+  succeed = 0x72,
+  unify = 0x73,
 };
 
 typedef uint8_t Xn;

@@ -89,6 +89,9 @@ read_functor(H, Functor/Arity) :-
 	read_functor(Stream, H, Functor, Arity).
 
 
+process_results(exception, _, _, _, _) :-
+	throw("Microcontroller threw exception").
+
 process_results(success, Stream, Query, Constants, Structures) :-
 	read_solution(Stream, Query, Constants, Structures).
 

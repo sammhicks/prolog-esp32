@@ -136,3 +136,5 @@ results(0, failure).
 results(1, success).
 
 results(2, choice_points).
+
+results(3, exception).

@@ -26,6 +26,9 @@ items_variables([Item|Items]) -->
 	items_variables(Items).
 
 
+item_variables(i(_)) -->
+	[].
+
 item_variables(c(_)) -->
 	[].
 

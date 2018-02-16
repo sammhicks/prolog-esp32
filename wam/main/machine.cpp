@@ -5,6 +5,7 @@ const char *labelTablePath = "/label-table";
 
 ExecuteModes executeMode;
 bool querySucceeded;
+bool exceptionRaised;
 Stream *instructionSource;
 File *programFile;
 
@@ -49,6 +50,7 @@ void resetMachine() {
 void executeInstructions(Client *client) {
   executeMode = ExecuteModes::query;
   querySucceeded = true;
+  exceptionRaised = false;
   instructionSource = client;
 
   File actualProgramFile = SPIFFS.open(codePath);
@@ -60,12 +62,14 @@ void executeInstructions(Client *client) {
     executeInstruction();
   }
 
-  Serial.println("Executing Program");
-  instructionSource = programFile;
+  if (!exceptionRaised) {
+    Serial.println("Executing Program");
+    instructionSource = programFile;
 
-  e->n = argumentCount;
-  for (Arity n = 0; n < argumentCount; ++n) {
-    e->ys[n] = registers[n];
+    e->n = argumentCount;
+    for (Arity n = 0; n < argumentCount; ++n) {
+      e->ys[n] = registers[n];
+    }
   }
 
   executeProgram(client);
@@ -80,11 +84,14 @@ void getNextAnswer(Client *client) {
 }
 
 void executeProgram(Client *client) {
-  while (querySucceeded && programFile->available() > 0) {
+  while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
     executeInstruction();
   }
 
-  if (querySucceeded) {
+  if (exceptionRaised) {
+    Serial.println("Exception");
+    Raw::write(*client, Results::exception);
+  } else if (querySucceeded) {
     for (Arity n = 0; n < e->n; ++n) {
       registers[n] = e->ys[n];
     }
@@ -248,6 +255,50 @@ void executeInstruction() {
     Serial.println("trustMe");
     Instructions::trustMe();
     break;
+  case Opcode::greaterThan:
+    Serial.println("greaterThan");
+    Instructions::greaterThan();
+    break;
+  case Opcode::lessThan:
+    Serial.println("lessThan");
+    Instructions::lessThan();
+    break;
+  case Opcode::lessThanOrEqualTo:
+    Serial.println("lessThanOrEqualTo");
+    Instructions::lessThanOrEqualTo();
+    break;
+  case Opcode::greaterThanOrEqualTo:
+    Serial.println("greaterThanOrEqualTo");
+    Instructions::greaterThanOrEqualTo();
+    break;
+  case Opcode::notEqual:
+    Serial.println("notEqual");
+    Instructions::notEqual();
+    break;
+  case Opcode::equals:
+    Serial.println("equals");
+    Instructions::equals();
+    break;
+  case Opcode::is:
+    Serial.println("is");
+    Instructions::is();
+    break;
+  case Opcode::noOp:
+    Serial.println("noOp");
+    Instructions::noOp();
+    break;
+  case Opcode::fail:
+    Serial.println("fail");
+    Instructions::fail();
+    break;
+  case Opcode::succeed:
+    Serial.println("succeed");
+    Instructions::succeed();
+    break;
+  case Opcode::unify:
+    Serial.println("unify");
+    Instructions::unify();
+    break;
   default:
     Serial.print("Unknown opcode ");
     Serial.println(static_cast<int>(opcode), HEX);
@@ -260,7 +311,10 @@ namespace Instructions {
 using Ancillary::addToTrail;
 using Ancillary::backtrack;
 using Ancillary::bind;
+using Ancillary::compare;
 using Ancillary::deref;
+using Ancillary::evaluateExpression;
+using Ancillary::failWithException;
 using Ancillary::lookupLabel;
 using Ancillary::topOfStack;
 using Ancillary::unify;
@@ -509,6 +563,7 @@ void unifyConstant(Constant c) {
     h = h + 1;
     break;
   }
+  s = s + 1;
 }
 
 void unifyInteger(Integer i) {
@@ -535,10 +590,11 @@ void unifyInteger(Integer i) {
     h = h + 1;
     break;
   }
+  s = s + 1;
 }
 
 void allocate(EnvironmentSize n) {
-  Serial.printf("Allocating %u values\n", static_cast<uint8_t>(n));
+  // Serial.printf("Allocating %u values\n", static_cast<uint8_t>(n));
   Environment *newEnvironment = reinterpret_cast<Environment *>(topOfStack());
 
   newEnvironment->ce = e;
@@ -617,6 +673,75 @@ void trustMe() {
   hb = h;
 }
 
+void greaterThan() {
+  if (compare(registers[0], registers[1]) != Comparison::greaterThan) {
+    backtrack();
+  }
+}
+
+void lessThan() {
+  if (compare(registers[0], registers[1]) != Comparison::lessThan) {
+    backtrack();
+  }
+}
+
+void lessThanOrEqualTo() {
+  if (compare(registers[0], registers[1]) == Comparison::greaterThan) {
+    backtrack();
+  }
+}
+
+void greaterThanOrEqualTo() {
+  if (compare(registers[0], registers[1]) == Comparison::lessThan) {
+    backtrack();
+  }
+}
+
+void notEqual() {
+  if (compare(registers[0], registers[1]) == Comparison::equals) {
+    backtrack();
+  }
+}
+
+void equals() {
+  if (compare(registers[0], registers[1]) != Comparison::equals) {
+    backtrack();
+  }
+}
+
+void is() {
+  Value v;
+  v.makeInteger(evaluateExpression(registers[1]));
+  if (!unify(registers[0], v)) {
+    backtrack();
+  }
+}
+
+void noOp() {}
+
+void fail() { backtrack(); }
+
+void succeed() {
+  switch (executeMode) {
+  case ExecuteModes::query:
+    executeMode = ExecuteModes::program;
+    programFile->seek(haltIndex);
+    cp = haltIndex;
+    return;
+  case ExecuteModes::program:
+    Serial.println("Succeed should not be called from the program");
+    failWithException();
+    return;
+    break;
+  }
+}
+
+void unify() {
+  if (!unify(registers[0], registers[1])) {
+    backtrack();
+  }
+}
+
 } // namespace Instructions
 
 namespace Ancillary {
@@ -643,6 +768,10 @@ void *topOfStack() {
 }
 
 void backtrack() {
+  if (exceptionRaised) {
+    return;
+  }
+
   Serial.println("Backtrack!");
   if (static_cast<void *>(b) == static_cast<void *>(stack)) {
     failAndExit();
@@ -655,9 +784,11 @@ void backtrack() {
 
 void failAndExit() { querySucceeded = false; }
 
+void failWithException() { exceptionRaised = true; }
+
 Value &deref(Value &a) {
   // Serial.print("Dereferencing value:");
-  // a.dump();
+  a.dump();
   if (a.type == Value::Type::reference) {
     return deref(a.h);
   } else {
@@ -667,7 +798,7 @@ Value &deref(Value &a) {
 
 Value &deref(HeapIndex derefH) {
   // Serial.printf("Heap index %u:", static_cast<uint16_t>(derefH));
-  // heap[derefH].dump();
+  heap[derefH].dump();
   if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
     return deref(heap[derefH].h);
   } else {
@@ -762,5 +893,90 @@ bool unify(Value &a1, Value &a2) {
                   static_cast<uint8_t>(d1.type));
     return false;
   }
+}
+
+Comparison compare(Integer i1, Integer i2) {
+  if (i1 < i2) {
+    return Comparison::lessThan;
+  }
+  if (i1 > i2) {
+    return Comparison::greaterThan;
+  }
+  return Comparison::equals;
+}
+
+Comparison compare(Value &e1, Value &e2) {
+  return compare(evaluateExpression(e1), evaluateExpression(e2));
+}
+
+Integer evaluateExpression(Value &a) {
+  // Serial.print("Evaluating Expression: ");
+  // a.dump();
+
+  Value &derefA = deref(a);
+
+  // Serial.print("Derefs to: ");
+  // derefA.dump();
+
+  switch (derefA.type) {
+  case Value::Type::integer:
+    return derefA.i;
+  case Value::Type::structure:
+    return evaluateStructure(derefA);
+  default:
+    Serial.printf("Exception: invalid expression type %u\n",
+                  static_cast<uint8_t>(derefA.type));
+    failWithException();
+    return 0;
+  }
+}
+
+Integer evaluateStructure(Value &a) {
+  switch (static_cast<SpecialStructures>(heap[a.h].f)) {
+  case SpecialStructures::add:
+    switch (heap[a.h].n) {
+    case 1:
+      return evaluateExpression(heap[a.h + 1]);
+    case 2:
+      return evaluateExpression(heap[a.h + 1]) +
+             evaluateExpression(heap[a.h + 2]);
+    default:
+      break;
+    }
+  case SpecialStructures::subtract:
+    switch (heap[a.h].n) {
+    case 1:
+      return -evaluateExpression(heap[a.h + 1]);
+    case 2:
+      return evaluateExpression(heap[a.h + 1]) -
+             evaluateExpression(heap[a.h + 2]);
+    default:
+      break;
+    }
+  case SpecialStructures::multiply:
+    if (heap[a.h].n == 2) {
+      return evaluateExpression(heap[a.h + 1]) *
+             evaluateExpression(heap[a.h + 2]);
+    }
+  case SpecialStructures::divide:
+    if (heap[a.h].n == 2) {
+      Integer i1 = evaluateExpression(heap[a.h + 1]);
+      Integer i2 = evaluateExpression(heap[a.h + 2]);
+      if (i2 == 0) {
+        Serial.println("Exception: divide by 0");
+        failWithException();
+        return 0;
+      }
+      return i1 / i2;
+    }
+    break;
+  default:
+    break;
+  }
+  Serial.printf("Exception: not an operator: %u/%u\n",
+                static_cast<uint16_t>(heap[a.h].f),
+                static_cast<uint8_t>(heap[a.h].n));
+  failWithException();
+  return 0;
 }
 } // namespace Ancillary

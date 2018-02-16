@@ -20,7 +20,11 @@ enum class ExecuteModes : uint8_t { query, program };
 
 enum class RWModes : uint8_t { read, write };
 
-enum class Results : uint8_t { failure, success, choicePoints };
+enum class Comparison : uint8_t { lessThan, equals, greaterThan };
+
+enum class SpecialStructures : Functor { add, subtract, multiply, divide };
+
+enum class Results : uint8_t { failure, success, choicePoints, exception };
 
 struct LabelTableEntry {
   CodeIndex entryPoint;
@@ -47,6 +51,7 @@ struct ChoicePoint {
 
 extern ExecuteModes executeMode;
 extern bool querySucceeded;
+extern bool exceptionRaised;
 extern Stream *instructionSource;
 extern File *programFile;
 
@@ -117,6 +122,18 @@ void proceed();
 void tryMeElse(LabelIndex l);
 void retryMeElse(LabelIndex l);
 void trustMe();
+
+void greaterThan();
+void lessThan();
+void lessThanOrEqualTo();
+void greaterThanOrEqualTo();
+void notEqual();
+void equals();
+void is();
+void noOp();
+void fail();
+void succeed();
+void unify();
 } // namespace Instructions
 
 namespace Ancillary {
@@ -124,6 +141,7 @@ LabelTableEntry lookupLabel(LabelIndex l);
 void *topOfStack();
 void backtrack();
 void failAndExit();
+void failWithException();
 Value &deref(Value &a);
 Value &deref(HeapIndex h);
 void bind(Value &a1, Value &a2);
@@ -131,6 +149,10 @@ void addToTrail(HeapIndex a);
 void unwindTrail(TrailIndex a1, TrailIndex a2);
 // void tidyTrail();
 bool unify(Value &a1, Value &a2);
+Comparison compare(Integer i1, Integer i2);
+Comparison compare(Value &a1, Value &a2);
+Integer evaluateExpression(Value &a);
+Integer evaluateStructure(Value &a);
 } // namespace Ancillary
 
 #pragma pack(pop)

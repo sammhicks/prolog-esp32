@@ -10,7 +10,7 @@
 
 compile_query(Term, State, Query_Bytes, Constants, Structures) :-
 	query(Term, Query),
-	compile_query_ast(Query, Codes, []),
+	compile_query_ast(Query, Codes, [succeed]),
 	assemble_query(Codes, State, Query_Bytes, Constants, Structures).
 
 

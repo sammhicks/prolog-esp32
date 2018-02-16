@@ -8,7 +8,7 @@
 tokenize_query_allocation(Functor, Allocation) -->
 	tokenize_atom_argument_subterm_list(Allocation, query),
 	tokenize_atom_argument_allocation_list(Allocation),
-	[call(Functor)].
+	tokenize_call(Functor).
 
 
 tokenize_fact_allocation(Allocation) -->
@@ -157,3 +157,23 @@ tokenize_structure_term_register(i(I)) -->
 
 tokenize_structure_term_register(X=_) -->
 	[X].
+
+
+tokenize_call(Functor, [Token|Tokens], Tokens) :-
+	special_predicate(Functor, Token),
+	!.
+
+tokenize_call(Functor, [call(Functor)|Tokens], Tokens).
+
+
+special_predicate((>)/2, >).
+special_predicate((<)/2, <).
+special_predicate((=<)/2, =<).
+special_predicate((>=)/2, >=).
+special_predicate((=:=)/2, =:=).
+special_predicate((=\=)/2, =\=).
+special_predicate((is)/2, is).
+special_predicate(true/0, true).
+special_predicate(false/0, fail).
+special_predicate(fail/0, fail).
+special_predicate((=)/2, =).

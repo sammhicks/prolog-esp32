@@ -49,6 +49,10 @@ assemble_codes([Code|Codes]) -->
 	assemble_codes(Codes).
 
 
+assemble_code(Code, [Byte|Bytes], Bytes) :-
+	simple_code(Code, Byte),
+	!.
+
 assemble_code(put_variable(Vn, Ai)) -->
 	put_variable(Vn, Ai).
 
@@ -275,6 +279,19 @@ integer(I) -->
 
 term_id(ID) -->
 	uint16(ID).
+
+
+simple_code(>, 0x60).
+simple_code(<, 0x61).
+simple_code(=<, 0x62).
+simple_code(>=, 0x63).
+simple_code(=\=, 0x64).
+simple_code(=:=, 0x65).
+simple_code(is, 0x66).
+simple_code(true, 0x70).
+simple_code(fail, 0x71).
+simple_code(succeed, 0x72).
+simple_code(=, 0x73).
 
 
 assembly_state(state(Structures, Constants, Labels, Label_Table), Structures, Constants, Labels, Label_Table).

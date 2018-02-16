@@ -68,15 +68,25 @@
 | call `P`                          |   `42`   |   `P`    |   `P`    |          |          |
 | execute `P`                       |   `43`   |   `P`    |   `P`    |          |          |
 | proceed                           |   `44`   |          |          |          |          |
-| try me else `P`                   |   `48`   |   `P`    |   `P`    |          |          |
-| retry me else `P`                 |   `49`   |   `P`    |   `P`    |          |          |
-| trust me                          |   `4A`   |          |          |          |          |
-| neck cut                          |   `4C`   |          |          |          |          |
-| get level `Yn`                    |   `4D`   |   `Yn`   |          |          |          |
-| cut `Yn`                          |   `4E`   |   `Yn`   |          |          |          |
-| configure pin `A0` as `Mode`      |   `50`   |  `Mode`  |          |          |          |
-| digital check pin `A0` is `Value` |   `52`   |  `Value` |          |          |          |
-| digital write pin `A0` to `Value` |   `53`   |  `Value` |          |          |          |
-| analog read pin `A0` to `A1`      |   `54`   |          |          |          |          |
-| analog write pin `A0` to `A1`     |   `55`   |          |          |          |          |
-| set servo `A0` to `A1`            |   `57`   |          |          |          |          |
+| try me else `P`                   |   `50`   |   `P`    |   `P`    |          |          |
+| retry me else `P`                 |   `51`   |   `P`    |   `P`    |          |          |
+| trust me                          |   `52`   |          |          |          |          |
+| neck cut                          |   `53`   |          |          |          |          |
+| get level `Yn`                    |   `54`   |   `Yn`   |          |          |          |
+| cut `Yn`                          |   `55`   |   `Yn`   |          |          |          |
+| >                                 |   `60`   |          |          |          |          |
+| <                                 |   `61`   |          |          |          |          |
+| =<                                |   `62`   |          |          |          |          |
+| >=                                |   `63`   |          |          |          |          |
+| =\=                               |   `64`   |          |          |          |          |
+| =:=                               |   `65`   |          |          |          |          |
+| is                                |   `66`   |          |          |          |          |
+| true                              |   `70`   |          |          |          |          |
+| fail                              |   `71`   |          |          |          |          |
+| succeed                           |   `72`   |          |          |          |          |
+| =                                 |   `73`   |          |          |          |          |
+| configure pin `A0` as `Mode`      |   `80`   |  `Mode`  |          |          |          |
+| digital check pin `A0` is `Value` |   `81`   |  `Value` |          |          |          |
+| digital write pin `A0` to `Value` |   `82`   |  `Value` |          |          |          |
+| analog read pin `A0` to `A1`      |   `83`   |          |          |          |          |
+| analog write pin `A0` to `A1`     |   `74`   |          |          |          |          |
