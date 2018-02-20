@@ -12,7 +12,6 @@ File *programFile;
 RWModes rwMode;
 Arity argumentCount;
 HeapIndex h;
-HeapIndex hb;
 HeapIndex s;
 CodeIndex cp;
 CodeIndex haltIndex;
@@ -43,7 +42,6 @@ void resetMachine() {
   b->b = nullptr;
   b->bp = 0;
   b->tr = 0;
-  b->h = 0;
   b->n = 0;
 }
 
@@ -92,9 +90,6 @@ void executeProgram(Client *client) {
     Serial.println("Exception");
     Raw::write(*client, Results::exception);
   } else if (querySucceeded) {
-    for (Arity n = 0; n < e->n; ++n) {
-      registers[n] = e->ys[n];
-    }
     if (static_cast<void *>(b) == static_cast<void *>(stack)) {
       Serial.println("Done");
       Raw::write(*client, Results::success);
@@ -299,6 +294,38 @@ void executeInstruction() {
     Serial.println("unify");
     Instructions::unify();
     break;
+  case Opcode::configureDigitalPin:
+    Serial.println("configureDigitalPin");
+    Instructions::configureDigitalPin(read<DigitalPinModes>());
+    break;
+  case Opcode::digitalReadPin:
+    Serial.println("digitalReadPin");
+    Instructions::digitalReadPin();
+    break;
+  case Opcode::digitalWritePin:
+    Serial.println("digitalWritePin");
+    Instructions::digitalWritePin();
+    break;
+  case Opcode::pinIsAnalogInput:
+    Serial.println("pinIsAnalogInput");
+    Instructions::pinIsAnalogInput();
+    break;
+  case Opcode::configureChannel:
+    Serial.println("configureChannel");
+    Instructions::configureChannel();
+    break;
+  case Opcode::pinIsAnalogOutput:
+    Serial.println("pinIsAnalogOutput");
+    Instructions::pinIsAnalogOutput();
+    break;
+  case Opcode::analogReadPin:
+    Serial.println("analogReadPin");
+    Instructions::analogReadPin();
+    break;
+  case Opcode::analogWritePin:
+    Serial.println("analogWritePin");
+    Instructions::analogWritePin();
+    break;
   default:
     Serial.print("Unknown opcode ");
     Serial.println(static_cast<int>(opcode), HEX);
@@ -315,12 +342,20 @@ using Ancillary::compare;
 using Ancillary::deref;
 using Ancillary::evaluateExpression;
 using Ancillary::failWithException;
+using Ancillary::getChannel;
+using Ancillary::getPin;
 using Ancillary::lookupLabel;
 using Ancillary::topOfStack;
 using Ancillary::unify;
 using Ancillary::unwindTrail;
 
 void putVariableXnAi(Xn xn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+  Serial.printf("Ai - %u\n", ai);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h].makeReference(h);
   registers[xn] = heap[h];
   registers[ai] = heap[h];
@@ -328,49 +363,130 @@ void putVariableXnAi(Xn xn, Ai ai) {
 }
 
 void putVariableYnAi(Yn yn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+  Serial.printf("Ai - %u\n", ai);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h].makeReference(h);
   e->ys[yn] = heap[h];
   registers[ai] = heap[h];
   h = h + 1;
 }
 
-void putValueXnAi(Xn xn, Ai ai) { registers[ai] = registers[xn]; }
+void putValueXnAi(Xn xn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+  Serial.printf("Ai - %u\n", ai);
+#endif
 
-void putValueYnAi(Yn yn, Ai ai) { registers[ai] = e->ys[yn]; }
+  registers[ai] = registers[xn];
+}
+
+void putValueYnAi(Yn yn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
+  registers[ai] = e->ys[yn];
+}
 
 void putStructure(Functor f, Arity n, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("f  - %u\n", f);
+  Serial.printf("n  - %u\n", n);
+  Serial.printf("Ai - %u\n", ai);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h].makeFunctor(f, n);
   registers[ai].makeStructure(h);
   h = h + 1;
 }
 
-void putList(Ai ai) { registers[ai].makeList(h); }
+void putList(Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Ai - %u\n", ai);
+  Serial.printf("h  - %x\n", h);
+#endif
 
-void putConstant(Constant c, Ai ai) { registers[ai].makeConstant(c); }
+  registers[ai].makeList(h);
+}
 
-void putInteger(Integer i, Ai ai) { registers[ai].makeInteger(i); }
+void putConstant(Constant c, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("c  - %u\n", c);
+  Serial.printf("Ai - %u\n", ai);
+#endif
 
-void getVariableXnAi(Xn xn, Ai ai) { registers[xn] = registers[ai]; }
+  registers[ai].makeConstant(c);
+}
 
-void getVariableYnAi(Yn yn, Ai ai) { e->ys[yn] = registers[ai]; }
+void putInteger(Integer i, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("i  - %i\n", i);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
+  registers[ai].makeInteger(i);
+}
+
+void getVariableXnAi(Xn xn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
+  registers[xn] = registers[ai];
+}
+
+void getVariableYnAi(Yn yn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
+  e->ys[yn] = registers[ai];
+}
 
 void getValueXnAi(Xn xn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
   if (!unify(registers[xn], registers[ai])) {
     backtrack();
   }
 }
 
 void getValueYnAi(Yn yn, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
   if (!unify(e->ys[yn], registers[ai])) {
     backtrack();
   }
 }
 
 void getStructure(Functor f, Arity n, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("f  - %u\n", f);
+  Serial.printf("n  - %u\n", n);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
   Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
+#ifdef VERBOSE_LOG
+    Serial.println("Writing structure");
+#endif
     heap[h].makeStructure(h + 1);
     heap[h + 1].makeFunctor(f, n);
     bind(derefAi, heap[h]);
@@ -378,6 +494,9 @@ void getStructure(Functor f, Arity n, Ai ai) {
     rwMode = RWModes::write;
     return;
   case Value::Type::structure:
+#ifdef VERBOSE_LOG
+    Serial.println("Reading structure");
+#endif
     if (heap[derefAi.h].f == f && heap[derefAi.h].n == n) {
       s = derefAi.h + 1;
       rwMode = RWModes::read;
@@ -392,16 +511,26 @@ void getStructure(Functor f, Arity n, Ai ai) {
 }
 
 void getList(Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
   Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
+#ifdef VERBOSE_LOG
+    Serial.println("Writing list");
+#endif
     heap[h].makeList(h + 1);
     bind(derefAi, heap[h]);
     h = h + 1;
     rwMode = RWModes::write;
     return;
   case Value::Type::list:
+#ifdef VERBOSE_LOG
+    Serial.println("Reading list");
+#endif
     s = derefAi.h;
     rwMode = RWModes::read;
     return;
@@ -412,14 +541,25 @@ void getList(Ai ai) {
 }
 
 void getConstant(Constant c, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("c  - %u\n", c);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
   Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
+#ifdef VERBOSE_LOG
+    Serial.println("Writing constant");
+#endif
     addToTrail(derefAi.h);
     derefAi.makeConstant(c);
     return;
   case Value::Type::constant:
+#ifdef VERBOSE_LOG
+    Serial.println("Reading constant");
+#endif
     if (c != derefAi.c) {
       backtrack();
     }
@@ -431,14 +571,25 @@ void getConstant(Constant c, Ai ai) {
 }
 
 void getInteger(Integer i, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("i  - %i\n", i);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
   Value &derefAi = deref(registers[ai]);
 
   switch (derefAi.type) {
   case Value::Type::reference:
+#ifdef VERBOSE_LOG
+    Serial.println("Writing integer");
+#endif
     addToTrail(derefAi.h);
     derefAi.makeInteger(i);
     return;
   case Value::Type::integer:
+#ifdef VERBOSE_LOG
+    Serial.println("Reading integer");
+#endif
     if (i != derefAi.i) {
       backtrack();
     }
@@ -450,43 +601,81 @@ void getInteger(Integer i, Ai ai) {
 }
 
 void setVariableXn(Xn xn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h].makeReference(h);
   registers[xn] = heap[h];
   h = h + 1;
 }
 
 void setVariableYn(Yn yn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h].makeReference(h);
   e->ys[yn] = heap[h];
   h = h + 1;
 }
 
 void setValueXn(Xn xn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h] = registers[xn];
   h = h + 1;
 }
 
 void setValueYn(Yn yn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+  Serial.printf("h  - %x\n", h);
+#endif
+
   heap[h] = e->ys[yn];
   h = h + 1;
 }
 
 void setConstant(Constant c) {
+#ifdef VERBOSE_LOG
+  Serial.printf("c - %u\n", c);
+  Serial.printf("h - %x\n", h);
+#endif
+
   heap[h].makeConstant(c);
   h = h + 1;
 }
 
 void setInteger(Integer i) {
+#ifdef VERBOSE_LOG
+  Serial.printf("i - %i\n", i);
+  Serial.printf("h - %x\n", h);
+#endif
+
   heap[h].makeInteger(i);
   h = h + 1;
 }
 
 void unifyVariableXn(Xn xn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+#endif
+
   switch (rwMode) {
   case RWModes::read:
     registers[xn] = heap[s];
     break;
   case RWModes::write:
+#ifdef VERBOSE_LOG
+    Serial.printf("h - %x\n", h);
+#endif
+
     heap[h].makeReference(h);
     registers[xn] = heap[h];
     h = h + 1;
@@ -496,11 +685,19 @@ void unifyVariableXn(Xn xn) {
 }
 
 void unifyVariableYn(Yn yn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+#endif
+
   switch (rwMode) {
   case RWModes::read:
     e->ys[yn] = heap[s];
     break;
   case RWModes::write:
+#ifdef VERBOSE_LOG
+    Serial.printf("h - %x\n", h);
+#endif
+
     heap[h].makeReference(h);
     e->ys[yn] = heap[h];
     h = h + 1;
@@ -510,6 +707,10 @@ void unifyVariableYn(Yn yn) {
 }
 
 void unifyValueXn(Xn xn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Xn - %u\n", xn);
+#endif
+
   switch (rwMode) {
   case RWModes::read:
     if (!unify(registers[xn], heap[s])) {
@@ -517,6 +718,10 @@ void unifyValueXn(Xn xn) {
     };
     break;
   case RWModes::write:
+#ifdef VERBOSE_LOG
+    Serial.printf("h - %x\n", h);
+#endif
+
     heap[h] = registers[xn];
     h = h + 1;
     break;
@@ -525,6 +730,10 @@ void unifyValueXn(Xn xn) {
 }
 
 void unifyValueYn(Yn yn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+#endif
+
   switch (rwMode) {
   case RWModes::read:
     if (!unify(e->ys[yn], heap[s])) {
@@ -532,6 +741,10 @@ void unifyValueYn(Yn yn) {
     };
     break;
   case RWModes::write:
+#ifdef VERBOSE_LOG
+    Serial.printf("h - %x\n", h);
+#endif
+
     heap[h] = e->ys[yn];
     h = h + 1;
     break;
@@ -540,6 +753,10 @@ void unifyValueYn(Yn yn) {
 }
 
 void unifyConstant(Constant c) {
+#ifdef VERBOSE_LOG
+  Serial.printf("c - %u\n", c);
+#endif
+
   switch (rwMode) {
   case RWModes::read: {
     Value &derefS = deref(heap[s]);
@@ -559,6 +776,10 @@ void unifyConstant(Constant c) {
     }
   } break;
   case RWModes::write:
+#ifdef VERBOSE_LOG
+    Serial.printf("h - %x\n", h);
+#endif
+
     heap[h].makeConstant(c);
     h = h + 1;
     break;
@@ -567,6 +788,10 @@ void unifyConstant(Constant c) {
 }
 
 void unifyInteger(Integer i) {
+#ifdef VERBOSE_LOG
+  Serial.printf("i - %i\n", i);
+#endif
+
   switch (rwMode) {
   case RWModes::read: {
     Value &derefS = deref(heap[s]);
@@ -586,6 +811,10 @@ void unifyInteger(Integer i) {
     }
   } break;
   case RWModes::write:
+#ifdef VERBOSE_LOG
+    Serial.printf("h - %x\n", h);
+#endif
+
     heap[h].makeInteger(i);
     h = h + 1;
     break;
@@ -594,8 +823,17 @@ void unifyInteger(Integer i) {
 }
 
 void allocate(EnvironmentSize n) {
-  // Serial.printf("Allocating %u values\n", static_cast<uint8_t>(n));
   Environment *newEnvironment = reinterpret_cast<Environment *>(topOfStack());
+
+#ifdef VERBOSE_LOG
+  Serial.printf("Allocating a new environment at %x:\n",
+                reinterpret_cast<uint8_t *>(newEnvironment) - stack);
+  Serial.printf("\tce - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
+  Serial.printf("\tcp - %u\n", cp);
+  Serial.printf("\tn - %u\n", n);
+  Serial.printf("\ttop of stack - %x\n",
+                reinterpret_cast<uint8_t *>(newEnvironment->ys + n) - stack);
+#endif
 
   newEnvironment->ce = e;
   newEnvironment->cp = cp;
@@ -605,47 +843,89 @@ void allocate(EnvironmentSize n) {
 }
 
 void deallocate() {
+#ifdef VERBOSE_LOG
+  Serial.printf("Deallocating environment %x to %x:\n",
+                reinterpret_cast<uint8_t *>(e) - stack,
+                reinterpret_cast<uint8_t *>(e->ce) - stack);
+  Serial.printf("\tcp - %u\n", e->cp);
+#endif
   programFile->seek(e->cp);
   e = e->ce;
 }
 
 void call(LabelIndex p) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Calling label %u:\n", p);
+#endif
   switch (executeMode) {
   case ExecuteModes::query:
     executeMode = ExecuteModes::program;
     cp = haltIndex;
     break;
   case ExecuteModes::program:
+#ifdef VERBOSE_LOG
+    Serial.printf("\tcp - %u\n", programFile->position());
+#endif
     cp = programFile->position();
     break;
   }
   LabelTableEntry entry = lookupLabel(p);
 
+#ifdef VERBOSE_LOG
+  Serial.printf("\tp - %u\n", entry.entryPoint);
+  Serial.printf("\targument count - %u\n", entry.arity);
+#endif
+
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
 }
 
-void proceed() { programFile->seek(cp); }
+void proceed() {
+#ifdef VERBOSE_LOG
+  Serial.printf("Proceeding to %u\n", cp);
+#endif
+  programFile->seek(cp);
+}
 
 void tryMeElse(LabelIndex l) {
   ChoicePoint *newChoicePoint = reinterpret_cast<ChoicePoint *>(topOfStack());
+
+#ifdef VERBOSE_LOG
+  Serial.printf("Allocating a new choice point at %x:\n",
+                reinterpret_cast<uint8_t *>(newChoicePoint) - stack);
+  Serial.printf("\tce - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
+  Serial.printf("\tcp - %u\n", cp);
+  Serial.printf("\tb - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
+  Serial.printf("\tbp - %u\n", l);
+  Serial.printf("\ttr - %u\n", tr);
+  Serial.printf("\tn - %u\n", argumentCount);
+  Serial.printf(
+      "\ttop of stack - %x\n",
+      reinterpret_cast<uint8_t *>(newChoicePoint->args + argumentCount) -
+          stack);
+#endif
 
   newChoicePoint->ce = e;
   newChoicePoint->cp = cp;
   newChoicePoint->b = b;
   newChoicePoint->bp = l;
   newChoicePoint->tr = tr;
-  newChoicePoint->h = h;
   newChoicePoint->n = argumentCount;
   for (Arity n = 0; n < argumentCount; ++n) {
     newChoicePoint->args[n] = registers[n];
   }
 
   b = newChoicePoint;
-  hb = h;
 }
 
 void retryMeElse(LabelIndex l) {
+#ifdef VERBOSE_LOG
+  Serial.printf("\te - %x", reinterpret_cast<uint8_t *>(b->ce) - stack);
+  Serial.printf("\tce - %u", b->cp);
+  Serial.printf("\tbp - %u", l);
+  Serial.printf("\tn - %u", b->n);
+#endif
+
   for (Arity n = 0; n < b->n; ++n) {
     registers[n] = b->args[n];
   }
@@ -655,11 +935,15 @@ void retryMeElse(LabelIndex l) {
   b->bp = l;
   unwindTrail(b->tr, tr);
   tr = b->tr;
-  h = b->h;
-  hb = h;
 }
 
 void trustMe() {
+#ifdef VERBOSE_LOG
+  Serial.printf("\te - %x\n", reinterpret_cast<uint8_t *>(b->ce) - stack);
+  Serial.printf("\tcp - %u\n", b->cp);
+  Serial.printf("\tn - %u\n", b->n);
+#endif
+
   for (Arity n = 0; n < b->n; ++n) {
     registers[n] = b->args[n];
   }
@@ -668,9 +952,14 @@ void trustMe() {
   cp = b->cp;
   unwindTrail(b->tr, tr);
   tr = b->tr;
-  h = b->h;
+
+#ifdef VERBOSE_LOG
+  Serial.printf("Moving from choice point %x to %x\n",
+                reinterpret_cast<uint8_t *>(b) - stack,
+                reinterpret_cast<uint8_t *>(b->b) - stack);
+#endif
+
   b = b->b;
-  hb = h;
 }
 
 void greaterThan() {
@@ -726,7 +1015,6 @@ void succeed() {
   case ExecuteModes::query:
     executeMode = ExecuteModes::program;
     programFile->seek(haltIndex);
-    cp = haltIndex;
     return;
   case ExecuteModes::program:
     Serial.println("Succeed should not be called from the program");
@@ -740,6 +1028,142 @@ void unify() {
   if (!unify(registers[0], registers[1])) {
     backtrack();
   }
+}
+
+void configureDigitalPin(DigitalPinModes pm) {
+  uint8_t pinID = getPin(registers[0]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  switch (pm) {
+  case DigitalPinModes::Input:
+    pinMode(pinID, INPUT);
+    break;
+  case DigitalPinModes::Output:
+    pinMode(pinID, OUTPUT);
+    break;
+  case DigitalPinModes::InputPullup:
+    pinMode(pinID, INPUT_PULLUP);
+    break;
+  case DigitalPinModes::InputPulldown:
+    pinMode(pinID, INPUT_PULLDOWN);
+    break;
+  default:
+    Serial.printf("Invalid pinmode %u\n", static_cast<uint8_t>(pm));
+    failWithException();
+    return;
+  }
+}
+
+void digitalReadPin() {
+  uint8_t pinID = getPin(registers[0]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  Value pinValue;
+
+  pinValue.makeInteger(static_cast<Integer>(digitalRead(pinID)));
+
+  if (!unify(registers[1], pinValue)) {
+    backtrack();
+  }
+}
+
+void digitalWritePin() {
+  uint8_t pinID = getPin(registers[0]);
+
+  Integer pinValue = evaluateExpression(registers[1]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  switch (pinValue) {
+  case 0:
+    digitalWrite(pinID, LOW);
+    break;
+  case 1:
+    digitalWrite(pinID, HIGH);
+    break;
+  default:
+    Serial.printf("Invalid digital pin value \"%i\"\n",
+                  static_cast<int>(pinValue));
+
+    failWithException();
+    return;
+  }
+}
+
+void pinIsAnalogInput() {
+  uint8_t pinID = getPin(registers[0]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  pinMode(pinID, ANALOG);
+}
+
+void configureChannel() {
+  uint8_t channelID = getChannel(registers[0]);
+
+  Integer frequencyInt = evaluateExpression(registers[1]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  ledcSetup(channelID, static_cast<float>(frequencyInt), analogResolution);
+}
+
+void pinIsAnalogOutput() {
+  uint8_t pinID = getPin(registers[0]);
+
+  uint8_t channelID = getChannel(registers[1]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  pinMode(pinID, ANALOG);
+
+  ledcAttachPin(pinID, channelID);
+}
+
+void analogReadPin() {
+  uint8_t pinID = getPin(registers[0]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  Value pinValue;
+
+  pinValue.makeInteger(static_cast<Integer>(analogRead(pinID)));
+
+  if (!unify(registers[1], pinValue)) {
+    backtrack();
+  }
+}
+
+void analogWritePin() {
+  uint8_t channelID = getChannel(registers[0]);
+
+  Integer pinValue = evaluateExpression(registers[1]);
+
+  if (exceptionRaised) {
+    return;
+  }
+
+  if (pinValue < 0) {
+    Serial.println("Analog pin write values must be positive");
+  }
+
+  ledcWrite(channelID, static_cast<uint32_t>(pinValue));
 }
 
 } // namespace Instructions
@@ -758,11 +1182,20 @@ LabelTableEntry lookupLabel(LabelIndex p) {
 }
 
 void *topOfStack() {
+#ifdef VERBOSE_LOG
+  Serial.printf("e - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
+  Serial.printf("b - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
+#endif
+
   if (static_cast<void *>(e) >= static_cast<void *>(b)) {
-    // Serial.println("e higher");
+#ifdef VERBOSE_LOG
+    Serial.println("e higher");
+#endif
     return e->ys + e->n;
   } else {
-    // Serial.println("b higher");
+#ifdef VERBOSE_LOG
+    Serial.println("b higher");
+#endif
     return b->args + b->n;
   }
 }
@@ -772,7 +1205,12 @@ void backtrack() {
     return;
   }
 
-  Serial.println("Backtrack!");
+  Serial.println("\n ---- Backtrack! ---- \n");
+
+#ifdef VERBOSE_LOG
+  Serial.printf("Choice point: %x", reinterpret_cast<uint8_t *>(b) - stack);
+#endif
+
   if (static_cast<void *>(b) == static_cast<void *>(stack)) {
     failAndExit();
     return;
@@ -787,8 +1225,10 @@ void failAndExit() { querySucceeded = false; }
 void failWithException() { exceptionRaised = true; }
 
 Value &deref(Value &a) {
-  // Serial.print("Dereferencing value:");
+#ifdef VERBOSE_LOG
+  Serial.print("Dereferencing value:");
   a.dump();
+#endif
   if (a.type == Value::Type::reference) {
     return deref(a.h);
   } else {
@@ -797,8 +1237,10 @@ Value &deref(Value &a) {
 }
 
 Value &deref(HeapIndex derefH) {
-  // Serial.printf("Heap index %u:", static_cast<uint16_t>(derefH));
+#ifdef VERBOSE_LOG
+  Serial.printf("Heap index %u:", static_cast<uint16_t>(derefH));
   heap[derefH].dump();
+#endif
   if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
     return deref(heap[derefH].h);
   } else {
@@ -823,18 +1265,22 @@ void bind(Value &a1, Value &a2) {
 }
 
 void addToTrail(HeapIndex a) {
-  // Serial.printf("Adding %u to the trail\n", static_cast<uint8_t>(a));
-  if (a < hb) {
-    trail[tr] = a;
-    tr = tr + 1;
-  }
+#ifdef VERBOSE_LOG
+  Serial.printf("Adding %u to the trail\n", a);
+#endif
+
+  trail[tr] = a;
+  tr = tr + 1;
 }
 
 void unwindTrail(TrailIndex a1, TrailIndex a2) {
-  // Serial.printf("Unwinding from %u to %u\n", static_cast<uint8_t>(a1),
-  //               static_cast<uint8_t>(a2));
+#ifdef VERBOSE_LOG
+  Serial.printf("Unwinding from %u to %u\n", a1, a2);
+#endif
   for (TrailIndex i = a1; i < a2; ++i) {
-    // Serial.printf("Resetting address %u\n", static_cast<uint16_t>(trail[i]));
+#ifndef VERBOSE_LOG
+    Serial.printf("Resetting address %u\n", trail[i]);
+#endif
     heap[trail[i]].makeReference(trail[i]);
   }
 }
@@ -842,19 +1288,23 @@ void unwindTrail(TrailIndex a1, TrailIndex a2) {
 // void tidyTrail();
 
 bool unify(Value &a1, Value &a2) {
-  // Serial.println("Unify:");
-  // Serial.print("a1: ");
-  // a1.dump();
-  // Serial.print("a2: ");
-  // a2.dump();
+#ifdef VERBOSE_LOG
+  Serial.println("Unify:");
+  Serial.print("a1: ");
+  a1.dump();
+  Serial.print("a2: ");
+  a2.dump();
+#endif
 
   Value &d1 = deref(a1);
   Value &d2 = deref(a2);
 
-  // Serial.print("d1: ");
-  // d1.dump();
-  // Serial.print("d2: ");
-  // d2.dump();
+#ifdef VERBOSE_LOG
+  Serial.print("d1: ");
+  d1.dump();
+  Serial.print("d2: ");
+  d2.dump();
+#endif
 
   if (d1.type == Value::Type::reference || d2.type == Value::Type::reference) {
     bind(d1, d2);
@@ -910,13 +1360,21 @@ Comparison compare(Value &e1, Value &e2) {
 }
 
 Integer evaluateExpression(Value &a) {
-  // Serial.print("Evaluating Expression: ");
-  // a.dump();
+  if (exceptionRaised) {
+    return 0;
+  }
+
+#ifdef VERBOSE_LOG
+  Serial.print("Evaluating Expression: ");
+  a.dump();
+#endif
 
   Value &derefA = deref(a);
 
-  // Serial.print("Derefs to: ");
-  // derefA.dump();
+#ifdef VERBOSE_LOG
+  Serial.print("Derefs to: ");
+  derefA.dump();
+#endif
 
   switch (derefA.type) {
   case Value::Type::integer:
@@ -932,6 +1390,10 @@ Integer evaluateExpression(Value &a) {
 }
 
 Integer evaluateStructure(Value &a) {
+  if (exceptionRaised) {
+    return 0;
+  }
+
   switch (static_cast<SpecialStructures>(heap[a.h].f)) {
   case SpecialStructures::add:
     switch (heap[a.h].n) {
@@ -979,4 +1441,40 @@ Integer evaluateStructure(Value &a) {
   failWithException();
   return 0;
 }
+
+uint8_t getPin(Value &a) {
+  Integer i = evaluateExpression(a);
+
+  if (exceptionRaised) {
+    return 0;
+  }
+
+  if (i < 0 || i >= 256) {
+    Serial.printf("Exception: pin out of range: %i\n", i);
+
+    failWithException();
+    return 0;
+  }
+
+  return static_cast<uint8_t>(i);
+}
+
+uint8_t getChannel(Value &a) {
+  Integer channelInt = evaluateExpression(a);
+
+  if (exceptionRaised) {
+    return 0;
+  }
+
+  if (channelInt < 0 || channelInt > 15) {
+    Serial.printf("Invalid channel number \"%i\"",
+                  static_cast<int>(channelInt));
+
+    failWithException();
+    return 0;
+  }
+
+  return static_cast<uint8_t>(channelInt);
+}
+
 } // namespace Ancillary

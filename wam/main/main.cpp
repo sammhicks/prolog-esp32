@@ -6,6 +6,8 @@ void setup() {
   setupWiFi();
 
   SPIFFS.begin(true);
+
+  analogReadResolution(analogResolution);
 }
 
 void loop() {
@@ -129,7 +131,7 @@ void readRegister(Client &client) {
   Serial.print("Reading Register: ");
   Xn xn = Raw::read<Xn>(client);
   Serial.println(xn, HEX);
-  Value &value = registers[xn];
+  Value &value = reinterpret_cast<Environment *>(stack)->ys[xn];
   Raw::writeBlock<Value>(client, Ancillary::deref(value));
 }
 

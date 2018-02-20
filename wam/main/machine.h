@@ -8,8 +8,12 @@
 #include "raw-io.h"
 #include "value.h"
 
+#define VERBOSE_LOG
+
 extern const char *codePath;
 extern const char *labelTablePath;
+
+const uint8_t analogResolution = 12;
 
 const Xn registerCount = 32;
 const HeapIndex heapSize = 512;
@@ -44,7 +48,6 @@ struct ChoicePoint {
   ChoicePoint *b;
   LabelIndex bp;
   TrailIndex tr;
-  HeapIndex h;
   Arity n;
   Value args[0];
 };
@@ -62,7 +65,6 @@ extern HeapIndex s;
 extern CodeIndex cp;
 extern CodeIndex haltIndex;
 extern TrailIndex tr;
-extern HeapIndex hb;
 extern Environment *e;
 extern ChoicePoint *b;
 
@@ -134,6 +136,15 @@ void noOp();
 void fail();
 void succeed();
 void unify();
+
+void configureDigitalPin(DigitalPinModes pm);
+void digitalReadPin();
+void digitalWritePin();
+void pinIsAnalogInput();
+void configureChannel();
+void pinIsAnalogOutput();
+void analogReadPin();
+void analogWritePin();
 } // namespace Instructions
 
 namespace Ancillary {
@@ -153,6 +164,8 @@ Comparison compare(Integer i1, Integer i2);
 Comparison compare(Value &a1, Value &a2);
 Integer evaluateExpression(Value &a);
 Integer evaluateStructure(Value &a);
+uint8_t getPin(Value &a);
+uint8_t getChannel(Value &a);
 } // namespace Ancillary
 
 #pragma pack(pop)

@@ -3,6 +3,7 @@
 	      open_connection/0,
 	      close_connection/0,
 	      ping/1,                   % -Result
+	      compile_program_file/2,	% +File, -Result
 	      compile_program/2,        % +Terms, -Result
 	      run_query/1,              % +Query
 	      read_register/2,          % +Xn, -Value
@@ -18,6 +19,7 @@
 :- use_module(command).
 :- use_module(microcontroller_io).
 :- use_module(read_solution).
+:- use_module(read_terms).
 
 :- dynamic(current_connection/1).
 :- dynamic(program_compile_state/1).
@@ -47,6 +49,12 @@ ping(Result) :-
 	(   Body = Response
 	->  Result = success
 	;   Result = failure(Body, Response)).
+
+
+compile_program_file(File, Result) :-
+	read_terms_from_file(File, Program),
+	compile_program(Program, Result).
+
 
 
 compile_program(Program, Result) :-

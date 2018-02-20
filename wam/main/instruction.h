@@ -61,6 +61,21 @@ enum class Opcode : uint8_t {
   fail = 0x71,
   succeed = 0x72,
   unify = 0x73,
+  configureDigitalPin = 0x80,
+  digitalReadPin = 0x81,
+  digitalWritePin = 0x82,
+  pinIsAnalogInput = 0x84,
+  configureChannel = 0x85,
+  pinIsAnalogOutput = 0x86,
+  analogReadPin = 0x87,
+  analogWritePin = 0x88,
+};
+
+enum class DigitalPinModes : uint8_t {
+  Input = 0x00,
+  Output = 0x01,
+  InputPullup = 0x02,
+  InputPulldown = 0x03,
 };
 
 typedef uint8_t Xn;

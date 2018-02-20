@@ -166,14 +166,31 @@ tokenize_call(Functor, [Token|Tokens], Tokens) :-
 tokenize_call(Functor, [call(Functor)|Tokens], Tokens).
 
 
-special_predicate((>)/2, >).
-special_predicate((<)/2, <).
-special_predicate((=<)/2, =<).
-special_predicate((>=)/2, >=).
-special_predicate((=:=)/2, =:=).
-special_predicate((=\=)/2, =\=).
-special_predicate((is)/2, is).
-special_predicate(true/0, true).
+special_predicate(F/A, F) :-
+	special_predicate(F/A),
+	!.
+
 special_predicate(false/0, fail).
-special_predicate(fail/0, fail).
-special_predicate((=)/2, =).
+
+
+special_predicate((>)/2).
+special_predicate((<)/2).
+special_predicate((=<)/2).
+special_predicate((>=)/2).
+special_predicate((=:=)/2).
+special_predicate((=\=)/2).
+special_predicate((is)/2).
+special_predicate(true/0).
+special_predicate(fail/0).
+special_predicate((=)/2).
+special_predicate(digital_input/1).
+special_predicate(digital_output/1).
+special_predicate(digital_input_pullup/1).
+special_predicate(digital_input_pulldown/1).
+special_predicate(digital_read/2).
+special_predicate(digital_write/2).
+special_predicate(configure_channel/2).
+special_predicate(analog_input/1).
+special_predicate(analog_output/2).
+special_predicate(analog_read/2).
+special_predicate(analog_write/2).

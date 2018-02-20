@@ -39,7 +39,7 @@ convert_query_token(i_a(I, A), Rs, Rs) -->
 convert_query_token(s_x(S, X), Rs, [X|Rs]) -->
 	[put_structure(S, X)].
 
-convert_query_token(l_x(X), Rs, Rs) -->
+convert_query_token(l_x(X), Rs, [X|Rs]) -->
 	[put_list(X)].
 
 convert_query_token(x_a(X, A), Rs, Rs) -->
@@ -90,6 +90,17 @@ unchanged_token(is).
 unchanged_token(true).
 unchanged_token(fail).
 unchanged_token(=).
+unchanged_token(digital_input).
+unchanged_token(digital_output).
+unchanged_token(digital_input_pullup).
+unchanged_token(digital_input_pulldown).
+unchanged_token(digital_read).
+unchanged_token(digital_write).
+unchanged_token(analog_input).
+unchanged_token(configure_channel).
+unchanged_token(analog_output).
+unchanged_token(analog_read).
+unchanged_token(analog_write).
 
 
 % --- Program ---

@@ -1,7 +1,14 @@
 
 :- module(read_terms, [
+	      read_terms_from_file/2,
 	      read_terms/2
 	  ]).
+
+read_terms_from_file(File, Terms) :-
+	open(File, read, Stream),
+	read_terms(Stream, Terms),
+	close(Stream).
+
 
 read_terms(Stream, Terms) :-
 	read_options(Current_Options),

@@ -53,6 +53,10 @@ assemble_code(Code, [Byte|Bytes], Bytes) :-
 	simple_code(Code, Byte),
 	!.
 
+assemble_code(Code, [0x80, Mode|Bytes], Bytes) :-
+	pin_mode(Code, Mode),
+	!.
+
 assemble_code(put_variable(Vn, Ai)) -->
 	put_variable(Vn, Ai).
 
@@ -292,6 +296,20 @@ simple_code(true, 0x70).
 simple_code(fail, 0x71).
 simple_code(succeed, 0x72).
 simple_code(=, 0x73).
+simple_code(digital_read, 0x81).
+simple_code(digital_write, 0x82).
+simple_code(analog_input, 0x84).
+simple_code(configure_channel, 0x85).
+simple_code(analog_output, 0x86).
+simple_code(analog_read, 0x87).
+simple_code(analog_write, 0x88).
+
+
+pin_mode(digital_input, 0x00).
+pin_mode(digital_output, 0x01).
+pin_mode(digital_input_pullup, 0x02).
+pin_mode(digital_input_pulldown, 0x03).
+
 
 
 assembly_state(state(Structures, Constants, Labels, Label_Table), Structures, Constants, Labels, Label_Table).
