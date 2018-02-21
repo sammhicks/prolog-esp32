@@ -5,10 +5,7 @@
 	      ping/1,                   % -Result
 	      compile_program_file/2,	% +File, -Result
 	      compile_program/2,        % +Terms, -Result
-	      run_query/1,              % +Query
-	      read_register/2,          % +Xn, -Value
-	      read_memory/2,            % +H, -Value
-	      read_functor/2	        % +H, -Value
+	      run_query/1
 	  ]).
 
 
@@ -80,21 +77,6 @@ run_query(Query) :-
 	reset_machine(Stream),
 	run_query(Stream, Bytes, Results),
 	process_results(Results, Stream, Query, Constants, Structures).
-
-
-read_register(Xn, Value) :-
-	current_connection(Stream),
-	read_register(Stream, Xn, Value).
-
-
-read_memory(H, Value) :-
-	current_connection(Stream),
-	read_memory(Stream, H, Value).
-
-
-read_functor(H, Functor/Arity) :-
-	current_connection(Stream),
-	read_functor(Stream, H, Functor, Arity).
 
 
 process_results(exception, _, _, _, _) :-

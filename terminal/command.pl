@@ -25,9 +25,8 @@ command(update_label_table, 0x22).
 command(reset_machine, 0x30).
 command(run_query, 0x31).
 command(get_next_answer, 0x32).
-command(read_register, 0x40).
-command(read_memory, 0x41).
-command(read_functor, 0x42).
+command(fetch_structure, 0x40).
+command(fetch_list, 0x41).
 
 
 command(Command, [Code|Tail], Tail) :-

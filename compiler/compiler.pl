@@ -11,11 +11,7 @@
 compile_query(Term, State, Query_Bytes, Constants, Structures) :-
 	query(Term, Query),
 	compile_query_ast(Query, Codes, []),
-	(   last(Codes, call(_))
-	->  All_Codes = Codes
-	;   append(Codes, [succeed], All_Codes)
-	),
-	assemble_query(All_Codes, State, Query_Bytes, Constants, Structures).
+	assemble_query(Codes, State, Query_Bytes, Constants, Structures).
 
 
 compile_program(Terms, State, Program_Bytes, Label_Table_Bytes) :-

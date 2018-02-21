@@ -89,7 +89,11 @@ void executeProgram(Client *client) {
   if (exceptionRaised) {
     Serial.println("Exception");
     Raw::write(*client, Results::exception);
-  } else if (querySucceeded) {
+
+    return;
+  }
+
+  if (querySucceeded) {
     if (static_cast<void *>(b) == static_cast<void *>(stack)) {
       Serial.println("Done");
       Raw::write(*client, Results::success);
@@ -97,10 +101,19 @@ void executeProgram(Client *client) {
       Serial.println("Choice Points");
       Raw::write(*client, Results::choicePoints);
     }
-  } else {
-    Serial.println("Failure!");
-    Raw::write(*client, Results::failure);
+
+    Environment *queryEnvironment = reinterpret_cast<Environment *>(stack);
+
+    Raw::write(*client, queryEnvironment->n);
+    for (Arity n = 0; n < queryEnvironment->n; ++n) {
+      Raw::writeBlock(*client, Ancillary::deref(queryEnvironment->ys[n]));
+    }
+
+    return;
   }
+
+  Serial.println("Failure!");
+  Raw::write(*client, Results::failure);
 }
 
 void executeInstruction() {
@@ -286,10 +299,6 @@ void executeInstruction() {
     Serial.println("fail");
     Instructions::fail();
     break;
-  case Opcode::succeed:
-    Serial.println("succeed");
-    Instructions::succeed();
-    break;
   case Opcode::unify:
     Serial.println("unify");
     Instructions::unify();
@@ -348,6 +357,7 @@ using Ancillary::lookupLabel;
 using Ancillary::topOfStack;
 using Ancillary::unify;
 using Ancillary::unwindTrail;
+using Ancillary::virtualPredicate;
 
 void putVariableXnAi(Xn xn, Ai ai) {
 #ifdef VERBOSE_LOG
@@ -1010,20 +1020,6 @@ void noOp() {}
 
 void fail() { backtrack(); }
 
-void succeed() {
-  switch (executeMode) {
-  case ExecuteModes::query:
-    executeMode = ExecuteModes::program;
-    programFile->seek(haltIndex);
-    return;
-  case ExecuteModes::program:
-    Serial.println("Succeed should not be called from the program");
-    failWithException();
-    return;
-    break;
-  }
-}
-
 void unify() {
   if (!unify(registers[0], registers[1])) {
     backtrack();
@@ -1031,6 +1027,8 @@ void unify() {
 }
 
 void configureDigitalPin(DigitalPinModes pm) {
+  virtualPredicate(1);
+
   uint8_t pinID = getPin(registers[0]);
 
   if (exceptionRaised) {
@@ -1058,6 +1056,8 @@ void configureDigitalPin(DigitalPinModes pm) {
 }
 
 void digitalReadPin() {
+  virtualPredicate(2);
+
   uint8_t pinID = getPin(registers[0]);
 
   if (exceptionRaised) {
@@ -1074,6 +1074,8 @@ void digitalReadPin() {
 }
 
 void digitalWritePin() {
+  virtualPredicate(2);
+
   uint8_t pinID = getPin(registers[0]);
 
   Integer pinValue = evaluateExpression(registers[1]);
@@ -1099,6 +1101,8 @@ void digitalWritePin() {
 }
 
 void pinIsAnalogInput() {
+  virtualPredicate(1);
+
   uint8_t pinID = getPin(registers[0]);
 
   if (exceptionRaised) {
@@ -1109,6 +1113,8 @@ void pinIsAnalogInput() {
 }
 
 void configureChannel() {
+  virtualPredicate(2);
+
   uint8_t channelID = getChannel(registers[0]);
 
   Integer frequencyInt = evaluateExpression(registers[1]);
@@ -1121,6 +1127,8 @@ void configureChannel() {
 }
 
 void pinIsAnalogOutput() {
+  virtualPredicate(2);
+
   uint8_t pinID = getPin(registers[0]);
 
   uint8_t channelID = getChannel(registers[1]);
@@ -1135,6 +1143,8 @@ void pinIsAnalogOutput() {
 }
 
 void analogReadPin() {
+  virtualPredicate(2);
+
   uint8_t pinID = getPin(registers[0]);
 
   if (exceptionRaised) {
@@ -1151,6 +1161,8 @@ void analogReadPin() {
 }
 
 void analogWritePin() {
+  virtualPredicate(2);
+
   uint8_t channelID = getChannel(registers[0]);
 
   Integer pinValue = evaluateExpression(registers[1]);
@@ -1475,6 +1487,15 @@ uint8_t getChannel(Value &a) {
   }
 
   return static_cast<uint8_t>(channelInt);
+}
+
+void virtualPredicate(Arity n) {
+  if (executeMode == ExecuteModes::query) {
+    executeMode = ExecuteModes::program;
+    cp = haltIndex;
+    programFile->seek(haltIndex);
+    argumentCount = n;
+  }
 }
 
 } // namespace Ancillary

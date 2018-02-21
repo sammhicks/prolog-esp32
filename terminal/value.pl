@@ -1,7 +1,8 @@
 
 :- module(value, [
 	      value//1,         % ?Value
-	      functor_arity//2  % ?Functor, ?Arity
+	      functor_arity//2, % ?Functor, ?Arity
+	      heap_index//1      % ?heapIndex
 	  ]).
 
 
@@ -36,17 +37,17 @@ functor_arity(Functor, Arity) -->
 
 reference(reference(H)) -->
 	header(reference),
-	heapIndex(H).
+	heap_index(H).
 
 
 structure(structure(H)) -->
 	header(structure),
-	heapIndex(H).
+	heap_index(H).
 
 
 list(list(H)) -->
 	header(list),
-	heapIndex(H).
+	heap_index(H).
 
 
 constant(constant(C)) -->
@@ -59,7 +60,7 @@ integer(integer(I)) -->
 	int16(I).
 
 
-heapIndex(H) -->
+heap_index(H) -->
 	uint16(H).
 
 

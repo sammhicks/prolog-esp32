@@ -8,7 +8,7 @@
 #include "raw-io.h"
 #include "value.h"
 
-#define VERBOSE_LOG
+//#define VERBOSE_LOG
 
 extern const char *codePath;
 extern const char *labelTablePath;
@@ -166,6 +166,7 @@ Integer evaluateExpression(Value &a);
 Integer evaluateStructure(Value &a);
 uint8_t getPin(Value &a);
 uint8_t getChannel(Value &a);
+void virtualPredicate(Arity n);
 } // namespace Ancillary
 
 #pragma pack(pop)

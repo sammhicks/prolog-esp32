@@ -83,8 +83,7 @@
 | is                                        |   `66`   |          |          |          |          |
 | true                                      |   `70`   |          |          |          |          |
 | fail                                      |   `71`   |          |          |          |          |
-| succeed                                   |   `72`   |          |          |          |          |
-| =                                         |   `73`   |          |          |          |          |
+| =                                         |   `72`   |          |          |          |          |
 | configure pin `A0` as digital `Mode`      |   `80`   |  `Mode`  |          |          |          |
 | digital read pin `A0` to `A1`             |   `81`   |          |          |          |          |
 | digital write pin `A0` to `A1`            |   `82`   |          |          |          |          |

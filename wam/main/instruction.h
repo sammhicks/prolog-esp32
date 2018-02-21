@@ -59,8 +59,7 @@ enum class Opcode : uint8_t {
   // Misc
   noOp = 0x70,
   fail = 0x71,
-  succeed = 0x72,
-  unify = 0x73,
+  unify = 0x72,
   configureDigitalPin = 0x80,
   digitalReadPin = 0x81,
   digitalWritePin = 0x82,

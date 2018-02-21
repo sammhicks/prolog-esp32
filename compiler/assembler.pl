@@ -294,8 +294,7 @@ simple_code(=:=, 0x65).
 simple_code(is, 0x66).
 simple_code(true, 0x70).
 simple_code(fail, 0x71).
-simple_code(succeed, 0x72).
-simple_code(=, 0x73).
+simple_code(=, 0x72).
 simple_code(digital_read, 0x81).
 simple_code(digital_write, 0x82).
 simple_code(analog_input, 0x84).
