@@ -82,6 +82,11 @@ assemble_code(put_integer(I, Ai)) -->
 	integer(I),
 	ai(Ai).
 
+assemble_code(put_void(N, Ai)) -->
+	[0x08],
+	void_count(N),
+	ai(Ai).
+
 assemble_code(get_variable(Vn, Ai)) -->
 	get_variable(Vn, Ai).
 
@@ -121,6 +126,10 @@ assemble_code(set_integer(I)) -->
 	[0x27],
 	constant(I).
 
+assemble_code(set_void(N)) -->
+	[0x28],
+	void_count(N).
+
 assemble_code(unify_variable(Vn)) -->
 	unify_variable(Vn).
 
@@ -134,6 +143,10 @@ assemble_code(unify_constant(C)) -->
 assemble_code(unify_integer(I)) -->
 	[0x37],
 	integer(I).
+
+assemble_code(unify_void(N)) -->
+	[0x38],
+	void_count(N).
 
 assemble_code(allocate(N)) -->
 	[0x40],
@@ -279,6 +292,10 @@ constant(C) -->
 
 integer(I) -->
 	int16(I).
+
+
+void_count(N) -->
+	uint8(N).
 
 
 term_id(ID) -->

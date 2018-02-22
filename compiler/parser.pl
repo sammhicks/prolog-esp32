@@ -111,5 +111,5 @@ structure(Term, s(Functor/Arity, Arguments)) :-
 	compound_arguments(Arguments_Terms, Arguments).
 
 
-numbervar_options([functor_name(v), singletons(false)]).
+numbervar_options([functor_name(v), singletons(true)]).
 

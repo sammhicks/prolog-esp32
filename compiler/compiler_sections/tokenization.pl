@@ -51,14 +51,6 @@ tokenize_atom_argument_allocation_list([(A=T)|As]) -->
 tokenize_atom_argument_allocation(X=v(_), A) -->
 	[x_a(X, A)].
 
-tokenize_atom_argument_allocation(c(C), A) -->
-	!,
-	[c_a(C, A)].
-
-tokenize_atom_argument_allocation(i(I), A) -->
-	!,
-	[i_a(I, A)].
-
 tokenize_atom_argument_allocation(s(Functor, Terms), A) -->
 	[s_x(Functor, A)],
 	tokenize_structure_term_registers(Terms).
@@ -66,6 +58,17 @@ tokenize_atom_argument_allocation(s(Functor, Terms), A) -->
 tokenize_atom_argument_allocation(l(Head, Tail), A) -->
 	[l_x(A)],
 	tokenize_structure_term_registers([Head, Tail]).
+
+
+tokenize_atom_argument_allocation(c(C), A) -->
+	[c_a(C, A)].
+
+tokenize_atom_argument_allocation(i(I), A) -->
+	[i_a(I, A)].
+
+tokenize_atom_argument_allocation(v('_'), A) -->
+	[v_a(A)].
+
 
 tokenize_atom_argument_subterm_list([], _Mode) -->
 	[].
@@ -75,10 +78,7 @@ tokenize_atom_argument_subterm_list([_=T|As], Mode) -->
 	tokenize_atom_argument_subterm_list(As, Mode).
 
 
-tokenize_atom_argument_subterm(c(_), _Mode) -->
-	[].
-
-tokenize_atom_argument_subterm(i(_), _Mode) -->
+tokenize_atom_argument_subterm(_=v(_), _Mode) -->
 	[].
 
 tokenize_atom_argument_subterm(s(_, Terms), Mode) -->
@@ -87,7 +87,13 @@ tokenize_atom_argument_subterm(s(_, Terms), Mode) -->
 tokenize_atom_argument_subterm(l(Head, Tail), Mode) -->
 	tokenize_allocation_list([Head, Tail], Mode).
 
-tokenize_atom_argument_subterm(_=v(_), _Mode) -->
+tokenize_atom_argument_subterm(c(_), _Mode) -->
+	[].
+
+tokenize_atom_argument_subterm(i(_), _Mode) -->
+	[].
+
+tokenize_atom_argument_subterm(v('_'), _Mode) -->
 	[].
 
 
@@ -149,14 +155,18 @@ tokenize_structure_term_registers([Term|Terms]) -->
 	tokenize_structure_term_registers(Terms).
 
 
+tokenize_structure_term_register(_=v('_')) -->
+	[void],
+	!.
+
+tokenize_structure_term_register(X=_) -->
+	[X].
+
 tokenize_structure_term_register(c(C)) -->
 	[c(C)].
 
 tokenize_structure_term_register(i(I)) -->
 	[i(I)].
-
-tokenize_structure_term_register(X=_) -->
-	[X].
 
 
 tokenize_call(Functor, [Token|Tokens], Tokens) :-

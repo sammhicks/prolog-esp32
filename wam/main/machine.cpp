@@ -18,6 +18,7 @@ CodeIndex haltIndex;
 TrailIndex tr;
 Environment *e;
 ChoicePoint *b;
+HeapIndex hb;
 
 Value registers[registerCount];
 Value heap[heapSize];
@@ -155,6 +156,10 @@ void executeInstruction() {
     Serial.println("putInteger");
     Instructions::putInteger(read<Integer>(), read<Ai>());
     break;
+  case Opcode::putVoid:
+    Serial.println("putVoid");
+    Instructions::putVoid(read<VoidCount>(), read<Ai>());
+    break;
   case Opcode::getVariableXnAi:
     Serial.println("getVariableXnAi");
     Instructions::getVariableXnAi(read<Xn>(), read<Ai>());
@@ -211,6 +216,10 @@ void executeInstruction() {
     Serial.println("setInteger");
     Instructions::setInteger(read<Integer>());
     break;
+  case Opcode::setVoid:
+    Serial.println("setVoid");
+    Instructions::setVoid(read<VoidCount>());
+    break;
   case Opcode::unifyVariableXn:
     Serial.println("unifyVariableXn");
     Instructions::unifyVariableXn(read<Xn>());
@@ -234,6 +243,10 @@ void executeInstruction() {
   case Opcode::unifyInteger:
     Serial.println("unifyInteger");
     Instructions::unifyInteger(read<Integer>());
+    break;
+  case Opcode::unifyVoid:
+    Serial.println("unifyVoid");
+    Instructions::unifyVoid(read<VoidCount>());
     break;
   case Opcode::allocate:
     Serial.println("allocate");
@@ -369,7 +382,7 @@ void putVariableXnAi(Xn xn, Ai ai) {
   heap[h].makeReference(h);
   registers[xn] = heap[h];
   registers[ai] = heap[h];
-  h = h + 1;
+  ++h;
 }
 
 void putVariableYnAi(Yn yn, Ai ai) {
@@ -382,7 +395,7 @@ void putVariableYnAi(Yn yn, Ai ai) {
   heap[h].makeReference(h);
   e->ys[yn] = heap[h];
   registers[ai] = heap[h];
-  h = h + 1;
+  ++h;
 }
 
 void putValueXnAi(Xn xn, Ai ai) {
@@ -413,7 +426,7 @@ void putStructure(Functor f, Arity n, Ai ai) {
 
   heap[h].makeFunctor(f, n);
   registers[ai].makeStructure(h);
-  h = h + 1;
+  ++h;
 }
 
 void putList(Ai ai) {
@@ -441,6 +454,21 @@ void putInteger(Integer i, Ai ai) {
 #endif
 
   registers[ai].makeInteger(i);
+}
+
+void putVoid(VoidCount n, Ai ai) {
+#ifdef VERBOSE_LOG
+  Serial.printf("n  - %u\n", n);
+  Serial.printf("Ai - %u\n", ai);
+#endif
+
+  while (n > 0) {
+    heap[h].makeReference(h);
+    registers[ai] = heap[h];
+    ++h;
+    --n;
+    ++ai;
+  }
 }
 
 void getVariableXnAi(Xn xn, Ai ai) {
@@ -534,7 +562,7 @@ void getList(Ai ai) {
 #endif
     heap[h].makeList(h + 1);
     bind(derefAi, heap[h]);
-    h = h + 1;
+    ++h;
     rwMode = RWModes::write;
     return;
   case Value::Type::list:
@@ -618,7 +646,7 @@ void setVariableXn(Xn xn) {
 
   heap[h].makeReference(h);
   registers[xn] = heap[h];
-  h = h + 1;
+  ++h;
 }
 
 void setVariableYn(Yn yn) {
@@ -629,7 +657,7 @@ void setVariableYn(Yn yn) {
 
   heap[h].makeReference(h);
   e->ys[yn] = heap[h];
-  h = h + 1;
+  ++h;
 }
 
 void setValueXn(Xn xn) {
@@ -639,7 +667,7 @@ void setValueXn(Xn xn) {
 #endif
 
   heap[h] = registers[xn];
-  h = h + 1;
+  ++h;
 }
 
 void setValueYn(Yn yn) {
@@ -649,7 +677,7 @@ void setValueYn(Yn yn) {
 #endif
 
   heap[h] = e->ys[yn];
-  h = h + 1;
+  ++h;
 }
 
 void setConstant(Constant c) {
@@ -659,7 +687,7 @@ void setConstant(Constant c) {
 #endif
 
   heap[h].makeConstant(c);
-  h = h + 1;
+  ++h;
 }
 
 void setInteger(Integer i) {
@@ -669,7 +697,19 @@ void setInteger(Integer i) {
 #endif
 
   heap[h].makeInteger(i);
-  h = h + 1;
+  ++h;
+}
+
+void setVoid(VoidCount n) {
+#ifdef VERBOSE_LOG
+  Serial.printf("n - %u\n", n);
+#endif
+
+  while (n > 0) {
+    heap[h].makeReference(h);
+    ++h;
+    --n;
+  }
 }
 
 void unifyVariableXn(Xn xn) {
@@ -688,7 +728,7 @@ void unifyVariableXn(Xn xn) {
 
     heap[h].makeReference(h);
     registers[xn] = heap[h];
-    h = h + 1;
+    ++h;
     break;
   }
   s = s + 1;
@@ -710,7 +750,7 @@ void unifyVariableYn(Yn yn) {
 
     heap[h].makeReference(h);
     e->ys[yn] = heap[h];
-    h = h + 1;
+    ++h;
     break;
   }
   s = s + 1;
@@ -733,7 +773,7 @@ void unifyValueXn(Xn xn) {
 #endif
 
     heap[h] = registers[xn];
-    h = h + 1;
+    ++h;
     break;
   }
   s = s + 1;
@@ -756,7 +796,7 @@ void unifyValueYn(Yn yn) {
 #endif
 
     heap[h] = e->ys[yn];
-    h = h + 1;
+    ++h;
     break;
   }
   s = s + 1;
@@ -791,7 +831,7 @@ void unifyConstant(Constant c) {
 #endif
 
     heap[h].makeConstant(c);
-    h = h + 1;
+    ++h;
     break;
   }
   s = s + 1;
@@ -826,10 +866,29 @@ void unifyInteger(Integer i) {
 #endif
 
     heap[h].makeInteger(i);
-    h = h + 1;
+    ++h;
     break;
   }
   s = s + 1;
+}
+
+void unifyVoid(VoidCount n) {
+#ifdef VERBOSE_LOG
+  Serial.printf("n - %u\n", n);
+#endif
+
+  switch (rwMode) {
+  case RWModes::read:
+    s = s + n;
+    break;
+  case RWModes::write:
+    while (n > 0) {
+      heap[h].makeReference(h);
+      ++h;
+      --n;
+    }
+    break;
+  }
 }
 
 void allocate(EnvironmentSize n) {
@@ -908,6 +967,7 @@ void tryMeElse(LabelIndex l) {
   Serial.printf("\tb - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
   Serial.printf("\tbp - %u\n", l);
   Serial.printf("\ttr - %u\n", tr);
+  Serial.printf("\th - %u\n", h);
   Serial.printf("\tn - %u\n", argumentCount);
   Serial.printf(
       "\ttop of stack - %x\n",
@@ -920,12 +980,14 @@ void tryMeElse(LabelIndex l) {
   newChoicePoint->b = b;
   newChoicePoint->bp = l;
   newChoicePoint->tr = tr;
+  newChoicePoint->h = h;
   newChoicePoint->n = argumentCount;
   for (Arity n = 0; n < argumentCount; ++n) {
     newChoicePoint->args[n] = registers[n];
   }
 
   b = newChoicePoint;
+  hb = h;
 }
 
 void retryMeElse(LabelIndex l) {
@@ -945,6 +1007,11 @@ void retryMeElse(LabelIndex l) {
   b->bp = l;
   unwindTrail(b->tr, tr);
   tr = b->tr;
+#ifdef VERBOSE_LOG
+  Serial.printf("\t h - %u -> %u\n", h, b->h);
+#endif
+  h = b->h;
+  hb = h;
 }
 
 void trustMe() {
@@ -964,12 +1031,18 @@ void trustMe() {
   tr = b->tr;
 
 #ifdef VERBOSE_LOG
+  Serial.printf("\t h - %u -> %u\n", h, b->h);
+#endif
+  h = b->h;
+
+#ifdef VERBOSE_LOG
   Serial.printf("Moving from choice point %x to %x\n",
                 reinterpret_cast<uint8_t *>(b) - stack,
                 reinterpret_cast<uint8_t *>(b->b) - stack);
 #endif
 
   b = b->b;
+  hb = h;
 }
 
 void greaterThan() {
@@ -1277,12 +1350,17 @@ void bind(Value &a1, Value &a2) {
 }
 
 void addToTrail(HeapIndex a) {
+  if (a < hb) {
 #ifdef VERBOSE_LOG
-  Serial.printf("Adding %u to the trail\n", a);
+    Serial.printf("Adding %u to the trail\n", a);
 #endif
-
-  trail[tr] = a;
-  tr = tr + 1;
+    trail[tr] = a;
+    tr = tr + 1;
+  } else {
+#ifndef VERBOSE_LOG
+    Serial.printf("Address %u is not conditional\n", a);
+#endif
+  }
 }
 
 void unwindTrail(TrailIndex a1, TrailIndex a2) {

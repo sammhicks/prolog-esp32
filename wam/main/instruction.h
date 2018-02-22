@@ -12,6 +12,7 @@ enum class Opcode : uint8_t {
   putList = 0x05,
   putConstant = 0x06,
   putInteger = 0x07,
+  putVoid = 0x08,
   // Get
   getVariableXnAi = 0x10,
   getVariableYnAi = 0x11,
@@ -28,6 +29,7 @@ enum class Opcode : uint8_t {
   setValueYn = 0x23,
   setConstant = 0x26,
   setInteger = 0x27,
+  setVoid = 0x28,
   // Unify
   unifyVariableXn = 0x30,
   unifyVariableYn = 0x31,
@@ -35,6 +37,7 @@ enum class Opcode : uint8_t {
   unifyValueYn = 0x33,
   unifyConstant = 0x36,
   unifyInteger = 0x37,
+  unifyVoid = 0x38,
   // Control
   allocate = 0x40,
   deallocate = 0x41,

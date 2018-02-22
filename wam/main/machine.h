@@ -8,7 +8,7 @@
 #include "raw-io.h"
 #include "value.h"
 
-//#define VERBOSE_LOG
+#define VERBOSE_LOG
 
 extern const char *codePath;
 extern const char *labelTablePath;
@@ -48,6 +48,7 @@ struct ChoicePoint {
   ChoicePoint *b;
   LabelIndex bp;
   TrailIndex tr;
+  HeapIndex h;
   Arity n;
   Value args[0];
 };
@@ -67,6 +68,7 @@ extern CodeIndex haltIndex;
 extern TrailIndex tr;
 extern Environment *e;
 extern ChoicePoint *b;
+extern HeapIndex hb;
 
 extern Value registers[registerCount];
 extern Value heap[heapSize];
@@ -92,6 +94,7 @@ void putStructure(Functor f, Arity n, Ai ai);
 void putList(Ai ai);
 void putConstant(Constant c, Ai ai);
 void putInteger(Integer i, Ai ai);
+void putVoid(VoidCount n, Ai ai);
 
 void getVariableXnAi(Xn xn, Ai ai);
 void getVariableYnAi(Yn yn, Ai ai);
@@ -108,6 +111,7 @@ void setValueXn(Xn xn);
 void setValueYn(Yn yn);
 void setConstant(Constant c);
 void setInteger(Integer i);
+void setVoid(VoidCount n);
 
 void unifyVariableXn(Xn xn);
 void unifyVariableYn(Yn yn);
@@ -115,6 +119,7 @@ void unifyValueXn(Xn xn);
 void unifyValueYn(Yn yn);
 void unifyConstant(Constant c);
 void unifyInteger(Integer i);
+void unifyVoid(VoidCount n);
 
 void allocate(EnvironmentSize n);
 void deallocate();

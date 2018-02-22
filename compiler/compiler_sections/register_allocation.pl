@@ -23,47 +23,50 @@ allocate_atom_registers(Atom_Terms, Permanent_Variables, Allocation) :-
 
 allocate_atom_terms_registers([], [], State, State).
 
-allocate_atom_terms_registers([(a(Addr)=A)|As], [(a(Addr)=B)|Bs], State0, State) :-
-	allocate_atom_term_registers(A, B, State0, State1),
-	allocate_atom_terms_registers(As, Bs, State1, State).
+allocate_atom_terms_registers([(a(Addr)=A)|As], [(a(Addr)=B)|Bs]) -->
+	allocate_atom_term_registers(A, B),
+	allocate_atom_terms_registers(As, Bs).
 
 
 allocate_atom_term_registers(c(C), c(C), State, State).
 
 allocate_atom_term_registers(i(I), i(I), State, State).
 
-allocate_atom_term_registers(s(F, Ts), s(F, Bs), State0, State) :-
-	reserve_registers(Ts, As, State0, State1),
-	allocate_structure_terms_registers(As, Bs, State1, State).
+allocate_atom_term_registers(s(F, Ts), s(F, Bs)) -->
+	reserve_registers(Ts, As),
+	allocate_structure_terms_registers(As, Bs).
 
-allocate_atom_term_registers(l(Head, Tail), l(Head_Allocation, Tail_Allocation), State0, State) :-
-	allocate_atom_term_registers(s(_, [Head, Tail]), s(_, [Head_Allocation, Tail_Allocation]), State0, State).
+allocate_atom_term_registers(l(Head, Tail), l(Head_Allocation, Tail_Allocation)) -->
+	allocate_atom_term_registers(s(_, [Head, Tail]), s(_, [Head_Allocation, Tail_Allocation])).
 
-allocate_atom_term_registers(v(V), A, State0, State) :-
-	reserve_register(v(V), A, State0, State).
+allocate_atom_term_registers(v('_'), v('_'), State, State) :-
+	!.
+
+allocate_atom_term_registers(v(V), A) -->
+	reserve_register(v(V), A).
 
 
 allocate_structure_terms_registers([], [], State, State).
 
-allocate_structure_terms_registers([Term|Terms], [Term_Allocation|Terms_Allocation], State0, State) :-
-	allocate_structure_term_registers(Term, Term_Allocation, State0, State1),
-	allocate_structure_terms_registers(Terms, Terms_Allocation, State1, State).
+allocate_structure_terms_registers([Term|Terms], [Term_Allocation|Terms_Allocation]) -->
+	allocate_structure_term_registers(Term, Term_Allocation),
+	allocate_structure_terms_registers(Terms, Terms_Allocation).
 
 
 allocate_structure_term_registers(c(C), c(C), State, State).
 
 allocate_structure_term_registers(i(I), i(I), State, State).
 
-allocate_structure_term_registers(X=A, X=B, State0, State) :-
-	allocate_structure_term_assignment_registers(A, B, State0, State).
+allocate_structure_term_registers(X=A, X=B) -->
+	allocate_structure_term_assignment_registers(A, B).
 
 
-allocate_structure_term_assignment_registers(s(F, Terms), s(F, Terms_Allocation), State0, State) :-
-	reserve_registers(Terms, Intermediate_Terms_Allocation, State0, State1),
-	allocate_structure_terms_registers(Intermediate_Terms_Allocation, Terms_Allocation, State1, State).
+allocate_structure_term_assignment_registers(s(F, Terms), s(F, Terms_Allocation)) -->
+	reserve_registers(Terms, Intermediate_Terms_Allocation),
+	allocate_structure_terms_registers(Intermediate_Terms_Allocation, Terms_Allocation).
 
-allocate_structure_term_assignment_registers(l(Head, Tail), l(Head_Allocation, Tail_Allocation), State0, State) :-
-	allocate_structure_term_assignment_registers(s(_, [Head, Tail]), s(_, [Head_Allocation, Tail_Allocation]), State0, State).
+allocate_structure_term_assignment_registers(l(Head, Tail), l(Head_Allocation, Tail_Allocation)) -->
+	allocate_structure_term_assignment_registers(s(_, [Head, Tail]), s(_, [Head_Allocation, Tail_Allocation])).
 
 allocate_structure_term_assignment_registers(v(V), v(V), State, State).
 
@@ -86,9 +89,9 @@ register_allocation_state(state(Variables, Next_Register), Variables, Next_Regis
 
 reserve_atom_arguments_registers([], [], State, State).
 
-reserve_atom_arguments_registers([Arg|Args], [Allocation|Allocations], State0, State) :-
-	reserve_atom_argument_register(Arg, Allocation, State0, State1),
-	reserve_atom_arguments_registers(Args, Allocations, State1, State).
+reserve_atom_arguments_registers([Arg|Args], [Allocation|Allocations]) -->
+	reserve_atom_argument_register(Arg, Allocation),
+	reserve_atom_arguments_registers(Args, Allocations).
 
 
 reserve_atom_argument_register(Argument, a(Register)=Argument, State0, State) :-
@@ -99,9 +102,9 @@ reserve_atom_argument_register(Argument, a(Register)=Argument, State0, State) :-
 
 reserve_registers([], [], State, State).
 
-reserve_registers([Term|Terms], [Allocation|Allocations], State0, State) :-
-	reserve_register(Term, Allocation, State0, State1),
-	reserve_registers(Terms, Allocations, State1, State).
+reserve_registers([Term|Terms], [Allocation|Allocations]) -->
+	reserve_register(Term, Allocation),
+	reserve_registers(Terms, Allocations).
 
 
 reserve_register(c(C), c(C), State, State).

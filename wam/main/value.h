@@ -14,6 +14,7 @@ typedef uint16_t Functor;
 typedef uint8_t Arity;
 typedef uint16_t Constant;
 typedef int16_t Integer;
+typedef uint8_t VoidCount;
 
 struct Value {
   enum class Type : uint8_t { reference, structure, list, constant, integer };
