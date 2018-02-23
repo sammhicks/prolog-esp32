@@ -17,16 +17,16 @@ allocate_permanent_variables(Head_Terms, Goals, Ordered_Permanent_Variables, Alr
 	goals_permanent_variables(Goals_Variables, Permanent_Variables, Goals_Permanent_Variables),
 	order_permanent_variables(Goals_Permanent_Variables, Ordered_Permanent_Variables),
 	already_declared_permanent_variables(Goals_Permanent_Variables, Head_Permanent_Variables, Already_Declared_Permanent_Variables),
-	goals_trimmed_variables(Goals_Permanent_Variables, Goals_Trimmed_Variables) .
+	goals_trimmed_variables(Goals_Permanent_Variables, Goals_Trimmed_Variables).
 
 
-permanent_variables([Goal_Variables|Goals_Variables], Vs, Vs_Final) :-
-	select(V, Goal_Variables, Remaining_Goal_Variables),
-	append(Goals_Variables, Other_Variables),
-	member(V, Other_Variables),
+permanent_variables([Goal_Variables|Goals_Variables], Variables, Final_Variables) :-
+	select(Variable, Goal_Variables, Remaining_Goal_Variables),
+	ord_union(Goals_Variables, Other_Variables),
+	is_permanent(Variable, Other_Variables),
 	!,
-	ord_add_element(Vs, V, VAll),
-	permanent_variables([Remaining_Goal_Variables|Goals_Variables], VAll, Vs_Final).
+	ord_add_element(Variables, Variable, All_Variables),
+	permanent_variables([Remaining_Goal_Variables|Goals_Variables], All_Variables, Final_Variables).
 
 
 permanent_variables([_|Goals_Variables], Vs, Vs_Final) :-
@@ -34,6 +34,13 @@ permanent_variables([_|Goals_Variables], Vs, Vs_Final) :-
 
 
 permanent_variables([], Vs, Vs).
+
+
+is_permanent(cut, _Other_Variables) :-
+	!.
+
+is_permanent(Variable, Other_Variables) :-
+	ord_memberchk(Variable, Other_Variables).
 
 
 goals_permanent_variables([], _, []).
@@ -64,7 +71,8 @@ already_declared_permanent_variables([], _, []).
 
 
 already_declared_permanent_variables([Goal|Goals], Acc, [Acc|Rolling_Acc]) :-
-	ord_union(Goal, Acc, New_Acc),
+	ord_union(Goal, Acc, New_Acc_With_Cuts),
+	ord_del_element(New_Acc_With_Cuts, cut, New_Acc),
 	already_declared_permanent_variables(Goals, New_Acc, Rolling_Acc).
 
 

@@ -49,6 +49,7 @@ struct ChoicePoint {
   LabelIndex bp;
   TrailIndex tr;
   HeapIndex h;
+  ChoicePoint *b0;
   Arity n;
   Value args[0];
 };
@@ -68,6 +69,7 @@ extern CodeIndex haltIndex;
 extern TrailIndex tr;
 extern Environment *e;
 extern ChoicePoint *b;
+extern ChoicePoint *b0;
 extern HeapIndex hb;
 
 extern Value registers[registerCount];
@@ -131,6 +133,9 @@ void proceed();
 void tryMeElse(LabelIndex l);
 void retryMeElse(LabelIndex l);
 void trustMe();
+void neckCut();
+void getLevel(Yn yn);
+void cut(Yn yn);
 
 void greaterThan();
 void lessThan();
@@ -165,7 +170,7 @@ Value &deref(HeapIndex h);
 void bind(Value &a1, Value &a2);
 void addToTrail(HeapIndex a);
 void unwindTrail(TrailIndex a1, TrailIndex a2);
-// void tidyTrail();
+void tidyTrail();
 bool unify(Value &a1, Value &a2);
 Comparison compare(Integer i1, Integer i2);
 Comparison compare(Value &a1, Value &a2);

@@ -5,7 +5,15 @@
 
 last_call_optimisation([], []).
 
-last_call_optimisation([call(Functor), trim(_), deallocate|Codes], [deallocate, execute(Functor)|Optimised_Codes]) :-
+last_call_optimisation([call(Functor), end_of_rule|Codes], [execute(Functor)|Optimised_Codes]) :-
+	!,
+	last_call_optimisation(Codes, Optimised_Codes).
+
+last_call_optimisation([call(Functor), trim(_), deallocate, end_of_rule|Codes], [deallocate, execute(Functor)|Optimised_Codes]) :-
+	!,
+	last_call_optimisation(Codes, Optimised_Codes).
+
+last_call_optimisation([end_of_rule|Codes], [proceed|Optimised_Codes]) :-
 	!,
 	last_call_optimisation(Codes, Optimised_Codes).
 

@@ -14,6 +14,8 @@ allocate_goals_registers([Goal|Goals], Permanent_Variables, [Goal_Allocation|Goa
 allocate_goal_registers(goal(Functor, Terms), Permanent_Variables, goal(Functor, Allocation)) :-
 	allocate_atom_registers(Terms, Permanent_Variables, Allocation).
 
+allocate_goal_registers(cut, _Permanent_Variables, cut).
+
 
 allocate_atom_registers(Atom_Terms, Permanent_Variables, Allocation) :-
 	init_register_allocation(Permanent_Variables, State0),

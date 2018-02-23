@@ -50,6 +50,9 @@ goals(Term, [Goal]) :-
 	goal(Term, Goal).
 
 
+goal(!, cut) :-
+	!.
+
 goal(Term, goal(Functor, Arguments)) :-
 	structure(Term, s(Functor, Arguments)).
 

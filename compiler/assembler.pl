@@ -184,6 +184,17 @@ assemble_code(retry_me_else(ID)) -->
 assemble_code(trust_me) -->
 	[0x52].
 
+assemble_code(neck_cut) -->
+	[0x53].
+
+assemble_code(get_level(y(Yn))) -->
+	[0x54],
+	register_index(Yn).
+
+assemble_code(cut(y(Yn))) -->
+	[0x55],
+	register_index(Yn).
+
 
 put_variable(x(N), Ai) -->
 	[0x00],
