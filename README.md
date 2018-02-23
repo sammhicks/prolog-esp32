@@ -20,13 +20,12 @@ Running Prolog code on a microcontroller
 + Heap and Stack differentiation in Instruction and Value headers
     + Saves on space
     + Minimal code complexity increase
-+ Functors used in `is` operation have specific functor ids &lt; 128, others have ids &gt;= 128
++ Functors used in `is` operation have specific functor ids
     + Operators can easily be mapped to functor of ASCII character id
-    + No clash of functor id
-    + Minimal wasted space
-        + We probably don't need 65280 different functor ids
 + Base Stack Frame contains register state after query runs
     + Registers recovered on success
     + Allows results to be read from the microcontroller
 + Register and Stack value indexes start at 0
     + Translates more naturally into C arrays
++ I insert proceed instructions after deallocate instructions not succeeded by an execute instruction
+    + Solves edge case of returning from virtual predicates and cuts

@@ -18,6 +18,7 @@ CodeIndex haltIndex;
 TrailIndex tr;
 Environment *e;
 ChoicePoint *b;
+ChoicePoint *b0;
 HeapIndex hb;
 
 Value registers[registerCount];
@@ -44,6 +45,8 @@ void resetMachine() {
   b->bp = 0;
   b->tr = 0;
   b->n = 0;
+
+  b0 = b;
 }
 
 void executeInstructions(Client *client) {
@@ -284,6 +287,18 @@ void executeInstruction() {
     Serial.println("trustMe");
     Instructions::trustMe();
     break;
+  case Opcode::neckCut:
+    Serial.println("neckCut");
+    Instructions::neckCut();
+    break;
+  case Opcode::getLevel:
+    Serial.println("getLevel");
+    Instructions::getLevel(read<Yn>());
+    break;
+  case Opcode::cut:
+    Serial.println("cut");
+    Instructions::cut(read<Yn>());
+    break;
   case Opcode::greaterThan:
     Serial.println("greaterThan");
     Instructions::greaterThan();
@@ -357,9 +372,8 @@ void executeInstruction() {
     Instructions::analogWritePin();
     break;
   default:
-    Serial.print("Unknown opcode ");
-    Serial.println(static_cast<int>(opcode), HEX);
-    Ancillary::backtrack();
+    Serial.printf("Unknown opcode %x\n", static_cast<uint8_t>(opcode));
+    Ancillary::failWithException();
     break;
   }
 }
@@ -375,6 +389,7 @@ using Ancillary::failWithException;
 using Ancillary::getChannel;
 using Ancillary::getPin;
 using Ancillary::lookupLabel;
+using Ancillary::tidyTrail;
 using Ancillary::topOfStack;
 using Ancillary::unify;
 using Ancillary::unwindTrail;
@@ -922,7 +937,7 @@ void allocate(EnvironmentSize n) {
 void trim(EnvironmentSize n) {
 #ifdef VERBOSE_LOG
   Serial.printf("Trimming %u items\n", n);
-  Serial.printf("Environment size from %u", e->n);
+  Serial.printf("Environment size from %u\n", e->n);
 #endif
 
   e->n -= n;
@@ -953,26 +968,27 @@ void call(LabelIndex p) {
     cp = haltIndex;
     break;
   case ExecuteModes::program:
-#ifdef VERBOSE_LOG
-    Serial.printf("\tcp - %u\n", programFile->position());
-#endif
     cp = programFile->position();
     break;
   }
   LabelTableEntry entry = lookupLabel(p);
 
 #ifdef VERBOSE_LOG
+  Serial.printf("\tcp - %u\n", cp);
+  Serial.printf("\tb - %u\n", reinterpret_cast<uint8_t *>(b) - stack);
   Serial.printf("\tp - %u\n", entry.entryPoint);
   Serial.printf("\targument count - %u\n", entry.arity);
 #endif
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
+  b0 = b;
 }
 
 void execute(LabelIndex p) {
 #ifdef VERBOSE_LOG
   Serial.printf("Executing label %u:\n", p);
+  Serial.printf("\tb - %u\n", reinterpret_cast<uint8_t *>(b) - stack);
 #endif
 
   LabelTableEntry entry = lookupLabel(p);
@@ -984,6 +1000,7 @@ void execute(LabelIndex p) {
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
+  b0 = b;
 }
 
 void proceed() {
@@ -1001,11 +1018,12 @@ void tryMeElse(LabelIndex l) {
                 reinterpret_cast<uint8_t *>(newChoicePoint) - stack);
   Serial.printf("\tce - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
   Serial.printf("\tcp - %u\n", cp);
-  Serial.printf("\tb - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
+  Serial.printf("\tb  - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
   Serial.printf("\tbp - %u\n", l);
   Serial.printf("\ttr - %u\n", tr);
-  Serial.printf("\th - %u\n", h);
-  Serial.printf("\tn - %u\n", argumentCount);
+  Serial.printf("\th  - %u\n", h);
+  Serial.printf("\tb0 - %u\n", reinterpret_cast<uint8_t *>(b0) - stack);
+  Serial.printf("\tn  - %u\n", argumentCount);
   Serial.printf(
       "\ttop of stack - %x\n",
       reinterpret_cast<uint8_t *>(newChoicePoint->args + argumentCount) -
@@ -1018,6 +1036,7 @@ void tryMeElse(LabelIndex l) {
   newChoicePoint->bp = l;
   newChoicePoint->tr = tr;
   newChoicePoint->h = h;
+  newChoicePoint->b0 = b0;
   newChoicePoint->n = argumentCount;
   for (Arity n = 0; n < argumentCount; ++n) {
     newChoicePoint->args[n] = registers[n];
@@ -1029,10 +1048,10 @@ void tryMeElse(LabelIndex l) {
 
 void retryMeElse(LabelIndex l) {
 #ifdef VERBOSE_LOG
-  Serial.printf("\te - %x", reinterpret_cast<uint8_t *>(b->ce) - stack);
-  Serial.printf("\tce - %u", b->cp);
-  Serial.printf("\tbp - %u", l);
-  Serial.printf("\tn - %u", b->n);
+  Serial.printf("\te - %x\n", reinterpret_cast<uint8_t *>(b->ce) - stack);
+  Serial.printf("\tce - %u\n", b->cp);
+  Serial.printf("\tbp - %u\n", l);
+  Serial.printf("\tn - %u\n", b->n);
 #endif
 
   for (Arity n = 0; n < b->n; ++n) {
@@ -1080,6 +1099,52 @@ void trustMe() {
 
   b = b->b;
   hb = h;
+}
+
+void neckCut() {
+  if (b > b0) {
+#ifdef VERBOSE_LOG
+    Serial.printf("Cutting %u to %u\n", reinterpret_cast<uint8_t *>(b) - stack,
+                  reinterpret_cast<uint8_t *>(b0) - stack);
+#endif
+
+    b = b0;
+    tidyTrail();
+  }
+}
+
+void getLevel(Yn yn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+#endif
+
+  Level level = reinterpret_cast<uint8_t *>(b0) - stack;
+
+#ifdef VERBOSE_LOG
+  Serial.printf("Level is %u\n", level);
+#endif
+
+  e->ys[yn].makeLevel(level);
+}
+
+void cut(Yn yn) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Yn - %u\n", yn);
+#endif
+
+  if (e->ys[yn].type != Value::Type::level) {
+    Serial.println("Value is not a level");
+    failWithException();
+    return;
+  }
+
+  ChoicePoint *newChoicePoint =
+      reinterpret_cast<ChoicePoint *>(stack + e->ys[yn].level);
+
+  if (b > newChoicePoint) {
+    b = newChoicePoint;
+    tidyTrail();
+  }
 }
 
 void greaterThan() {
@@ -1330,7 +1395,7 @@ void backtrack() {
   Serial.println("\n ---- Backtrack! ---- \n");
 
 #ifdef VERBOSE_LOG
-  Serial.printf("Choice point: %x", reinterpret_cast<uint8_t *>(b) - stack);
+  Serial.printf("Choice point: %x\n", reinterpret_cast<uint8_t *>(b) - stack);
 #endif
 
   if (static_cast<void *>(b) == static_cast<void *>(stack)) {
@@ -1338,7 +1403,13 @@ void backtrack() {
     return;
   }
 
-  // b0 = b;
+#ifdef VERBOSE_LOG
+  Serial.printf("Moving b0 from %x to %x\n",
+                reinterpret_cast<uint8_t *>(b0) - stack,
+                reinterpret_cast<uint8_t *>(b->b0) - stack);
+#endif
+
+  b0 = b->b0;
   programFile->seek(lookupLabel(b->bp).entryPoint);
 }
 
@@ -1412,7 +1483,16 @@ void unwindTrail(TrailIndex a1, TrailIndex a2) {
   }
 }
 
-// void tidyTrail();
+void tidyTrail() {
+  for (TrailIndex i = b->tr; i < tr;) {
+    if (trail[i] < hb) {
+      --i;
+    } else {
+      trail[i] = trail[tr - 1];
+      --tr;
+    }
+  }
+}
 
 bool unify(Value &a1, Value &a2) {
 #ifdef VERBOSE_LOG
@@ -1594,7 +1674,7 @@ uint8_t getChannel(Value &a) {
   }
 
   if (channelInt < 0 || channelInt > 15) {
-    Serial.printf("Invalid channel number \"%i\"",
+    Serial.printf("Invalid channel number \"%i\"\n",
                   static_cast<int>(channelInt));
 
     failWithException();

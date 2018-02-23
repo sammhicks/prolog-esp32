@@ -30,6 +30,11 @@ void Value::makeInteger(Integer newI) {
   i = newI;
 }
 
+void Value::makeLevel(Level newLevel) {
+  type = Type::level;
+  level = newLevel;
+}
+
 void Value::dump() {
   switch (type) {
   case Value::Type::reference:

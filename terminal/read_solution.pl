@@ -7,9 +7,10 @@
 :- use_module(microcontroller_io).
 
 
-read_solution(_Stream, Query, _Constants, _Structures) :-
+read_solution(Stream, Query, _Constants, _Structures) :-
 	atom(Query),
-	!.
+	!,
+	get_byte(Stream, 0).
 
 read_solution(Stream, Query, Constants, Structures) :-
 	setup_state(Empty_State, Constants, Structures),

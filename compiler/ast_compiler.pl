@@ -179,7 +179,7 @@ compile_rule_ast(Terms, Goals, Codes, Codes_Tail) :-
 	allocate_atom_registers(Terms, Permanent_Variables, Terms_Allocation),
 	allocate_goals_registers(Goals, Permanent_Variables, Goals_Allocation),
 	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables, Tokens, []),
-	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
+	convert_program_tokens(Tokens, [], Codes, [end_of_rule|Codes_Tail]).
 
 
 convert_program_tokens([], _) -->
@@ -189,6 +189,10 @@ convert_program_tokens([Token|Tokens], Rs0) -->
 	convert_program_token(Token, Rs0, Rs1),
 	convert_program_tokens(Tokens, Rs1).
 
+
+convert_program_token(Token, Rs, Rs, [Token|Codes], Codes) :-
+	unchanged_program_token(Token),
+	!.
 
 convert_program_token(x_a(X, A), Rs, Rs) -->
 	[get_value(X, A)],
@@ -244,20 +248,24 @@ convert_program_token(i(I), Rs, Rs) -->
 convert_program_token(void, Rs, Rs) -->
 	[unify_void(1)].
 
-convert_program_token(allocate(N), Rs, Rs) -->
-	[allocate(N)].
+convert_program_token(trim(0), Rs, Rs) -->
+	!,
+	[].
 
 convert_program_token(trim(N), Rs, Rs) -->
+	!,
 	[trim(N)].
-
-convert_program_token(deallocate, Rs, Rs) -->
-	[deallocate].
-
-convert_program_token(proceed, Rs, Rs) -->
-	[proceed].
 
 convert_program_token(goal(Tokens, Already_Declared_Permanent_Variables), Rs, Rs) -->
 	convert_query_tokens(Tokens, Already_Declared_Permanent_Variables).
+
+
+unchanged_program_token(allocate(_)).
+unchanged_program_token(deallocate).
+unchanged_program_token(proceed).
+unchanged_program_token(neck_cut).
+unchanged_program_token(get_level(_)).
+unchanged_program_token(cut(_)).
 
 
 disjunction_retry(Functor/Arity, retry(Functor)/Arity) -->
