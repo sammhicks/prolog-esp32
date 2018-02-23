@@ -3,11 +3,9 @@
 	      open_connection/0,
 	      close_connection/0,
 	      ping/1,                   % -Result
+	      compile_program_file/2,	% +File, -Result
 	      compile_program/2,        % +Terms, -Result
-	      run_query/1,              % +Query
-	      read_register/2,          % +Xn, -Value
-	      read_memory/2,            % +H, -Value
-	      read_functor/2	        % +H, -Value
+	      run_query/1
 	  ]).
 
 
@@ -18,6 +16,7 @@
 :- use_module(command).
 :- use_module(microcontroller_io).
 :- use_module(read_solution).
+:- use_module(read_terms).
 
 :- dynamic(current_connection/1).
 :- dynamic(program_compile_state/1).
@@ -49,6 +48,12 @@ ping(Result) :-
 	;   Result = failure(Body, Response)).
 
 
+compile_program_file(File, Result) :-
+	read_terms_from_file(File, Program),
+	compile_program(Program, Result).
+
+
+
 compile_program(Program, Result) :-
 	retractall(program_compile_state(_)),
 	compile_program(Program, State, Program_Bytes, Label_Table_Bytes),
@@ -74,20 +79,8 @@ run_query(Query) :-
 	process_results(Results, Stream, Query, Constants, Structures).
 
 
-read_register(Xn, Value) :-
-	current_connection(Stream),
-	read_register(Stream, Xn, Value).
-
-
-read_memory(H, Value) :-
-	current_connection(Stream),
-	read_memory(Stream, H, Value).
-
-
-read_functor(H, Functor/Arity) :-
-	current_connection(Stream),
-	read_functor(Stream, H, Functor, Arity).
-
+process_results(exception, _, _, _, _) :-
+	throw("Microcontroller threw exception").
 
 process_results(success, Stream, Query, Constants, Structures) :-
 	read_solution(Stream, Query, Constants, Structures).

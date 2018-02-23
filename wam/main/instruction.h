@@ -12,6 +12,7 @@ enum class Opcode : uint8_t {
   putList = 0x05,
   putConstant = 0x06,
   putInteger = 0x07,
+  putVoid = 0x08,
   // Get
   getVariableXnAi = 0x10,
   getVariableYnAi = 0x11,
@@ -28,6 +29,7 @@ enum class Opcode : uint8_t {
   setValueYn = 0x23,
   setConstant = 0x26,
   setInteger = 0x27,
+  setVoid = 0x28,
   // Unify
   unifyVariableXn = 0x30,
   unifyVariableYn = 0x31,
@@ -35,16 +37,48 @@ enum class Opcode : uint8_t {
   unifyValueYn = 0x33,
   unifyConstant = 0x36,
   unifyInteger = 0x37,
+  unifyVoid = 0x38,
   // Control
   allocate = 0x40,
-  deallocate = 0x41,
-  call = 0x42,
-  execute = 0x43,
-  proceed = 0x44,
+  trim = 0x41,
+  deallocate = 0x42,
+  call = 0x43,
+  execute = 0x44,
+  proceed = 0x45,
   // Choice
   tryMeElse = 0x50,
   retryMeElse = 0x51,
-  trustMe = 0x52
+  trustMe = 0x52,
+  neckCut = 0x53,
+  getLevel = 0x54,
+  cut = 0x55,
+  // Arithmetic Operations
+  greaterThan = 0x60,
+  lessThan = 0x61,
+  lessThanOrEqualTo = 0x62,
+  greaterThanOrEqualTo = 0x63,
+  notEqual = 0x64,
+  equals = 0x65,
+  is = 0x66,
+  // Misc
+  noOp = 0x70,
+  fail = 0x71,
+  unify = 0x72,
+  configureDigitalPin = 0x80,
+  digitalReadPin = 0x81,
+  digitalWritePin = 0x82,
+  pinIsAnalogInput = 0x84,
+  configureChannel = 0x85,
+  pinIsAnalogOutput = 0x86,
+  analogReadPin = 0x87,
+  analogWritePin = 0x88,
+};
+
+enum class DigitalPinModes : uint8_t {
+  Input = 0x00,
+  Output = 0x01,
+  InputPullup = 0x02,
+  InputPulldown = 0x03,
 };
 
 typedef uint8_t Xn;

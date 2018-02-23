@@ -1,7 +1,7 @@
 
 :- module(ast_compiler, [
-	      compile_query_ast//1,     % +Query_AST
-	      compile_program_ast//1    % +Program_AST
+	      compile_query_ast/2,      % +Query_AST, -Codes
+	      compile_program_ast/2     % +Program_AST, -Codes
 	  ]).
 
 :- use_module(library(lists)).
@@ -9,13 +9,16 @@
 :- use_module(compiler_sections/register_allocation).
 :- use_module(compiler_sections/tokenization).
 :- use_module(compiler_sections/permanent_variables).
+:- use_module(compiler_sections/void_variables).
+:- use_module(compiler_sections/last_call_optimisation).
 
 % --- Query ---
 
-compile_query_ast(query(Functor, Terms), Codes, Codes_Tail) :-
+compile_query_ast(query(Functor, Terms), Combined_Codes) :-
 	allocate_atom_registers(Terms, [], Allocation),
 	tokenize_query_allocation(Functor, Allocation, Tokens, []),
-	convert_query_tokens(Tokens, [], Codes, Codes_Tail).
+	convert_query_tokens(Tokens, [], Codes, []),
+	combine_voids(Codes, Combined_Codes).
 
 
 convert_query_tokens([], _) -->
@@ -26,20 +29,9 @@ convert_query_tokens([Token|Tokens], Rs0) -->
 	convert_query_tokens(Tokens, Rs1).
 
 
-convert_query_token(call(Atom), Rs, Rs) -->
-	[call(Atom)].
-
-convert_query_token(c_a(C, A), Rs, Rs) -->
-	[put_constant(C, A)].
-
-convert_query_token(i_a(I, A), Rs, Rs) -->
-	[put_integer(I, A)].
-
-convert_query_token(s_x(S, X), Rs, Rs) -->
-	[put_structure(S, X)].
-
-convert_query_token(l_x(X), Rs, Rs) -->
-	[put_list(X)].
+convert_query_token(Token, Rs, Rs, [Token|Tokens], Tokens) :-
+	unchanged_token(Token),
+	!.
 
 convert_query_token(x_a(X, A), Rs, Rs) -->
 	[put_value(X, A)],
@@ -51,11 +43,20 @@ convert_query_token(x_a(X, A), Rs, Rs) -->
 convert_query_token(x_a(X, A), Rs, [X|Rs]) -->
 	[put_variable(X, A)].
 
-convert_query_token(c(C), Rs, Rs) -->
-	[set_constant(C)].
+convert_query_token(s_x(S, X), Rs, [X|Rs]) -->
+	[put_structure(S, X)].
 
-convert_query_token(i(I), Rs, Rs) -->
-	[set_integer(I)].
+convert_query_token(l_x(X), Rs, [X|Rs]) -->
+	[put_list(X)].
+
+convert_query_token(c_a(C, A), Rs, Rs) -->
+	[put_constant(C, A)].
+
+convert_query_token(i_a(I, A), Rs, Rs) -->
+	[put_integer(I, A)].
+
+convert_query_token(v_a(A), Rs, Rs) -->
+	[put_void(1, A)].
 
 convert_query_token(x(X), Rs, Rs) -->
 	[set_value(x(X))],
@@ -77,14 +78,53 @@ convert_query_token(y(Y), Rs, Rs) -->
 convert_query_token(y(Y), Rs, [y(Y)|Rs]) -->
 	[set_variable(y(Y))].
 
+convert_query_token(c(C), Rs, Rs) -->
+	[set_constant(C)].
+
+convert_query_token(i(I), Rs, Rs) -->
+	[set_integer(I)].
+
+convert_query_token(void, Rs, Rs) -->
+	[set_void(1)].
+
+
+unchanged_token(call(_)).
+unchanged_token(>).
+unchanged_token(<).
+unchanged_token(=<).
+unchanged_token(>=).
+unchanged_token(=\=).
+unchanged_token(=:=).
+unchanged_token(is).
+unchanged_token(true).
+unchanged_token(fail).
+unchanged_token(=).
+unchanged_token(digital_input).
+unchanged_token(digital_output).
+unchanged_token(digital_input_pullup).
+unchanged_token(digital_input_pulldown).
+unchanged_token(digital_read).
+unchanged_token(digital_write).
+unchanged_token(analog_input).
+unchanged_token(configure_channel).
+unchanged_token(analog_output).
+unchanged_token(analog_read).
+unchanged_token(analog_write).
+
+
 % --- Program ---
 
-compile_program_ast([]) -->
-	[].
+compile_program_ast(Definitions, Codes) :-
+	compine_definitions_ast(Definitions, Codes0),
+	combine_voids(Codes0, Codes1),
+	last_call_optimisation(Codes1, Codes).
 
-compile_program_ast([Definition|Definitions]) -->
-	compile_definition_ast(Definition),
-	compile_program_ast(Definitions).
+
+compine_definitions_ast([], []).
+
+compine_definitions_ast([Definition|Definitions], Codes) :-
+	compile_definition_ast(Definition, Codes, Definitions_Codes),
+	compine_definitions_ast(Definitions, Definitions_Codes).
 
 
 compile_definition_ast(fact(Functor, Arguments)) -->
@@ -135,10 +175,10 @@ compile_fact_ast(Terms, Codes, Codes_Tail) :-
 
 
 compile_rule_ast(Terms, Goals, Codes, Codes_Tail) :-
-	allocate_permanent_variables(Terms, Goals, Permanent_Variables, Already_Declared_Permanent_Variables),
+	allocate_permanent_variables(Terms, Goals, Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables),
 	allocate_atom_registers(Terms, Permanent_Variables, Terms_Allocation),
 	allocate_goals_registers(Goals, Permanent_Variables, Goals_Allocation),
-	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Already_Declared_Permanent_Variables, Tokens, []),
+	tokenize_rule_allocation(Terms_Allocation, Goals_Allocation, Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables, Tokens, []),
 	convert_program_tokens(Tokens, [], Codes, Codes_Tail).
 
 
@@ -150,30 +190,6 @@ convert_program_tokens([Token|Tokens], Rs0) -->
 	convert_program_tokens(Tokens, Rs1).
 
 
-convert_program_token(goal(Tokens, Already_Declared_Permanent_Variables), Rs, Rs) -->
-	convert_query_tokens(Tokens, Already_Declared_Permanent_Variables).
-
-convert_program_token(proceed, Rs, Rs) -->
-	[proceed].
-
-convert_program_token(allocate(N), Rs, Rs) -->
-	[allocate(N)].
-
-convert_program_token(deallocate, Rs, Rs) -->
-	[deallocate].
-
-convert_program_token(c_a(C, A), Rs, Rs) -->
-	[get_constant(C, A)].
-
-convert_program_token(i_a(I, A), Rs, Rs) -->
-	[get_integer(I, A)].
-
-convert_program_token(s_x(S, X), Rs, Rs) -->
-	[get_structure(S, X)].
-
-convert_program_token(l_x(X), Rs, Rs) -->
-	[get_list(X)].
-
 convert_program_token(x_a(X, A), Rs, Rs) -->
 	[get_value(X, A)],
 	{
@@ -184,11 +200,20 @@ convert_program_token(x_a(X, A), Rs, Rs) -->
 convert_program_token(x_a(X, A), Rs, [X|Rs]) -->
 	[get_variable(X, A)].
 
-convert_program_token(c(C), Rs, Rs) -->
-	[unify_constant(C)].
+convert_program_token(s_x(S, X), Rs, Rs) -->
+	[get_structure(S, X)].
 
-convert_program_token(i(I), Rs, Rs) -->
-	[unify_integer(I)].
+convert_program_token(l_x(X), Rs, Rs) -->
+	[get_list(X)].
+
+convert_program_token(c_a(C, A), Rs, Rs) -->
+	[get_constant(C, A)].
+
+convert_program_token(i_a(I, A), Rs, Rs) -->
+	[get_integer(I, A)].
+
+convert_program_token(v_a(a(_)), Rs, Rs) -->
+	[].
 
 convert_program_token(x(X), Rs, Rs) -->
 	[unify_value(x(X))],
@@ -209,6 +234,30 @@ convert_program_token(y(Y), Rs, Rs) -->
 
 convert_program_token(y(Y), Rs, [y(Y)|Rs]) -->
 	[unify_variable(y(Y))].
+
+convert_program_token(c(C), Rs, Rs) -->
+	[unify_constant(C)].
+
+convert_program_token(i(I), Rs, Rs) -->
+	[unify_integer(I)].
+
+convert_program_token(void, Rs, Rs) -->
+	[unify_void(1)].
+
+convert_program_token(allocate(N), Rs, Rs) -->
+	[allocate(N)].
+
+convert_program_token(trim(N), Rs, Rs) -->
+	[trim(N)].
+
+convert_program_token(deallocate, Rs, Rs) -->
+	[deallocate].
+
+convert_program_token(proceed, Rs, Rs) -->
+	[proceed].
+
+convert_program_token(goal(Tokens, Already_Declared_Permanent_Variables), Rs, Rs) -->
+	convert_query_tokens(Tokens, Already_Declared_Permanent_Variables).
 
 
 disjunction_retry(Functor/Arity, retry(Functor)/Arity) -->

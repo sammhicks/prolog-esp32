@@ -49,6 +49,14 @@ assemble_codes([Code|Codes]) -->
 	assemble_codes(Codes).
 
 
+assemble_code(Code, [Byte|Bytes], Bytes) :-
+	simple_code(Code, Byte),
+	!.
+
+assemble_code(Code, [0x80, Mode|Bytes], Bytes) :-
+	pin_mode(Code, Mode),
+	!.
+
 assemble_code(put_variable(Vn, Ai)) -->
 	put_variable(Vn, Ai).
 
@@ -72,6 +80,11 @@ assemble_code(put_constant(C, Ai)) -->
 assemble_code(put_integer(I, Ai)) -->
 	[0x07],
 	integer(I),
+	ai(Ai).
+
+assemble_code(put_void(N, Ai)) -->
+	[0x08],
+	void_count(N),
 	ai(Ai).
 
 assemble_code(get_variable(Vn, Ai)) -->
@@ -113,6 +126,10 @@ assemble_code(set_integer(I)) -->
 	[0x27],
 	constant(I).
 
+assemble_code(set_void(N)) -->
+	[0x28],
+	void_count(N).
+
 assemble_code(unify_variable(Vn)) -->
 	unify_variable(Vn).
 
@@ -127,22 +144,34 @@ assemble_code(unify_integer(I)) -->
 	[0x37],
 	integer(I).
 
+assemble_code(unify_void(N)) -->
+	[0x38],
+	void_count(N).
+
 assemble_code(allocate(N)) -->
 	[0x40],
-	uint8(N).
+	environment_size(N).
+
+assemble_code(trim(N)) -->
+	[0x41],
+	environment_size(N).
 
 assemble_code(deallocate) -->
-	[0x41].
+	[0x42].
 
 assemble_code(label(L)) -->
 	[label(L)].
 
 assemble_code(call(ID)) -->
-	[0x42],
+	[0x43],
+	term_id(ID).
+
+assemble_code(execute(ID)) -->
+	[0x44],
 	term_id(ID).
 
 assemble_code(proceed) -->
-	[0x44].
+	[0x45].
 
 assemble_code(try_me_else(ID)) -->
 	[0x50],
@@ -273,8 +302,42 @@ integer(I) -->
 	int16(I).
 
 
+void_count(N) -->
+	uint8(N).
+
+
 term_id(ID) -->
 	uint16(ID).
+
+
+environment_size(N) -->
+	uint8(N).
+
+
+simple_code(>, 0x60).
+simple_code(<, 0x61).
+simple_code(=<, 0x62).
+simple_code(>=, 0x63).
+simple_code(=\=, 0x64).
+simple_code(=:=, 0x65).
+simple_code(is, 0x66).
+simple_code(true, 0x70).
+simple_code(fail, 0x71).
+simple_code(=, 0x72).
+simple_code(digital_read, 0x81).
+simple_code(digital_write, 0x82).
+simple_code(analog_input, 0x84).
+simple_code(configure_channel, 0x85).
+simple_code(analog_output, 0x86).
+simple_code(analog_read, 0x87).
+simple_code(analog_write, 0x88).
+
+
+pin_mode(digital_input, 0x00).
+pin_mode(digital_output, 0x01).
+pin_mode(digital_input_pullup, 0x02).
+pin_mode(digital_input_pulldown, 0x03).
+
 
 
 assembly_state(state(Structures, Constants, Labels, Label_Table), Structures, Constants, Labels, Label_Table).

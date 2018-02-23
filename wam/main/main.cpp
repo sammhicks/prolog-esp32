@@ -6,6 +6,8 @@ void setup() {
   setupWiFi();
 
   SPIFFS.begin(true);
+
+  analogReadResolution(analogResolution);
 }
 
 void loop() {
@@ -41,14 +43,11 @@ void loop() {
         case Command::getNextAnswer:
           getNextAnswer(&client);
           break;
-        case Command::readRegister:
-          readRegister(client);
+        case Command::readStructure:
+          readStructure(client);
           break;
-        case Command::readMemory:
-          readMemory(client, true);
-          break;
-        case Command::readFunctor:
-          readMemory(client, false);
+        case Command::readList:
+          readList(client);
           break;
         default:
           Serial.printf("Unknown command %x\n",
@@ -125,19 +124,21 @@ void updateLabelTable(Client &client) {
   Serial.println("label table update complete");
 }
 
-void readRegister(Client &client) {
-  Serial.print("Reading Register: ");
-  Xn xn = Raw::read<Xn>(client);
-  Serial.println(xn, HEX);
-  Value &value = registers[xn];
-  Raw::writeBlock<Value>(client, Ancillary::deref(value));
+void readStructure(Client &client) {
+  HeapIndex hi = Raw::read<HeapIndex>(client);
+
+  Value header = heap[hi];
+
+  Raw::writeBlock(client, header);
+
+  for (Arity n = 1; n <= header.n; ++n) {
+    Raw::writeBlock(client, Ancillary::deref(heap[hi + n]));
+  }
 }
 
-void readMemory(Client &client, bool followReference) {
-  Serial.print("Reading Memory: ");
+void readList(Client &client) {
   HeapIndex hi = Raw::read<HeapIndex>(client);
-  Serial.println(hi, HEX);
-  Value &value = heap[hi];
-  Value &valueToWrite = followReference ? Ancillary::deref(value) : value;
-  Raw::writeBlock<Value>(client, valueToWrite);
+
+  Raw::writeBlock(client, Ancillary::deref(heap[hi + 0]));
+  Raw::writeBlock(client, Ancillary::deref(heap[hi + 1]));
 }

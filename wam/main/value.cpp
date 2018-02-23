@@ -33,13 +33,13 @@ void Value::makeInteger(Integer newI) {
 void Value::dump() {
   switch (type) {
   case Value::Type::reference:
-    Serial.printf("reference to %u\n", h);
+    Serial.printf("reference to %x\n", h);
     break;
   case Value::Type::structure:
-    Serial.printf("structure starting at %u\n", h);
+    Serial.printf("structure starting at %x\n", h);
     break;
   case Value::Type::list:
-    Serial.printf("list starting at %u\n", h);
+    Serial.printf("list starting at %x\n", h);
     break;
   case Value::Type::constant:
     Serial.printf("constant %u\n", c);

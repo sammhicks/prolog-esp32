@@ -7,9 +7,9 @@
 	      reset_machine/1,
 	      run_query/3,
 	      get_next_answer/2,
-	      read_register/3,
-	      read_memory/3,
-	      read_functor/4,
+	      fetch_structure/4,
+	      fetch_list/3,
+	      get_byte_block/2,
 	      put_bytes/2
 	  ]).
 
@@ -17,7 +17,6 @@
 :- use_module('..'/utility/bytes).
 :- use_module(command).
 :- use_module(value).
-
 
 
 check_hash(Stream, Hash) :-
@@ -63,25 +62,31 @@ get_next_answer(Stream, Results) :-
 	get_results(Stream, Results).
 
 
-read_register(Stream, Xn, Value) :-
-	uint8(Xn, TxBytes, []),
-	put_command_with_block(Stream, read_register, TxBytes),
-	get_byte_block(Stream, RxBytes),
-	value(Value, RxBytes, []).
+fetch_structure(Stream, H, Name, Arguments) :-
+	heap_index(H, Bytes, []),
+	put_command_with_block(Stream, fetch_structure, Bytes),
+	get_byte_block(Stream, Header),
+	functor_arity(Name, Arity, Header, []),
+	length(Arguments, Arity),
+	wrapped_values(Arguments, Stream).
 
 
-read_memory(Stream, H, Value) :-
-	uint16(H, TxBytes, []),
-	put_command_with_block(Stream, read_memory, TxBytes),
-	get_byte_block(Stream, RxBytes),
-	value(Value, RxBytes, []).
+fetch_list(Stream, H, [Head, Tail]) :-
+	heap_index(H, Bytes, []),
+	put_command_with_block(Stream, fetch_list, Bytes),
+	wrapped_values([Head, Tail], Stream).
 
 
-read_functor(Stream, H, Functor, Arity) :-
-	uint16(H, TxBytes, []),
-	put_command_with_block(Stream, read_functor, TxBytes),
-	get_byte_block(Stream, RxBytes),
-	functor_arity(Functor, Arity, RxBytes, []).
+wrapped_values([], _Stream).
+
+wrapped_values([Value|Values], Stream) :-
+	wrapped_value(Stream, Value),
+	wrapped_values(Values, Stream).
+
+
+wrapped_value(Stream, Value) :-
+	get_byte_block(Stream, Bytes),
+	value(Value, Bytes, []).
 
 
 put_command_with_block(Stream, Command, Block) :-
@@ -136,3 +141,5 @@ results(0, failure).
 results(1, success).
 
 results(2, choice_points).
+
+results(3, exception).

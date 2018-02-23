@@ -6,7 +6,9 @@
 	  ]).
 
 init_structures_state(State) :-
-	state(State, 0, []).
+	state(Empty_State, 0, []),
+	special_structures(Structures),
+	add_structures(Structures, Empty_State, State).
 
 
 allocate_structures(Codes, Mapped_Codes, State0, State) :-
@@ -79,6 +81,14 @@ structure_id(Functor, ID, State) :-
 	state(State, _, Allocation),
 	member(Functor-ID, Allocation),
 	!.
+
+
+special_structures([
+    +,
+    -,
+    *,
+    //
+]).
 
 
 state(structures(Next_ID, Allocation), Next_ID, Allocation).
