@@ -10,6 +10,7 @@
 :- use_module(compiler_sections/tokenization).
 :- use_module(compiler_sections/permanent_variables).
 :- use_module(compiler_sections/void_variables).
+:- use_module(compiler_sections/last_call_optimisation).
 
 % --- Query ---
 
@@ -113,9 +114,10 @@ unchanged_token(analog_write).
 
 % --- Program ---
 
-compile_program_ast(Definitions, Combined_Codes) :-
-	compine_definitions_ast(Definitions, Codes),
-	combine_voids(Codes, Combined_Codes).
+compile_program_ast(Definitions, Codes) :-
+	compine_definitions_ast(Definitions, Codes0),
+	combine_voids(Codes0, Codes1),
+	last_call_optimisation(Codes1, Codes).
 
 
 compine_definitions_ast([], []).

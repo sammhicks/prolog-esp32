@@ -124,6 +124,7 @@ void unifyVoid(VoidCount n);
 void allocate(EnvironmentSize n);
 void deallocate();
 void call(LabelIndex p);
+void execute(LabelIndex p);
 void proceed();
 
 void tryMeElse(LabelIndex l);

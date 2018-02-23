@@ -43,6 +43,10 @@ map_code(call(L), call(ID), Labels) :-
 	nth0(ID, Labels, L),
 	!.
 
+map_code(execute(L), execute(ID), Labels) :-
+	nth0(ID, Labels, L),
+	!.
+
 map_code(try_me_else(L), try_me_else(ID), Labels) :-
 	nth0(ID, Labels, L),
 	!.

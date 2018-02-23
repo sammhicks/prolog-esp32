@@ -260,6 +260,10 @@ void executeInstruction() {
     Serial.println("call");
     Instructions::call(read<LabelIndex>());
     break;
+  case Opcode::execute:
+    Serial.println("execute");
+    Instructions::execute(read<LabelIndex>());
+    break;
   case Opcode::proceed:
     Serial.println("proceed");
     Instructions::proceed();
@@ -918,7 +922,7 @@ void deallocate() {
                 reinterpret_cast<uint8_t *>(e->ce) - stack);
   Serial.printf("\tcp - %u\n", e->cp);
 #endif
-  programFile->seek(e->cp);
+  cp = e->cp;
   e = e->ce;
 }
 
@@ -938,6 +942,22 @@ void call(LabelIndex p) {
     cp = programFile->position();
     break;
   }
+  LabelTableEntry entry = lookupLabel(p);
+
+#ifdef VERBOSE_LOG
+  Serial.printf("\tp - %u\n", entry.entryPoint);
+  Serial.printf("\targument count - %u\n", entry.arity);
+#endif
+
+  programFile->seek(entry.entryPoint);
+  argumentCount = entry.arity;
+}
+
+void execute(LabelIndex p) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Executing label %u:\n", p);
+#endif
+
   LabelTableEntry entry = lookupLabel(p);
 
 #ifdef VERBOSE_LOG

@@ -162,6 +162,10 @@ assemble_code(call(ID)) -->
 	[0x42],
 	term_id(ID).
 
+assemble_code(execute(ID)) -->
+	[0x43],
+	term_id(ID).
+
 assemble_code(proceed) -->
 	[0x44].
 
