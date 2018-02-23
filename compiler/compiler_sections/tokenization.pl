@@ -2,7 +2,7 @@
 :- module(tokenization, [
 	      tokenize_query_allocation//2,     % +Functor, +Allocation
 	      tokenize_fact_allocation//1,      % +Allocation
-	      tokenize_rule_allocation//4       % +Allocation, +Goals, +Permanent_Variables, +Already_Declared_Permanent_Variables
+	      tokenize_rule_allocation//5       % +Allocation, +Goals, +Permanent_Variables, +Already_Declared_Permanent_Variables, +Trimmed_Variables
 	  ]).
 
 tokenize_query_allocation(Functor, Allocation) -->
@@ -17,27 +17,29 @@ tokenize_fact_allocation(Allocation) -->
 	[proceed].
 
 
-tokenize_rule_allocation(Allocation, Goals, Permanent_Variables, Already_Declared_Permanent_Variables) -->
+tokenize_rule_allocation(Allocation, Goals, Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables) -->
 	[allocate(Frame_Size)],
 	{
 	    length(Permanent_Variables, Frame_Size)
 	},
 	tokenize_atom_argument_allocation_list(Allocation),
 	tokenize_atom_argument_subterm_list(Allocation, program),
-	tokenize_goals_allocation(Goals, Already_Declared_Permanent_Variables),
+	tokenize_goals_allocation(Goals, Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables),
 	[deallocate].
 
 
-tokenize_goals_allocation([], []) -->
+tokenize_goals_allocation([], _, [], []) -->
 	[].
 
-tokenize_goals_allocation([Goal|Goals], [Goal_Already_Declared_Permanent_Variables|Goals_Already_Declared_Permanent_Variables]) -->
-	tokenize_goal_allocation(Goal, Goal_Already_Declared_Permanent_Variables),
-	tokenize_goals_allocation(Goals, Goals_Already_Declared_Permanent_Variables).
+tokenize_goals_allocation([Goal|Goals], Permanent_Variables, [Goal_Already_Declared_Permanent_Variables|Goals_Already_Declared_Permanent_Variables], [Goal_Trimmed_Variables|Goals_Trimmed_Variables]) -->
+	tokenize_goal_allocation(Goal, Permanent_Variables, Goal_Already_Declared_Permanent_Variables, Goal_Trimmed_Variables),
+	tokenize_goals_allocation(Goals, Permanent_Variables, Goals_Already_Declared_Permanent_Variables, Goals_Trimmed_Variables).
 
 
-tokenize_goal_allocation(goal(Functor, Allocation), Already_Declared_Permanent_Variables, [goal(Query_Tokens, Already_Declared_Permanent_Variables)|Tokens], Tokens) :-
-	tokenize_query_allocation(Functor, Allocation, Query_Tokens, []).
+tokenize_goal_allocation(goal(Functor, Allocation), Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables, All_Tokens, Tokens_Tail) :-
+	map_permanent_variables(Already_Declared_Permanent_Variables, Permanent_Variables, Mapped_Already_Declared_Permanent_Variables),
+	tokenize_query_allocation(Functor, Allocation, Query_Tokens, []),
+	All_Tokens = [goal(Query_Tokens, Mapped_Already_Declared_Permanent_Variables), trim(Trimmed_Variables)|Tokens_Tail].
 
 
 tokenize_atom_argument_allocation_list([]) -->
@@ -204,3 +206,15 @@ special_predicate(analog_input/1).
 special_predicate(analog_output/2).
 special_predicate(analog_read/2).
 special_predicate(analog_write/2).
+
+
+map_permanent_variables([], _Permanent_Variables, []).
+
+map_permanent_variables([Variable|Variables], Permanent_Variables, [Mapped_Variable|Mapped_Variables]) :-
+	map_permanent_variable(Variable, Permanent_Variables, Mapped_Variable),
+	map_permanent_variables(Variables, Permanent_Variables, Mapped_Variables).
+
+
+map_permanent_variable(Variable, Permanent_Variables, y(Mapped_Variable)) :-
+	nth0(Mapped_Variable, Permanent_Variables, Variable),
+	!.

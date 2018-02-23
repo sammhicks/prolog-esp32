@@ -40,10 +40,11 @@ enum class Opcode : uint8_t {
   unifyVoid = 0x38,
   // Control
   allocate = 0x40,
-  deallocate = 0x41,
-  call = 0x42,
-  execute = 0x43,
-  proceed = 0x44,
+  trim = 0x41,
+  deallocate = 0x42,
+  call = 0x43,
+  execute = 0x44,
+  proceed = 0x45,
   // Choice
   tryMeElse = 0x50,
   retryMeElse = 0x51,

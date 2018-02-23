@@ -122,6 +122,7 @@ void unifyInteger(Integer i);
 void unifyVoid(VoidCount n);
 
 void allocate(EnvironmentSize n);
+void trim(EnvironmentSize n);
 void deallocate();
 void call(LabelIndex p);
 void execute(LabelIndex p);

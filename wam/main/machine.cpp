@@ -252,6 +252,10 @@ void executeInstruction() {
     Serial.println("allocate");
     Instructions::allocate(read<EnvironmentSize>());
     break;
+  case Opcode::trim:
+    Serial.println("trim");
+    Instructions::trim(read<EnvironmentSize>());
+    break;
   case Opcode::deallocate:
     Serial.println("deallocate");
     Instructions::deallocate();
@@ -913,6 +917,19 @@ void allocate(EnvironmentSize n) {
   newEnvironment->n = n;
 
   e = newEnvironment;
+}
+
+void trim(EnvironmentSize n) {
+#ifdef VERBOSE_LOG
+  Serial.printf("Trimming %u items\n", n);
+  Serial.printf("Environment size from %u", e->n);
+#endif
+
+  e->n -= n;
+
+#ifdef VERBOSE_LOG
+  Serial.printf(" to %u\n", e->n);
+#endif
 }
 
 void deallocate() {

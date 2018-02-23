@@ -150,24 +150,28 @@ assemble_code(unify_void(N)) -->
 
 assemble_code(allocate(N)) -->
 	[0x40],
-	uint8(N).
+	environment_size(N).
+
+assemble_code(trim(N)) -->
+	[0x41],
+	environment_size(N).
 
 assemble_code(deallocate) -->
-	[0x41].
+	[0x42].
 
 assemble_code(label(L)) -->
 	[label(L)].
 
 assemble_code(call(ID)) -->
-	[0x42],
-	term_id(ID).
-
-assemble_code(execute(ID)) -->
 	[0x43],
 	term_id(ID).
 
+assemble_code(execute(ID)) -->
+	[0x44],
+	term_id(ID).
+
 assemble_code(proceed) -->
-	[0x44].
+	[0x45].
 
 assemble_code(try_me_else(ID)) -->
 	[0x50],
@@ -304,6 +308,10 @@ void_count(N) -->
 
 term_id(ID) -->
 	uint16(ID).
+
+
+environment_size(N) -->
+	uint8(N).
 
 
 simple_code(>, 0x60).

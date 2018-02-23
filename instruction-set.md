@@ -64,10 +64,11 @@
 | unify integer `i`                         |   `37`   |   `i`    |   `i`    |          |          |
 | unify void `n`                            |   `38`   |   `n`    |          |          |          |
 | allocate `N`                              |   `40`   |   `N`    |          |          |          |
-| deallocate                                |   `41`   |          |          |          |          |
-| call `P`                                  |   `42`   |   `P`    |   `P`    |          |          |
-| execute `P`                               |   `43`   |   `P`    |   `P`    |          |          |
-| proceed                                   |   `44`   |          |          |          |          |
+| trim `N`                                  |   `41`   |   `N`    |          |          |          |
+| deallocate                                |   `42`   |          |          |          |          |
+| call `P`                                  |   `43`   |   `P`    |   `P`    |          |          |
+| execute `P`                               |   `44`   |   `P`    |   `P`    |          |          |
+| proceed                                   |   `45`   |          |          |          |          |
 | try me else `P`                           |   `50`   |   `P`    |   `P`    |          |          |
 | retry me else `P`                         |   `51`   |   `P`    |   `P`    |          |          |
 | trust me                                  |   `52`   |          |          |          |          |
