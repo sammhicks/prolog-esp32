@@ -80,9 +80,3 @@ enum class DigitalPinModes : uint8_t {
   InputPullup = 0x02,
   InputPulldown = 0x03,
 };
-
-typedef uint8_t Xn;
-typedef uint8_t Yn;
-typedef uint8_t Ai;
-typedef uint8_t EnvironmentSize;
-typedef uint16_t LabelIndex;

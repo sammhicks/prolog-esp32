@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Arduino.h"
+
 #include "commands.h"
 #include "hash.h"
 #include "machine.h"

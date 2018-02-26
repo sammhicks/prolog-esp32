@@ -11,42 +11,14 @@ File *programFile;
 
 RWModes rwMode;
 Arity argumentCount;
-HeapIndex h;
-HeapIndex s;
-CodeIndex cp;
-CodeIndex haltIndex;
-TrailIndex tr;
-Environment *e;
-ChoicePoint *b;
-ChoicePoint *b0;
-HeapIndex hb;
 
-Value registers[registerCount];
-Value heap[heapSize];
-uint8_t stack[stackSize];
-HeapIndex trail[trailSize];
+CodeIndex haltIndex;
 
 template <typename T> T read() { return Raw::read<T>(*instructionSource); }
 
 void resetMachine() {
   Serial.println("Reset");
-  h = 0;
-  tr = 0;
-
-  e = reinterpret_cast<Environment *>(stack);
-  e->ce = nullptr;
-  e->cp = 0;
-  e->n = 0;
-
-  b = reinterpret_cast<ChoicePoint *>(stack);
-  b->ce = nullptr;
-  b->cp = 0;
-  b->b = nullptr;
-  b->bp = 0;
-  b->tr = 0;
-  b->n = 0;
-
-  b0 = b;
+  resetMemory();
 }
 
 void executeInstructions(Client *client) {
@@ -68,9 +40,10 @@ void executeInstructions(Client *client) {
     Serial.println("Executing Program");
     instructionSource = programFile;
 
-    e->n = argumentCount;
-    for (Arity n = 0; n < argumentCount; ++n) {
-      e->ys[n] = registers[n];
+    RegistryEntry **permanentVariables = newEnvironment(argumentCount);
+
+    for (EnvironmentSize i = 0; i < argumentCount; ++i) {
+      permanentVariables[i] = registers[i];
     }
   }
 
@@ -98,7 +71,7 @@ void executeProgram(Client *client) {
   }
 
   if (querySucceeded) {
-    if (static_cast<void *>(b) == static_cast<void *>(stack)) {
+    if (currentChoicePoint == nullptr) {
       Serial.println("Done");
       Raw::write(*client, Results::success);
     } else {
@@ -106,12 +79,7 @@ void executeProgram(Client *client) {
       Raw::write(*client, Results::choicePoints);
     }
 
-    Environment *queryEnvironment = reinterpret_cast<Environment *>(stack);
-
-    Raw::write(*client, queryEnvironment->n);
-    for (Arity n = 0; n < queryEnvironment->n; ++n) {
-      Raw::writeBlock(*client, Ancillary::deref(queryEnvironment->ys[n]));
-    }
+    currentEnvironment->sendToClient(*client);
 
     return;
   }
@@ -119,6 +87,8 @@ void executeProgram(Client *client) {
   Serial.println("Failure!");
   Raw::write(*client, Results::failure);
 }
+
+/*
 
 void executeInstruction() {
   Serial.println();
@@ -1694,3 +1664,4 @@ void virtualPredicate(Arity n) {
 }
 
 } // namespace Ancillary
+// */

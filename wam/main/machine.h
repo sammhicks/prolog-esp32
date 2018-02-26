@@ -1,24 +1,18 @@
 #pragma once
 #pragma pack(push, 1)
 
-#include "Arduino.h"
+#define _GLIBCXX_VECTOR
 #include "SPIFFS.h"
 
 #include "instruction.h"
+#include "memory.h"
 #include "raw-io.h"
-#include "value.h"
-
-#define VERBOSE_LOG
+#include "verbose-log.h"
 
 extern const char *codePath;
 extern const char *labelTablePath;
 
 const uint8_t analogResolution = 12;
-
-const Xn registerCount = 32;
-const HeapIndex heapSize = 512;
-const size_t stackSize = 2048;
-const TrailIndex trailSize = 128;
 
 enum class ExecuteModes : uint8_t { query, program };
 
@@ -35,25 +29,6 @@ struct LabelTableEntry {
   Arity arity;
 };
 
-struct Environment {
-  Environment *ce;
-  CodeIndex cp;
-  Arity n;
-  Value ys[0];
-};
-
-struct ChoicePoint {
-  Environment *ce;
-  CodeIndex cp;
-  ChoicePoint *b;
-  LabelIndex bp;
-  TrailIndex tr;
-  HeapIndex h;
-  ChoicePoint *b0;
-  Arity n;
-  Value args[0];
-};
-
 extern ExecuteModes executeMode;
 extern bool querySucceeded;
 extern bool exceptionRaised;
@@ -62,20 +37,8 @@ extern File *programFile;
 
 extern RWModes rwMode;
 extern Arity argumentCount;
-extern HeapIndex h;
-extern HeapIndex s;
-extern CodeIndex cp;
-extern CodeIndex haltIndex;
-extern TrailIndex tr;
-extern Environment *e;
-extern ChoicePoint *b;
-extern ChoicePoint *b0;
-extern HeapIndex hb;
 
-extern Value registers[registerCount];
-extern Value heap[heapSize];
-extern uint8_t stack[stackSize];
-extern HeapIndex trail[trailSize];
+extern CodeIndex haltIndex;
 
 void resetMachine();
 
@@ -161,24 +124,20 @@ void analogWritePin();
 
 namespace Ancillary {
 LabelTableEntry lookupLabel(LabelIndex l);
-void *topOfStack();
 void backtrack();
 void failAndExit();
 void failWithException();
-Value &deref(Value &a);
-Value &deref(HeapIndex h);
-void bind(Value &a1, Value &a2);
-void addToTrail(HeapIndex a);
-void unwindTrail(TrailIndex a1, TrailIndex a2);
+void bind(RegistryEntry *a1, RegistryEntry *a2);
+void unwindTrail();
 void tidyTrail();
-bool unify(Value &a1, Value &a2);
+bool unify(RegistryEntry *a1, RegistryEntry *a2);
 Comparison compare(Integer i1, Integer i2);
-Comparison compare(Value &a1, Value &a2);
-Integer evaluateExpression(Value &a);
-Integer evaluateStructure(Value &a);
-uint8_t getPin(Value &a);
-uint8_t getChannel(Value &a);
+Comparison compare(RegistryEntry *a1, RegistryEntry *a2);
+Integer evaluateExpression(RegistryEntry *a);
+Integer evaluateStructure(RegistryEntry *a);
+uint8_t getPin(RegistryEntry *a);
+uint8_t getChannel(RegistryEntry *a);
 void virtualPredicate(Arity n);
-} // namespace Ancillary
+} // namespace Ancillary*/
 
 #pragma pack(pop)

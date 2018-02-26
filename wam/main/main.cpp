@@ -11,7 +11,7 @@ void setup() {
 }
 
 void loop() {
-  WiFiClient client = wifiServer.available();
+  /*WiFiClient client = wifiServer.available();
 
   if (client) {
     Serial.println("Client connected");
@@ -63,10 +63,10 @@ void loop() {
     Serial.println("client disconnected");
   }
 
-  yieldProcessor();
+  yieldProcessor();*/
 }
 
-void runPing(Client &client) {
+/*void runPing(Client &client) {
   Serial.print("ping: ");
   while (client.available() == 0) {
     if (!client.connected()) {
@@ -142,3 +142,4 @@ void readList(Client &client) {
   Raw::writeBlock(client, Ancillary::deref(heap[hi + 0]));
   Raw::writeBlock(client, Ancillary::deref(heap[hi + 1]));
 }
+*/

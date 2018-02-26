@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdexcept>
-
 #include "Client.h"
+
+#include <stdexcept>
 
 #include "yield.h"
 
