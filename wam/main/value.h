@@ -1,9 +1,9 @@
 #pragma once
 #pragma pack(push, 1)
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <iostream>
 
 #include "raw-io.h"
 #include "verbose-log.h"
@@ -23,7 +23,10 @@ typedef Vn EnvironmentSize;
 typedef Vn ChoicePointSize;
 typedef uint16_t LabelIndex;
 
+struct RegistryEntry;
 struct Tuple;
+
+extern const size_t ScalarSize;
 
 struct RegistryEntry {
   enum class Type : uint8_t {
@@ -43,12 +46,27 @@ struct RegistryEntry {
   Type type;
   Tuple *tuple;
 
+  template <typename T> T &mutableBody() {
+    return *reinterpret_cast<T *>(this + 1);
+  }
+  template <typename T> const T &body() const {
+    return *reinterpret_cast<const T *>(this + 1);
+  }
+
   RegistryEntry *deref();
   const RegistryEntry *deref() const;
 
-  std::ostream &operator<<(std::ostream &os) const;
+  void resetToVariable();
+
+  std::ostream &dump(std::ostream &os) const;
 
   void sendToClient(Client &client) const;
+};
+
+std::ostream &operator<<(std::ostream &os, const RegistryEntry &entry);
+
+struct Tuple {
+  RegistryEntry *entry;
 };
 
 struct Structure {
@@ -74,6 +92,7 @@ struct ChoicePoint {
   CodeIndex continuePoint;
   RegistryEntry *nextChoicePoint;
   LabelIndex retryLabel;
+  RegistryEntry *currentCutPoint;
   ChoicePointSize savedRegisterCount;
   RegistryEntry *savedRegisters[0];
 };
@@ -81,27 +100,6 @@ struct ChoicePoint {
 struct TrailItem {
   RegistryEntry *item;
   RegistryEntry *nextItem;
-};
-
-struct Tuple {
-  RegistryEntry *entry;
-
-  union {
-    RegistryEntry *reference;
-    Structure structure;
-    List list;
-    Constant constant;
-    Integer integer;
-    Environment environment;
-    ChoicePoint choicePoint;
-    TrailItem trailItem;
-  } body[0];
-
-  struct Scalar {
-    RegistryEntry *ref;
-    Constant c;
-    Integer i;
-  };
 };
 
 #pragma pack(pop)

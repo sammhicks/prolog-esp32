@@ -1,18 +1,25 @@
 #pragma once
 #pragma pack(push, 1)
 
-#define _GLIBCXX_VECTOR
-#include "SPIFFS.h"
+#include <iostream>
+#include <limits>
 
 #include "instruction.h"
 #include "memory.h"
 #include "raw-io.h"
 #include "verbose-log.h"
 
+#include "SPIFFS.h"
+
+using std::cout;
+using std::endl;
+
 extern const char *codePath;
 extern const char *labelTablePath;
 
 const uint8_t analogResolution = 12;
+
+const CodeIndex haltIndex = std::numeric_limits<CodeIndex>::max();
 
 enum class ExecuteModes : uint8_t { query, program };
 
@@ -37,8 +44,6 @@ extern File *programFile;
 
 extern RWModes rwMode;
 extern Arity argumentCount;
-
-extern CodeIndex haltIndex;
 
 void resetMachine();
 
@@ -128,14 +133,16 @@ void backtrack();
 void failAndExit();
 void failWithException();
 void bind(RegistryEntry *a1, RegistryEntry *a2);
+void trail(RegistryEntry *a);
 void unwindTrail();
 void tidyTrail();
+void tidyTrail(RegistryEntry *&head);
 bool unify(RegistryEntry *a1, RegistryEntry *a2);
 Comparison compare(Integer i1, Integer i2);
-Comparison compare(RegistryEntry *a1, RegistryEntry *a2);
-Integer evaluateExpression(RegistryEntry *a);
-Integer evaluateStructure(RegistryEntry *a);
-uint8_t getPin(RegistryEntry *a);
+Comparison compare(const RegistryEntry *a1, const RegistryEntry *a2);
+Integer evaluateExpression(const RegistryEntry *a);
+Integer evaluateStructure(const Structure &structure);
+uint8_t getPin(const RegistryEntry *a);
 uint8_t getChannel(RegistryEntry *a);
 void virtualPredicate(Arity n);
 } // namespace Ancillary*/

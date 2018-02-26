@@ -12,7 +12,7 @@ RegistryEntry *trailHead;
 CodeIndex continuePoint;
 RegistryEntry *currentEnvironment;
 RegistryEntry *currentChoicePoint;
-RegistryEntry *cutChoicePoint;
+RegistryEntry *currentCutPoint;
 
 RegistryEntry **structureIterator;
 
@@ -24,7 +24,7 @@ void resetMemory() {
 
   currentEnvironment = nullptr;
   currentChoicePoint = nullptr;
-  cutChoicePoint = nullptr;
+  currentCutPoint = nullptr;
 }
 
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
@@ -53,9 +53,9 @@ Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n) {
 RegistryEntry *newVariable() {
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::reference);
 
-  entry->tuple = newTuple(entry, sizeof(Tuple::Scalar));
+  entry->tuple = newTuple(entry, ScalarSize);
 
-  entry->tuple->body->reference = entry;
+  entry->mutableBody<RegistryEntry *>() = entry;
 
   return entry;
 }
@@ -65,7 +65,7 @@ RegistryEntry *newStructure(Functor f, Arity n) {
 
   entry->tuple = newTuple(entry, sizeof(Structure), n);
 
-  Structure &structure = entry->tuple->body->structure;
+  Structure &structure = entry->mutableBody<Structure>();
 
   structure.functor = f;
   structure.arity = n;
@@ -84,7 +84,7 @@ RegistryEntry *newList() {
 
   entry->tuple = newTuple(entry, 0, 2);
 
-  List &list = entry->tuple->body->list;
+  List &list = entry->mutableBody<List>();
 
   list.subterms[0] = nullptr;
   list.subterms[1] = nullptr;
@@ -97,9 +97,9 @@ RegistryEntry *newList() {
 RegistryEntry *newConstant(Constant c) {
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::constant);
 
-  entry->tuple = newTuple(entry, sizeof(Tuple::Scalar));
+  entry->tuple = newTuple(entry, ScalarSize);
 
-  entry->tuple->body->constant = c;
+  entry->mutableBody<Constant>() = c;
 
   return entry;
 }
@@ -107,9 +107,9 @@ RegistryEntry *newConstant(Constant c) {
 RegistryEntry *newInteger(Integer i) {
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::integer);
 
-  entry->tuple = newTuple(entry, sizeof(Tuple::Scalar));
+  entry->tuple = newTuple(entry, ScalarSize);
 
-  entry->tuple->body->integer = i;
+  entry->mutableBody<Integer>() = i;
 
   return entry;
 }
@@ -119,7 +119,7 @@ RegistryEntry **newEnvironment(EnvironmentSize n) {
 
   entry->tuple = newTuple(entry, sizeof(Environment), n);
 
-  Environment &environment = entry->tuple->body->environment;
+  Environment &environment = entry->mutableBody<Environment>();
 
   environment.nextEnvironment = currentEnvironment;
   environment.continuePoint = continuePoint;
@@ -140,12 +140,13 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel, ChoicePointSize n) {
 
   entry->tuple = newTuple(entry, sizeof(ChoicePoint), n);
 
-  ChoicePoint &choicePoint = entry->tuple->body->choicePoint;
+  ChoicePoint &choicePoint = entry->mutableBody<ChoicePoint>();
 
   choicePoint.currentEnvironment = currentEnvironment;
   choicePoint.continuePoint = continuePoint;
   choicePoint.nextChoicePoint = currentChoicePoint;
   choicePoint.retryLabel = retryLabel;
+  choicePoint.currentCutPoint = currentCutPoint;
   choicePoint.savedRegisterCount = n;
 
   for (ChoicePointSize i = 0; i < n; ++i) {
@@ -162,8 +163,8 @@ void newTrailItem(RegistryEntry *reference) {
 
   entry->tuple = newTuple(entry, sizeof(TrailItem));
 
-  entry->tuple->body->trailItem.item = reference;
-  entry->tuple->body->trailItem.nextItem = trailHead;
+  entry->mutableBody<TrailItem>().item = reference;
+  entry->mutableBody<TrailItem>().nextItem = trailHead;
 
   trailHead = entry;
 }

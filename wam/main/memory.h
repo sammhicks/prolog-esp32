@@ -18,7 +18,7 @@ extern RegistryEntry *trailHead;
 extern CodeIndex continuePoint;
 extern RegistryEntry *currentEnvironment;
 extern RegistryEntry *currentChoicePoint;
-extern RegistryEntry *cutChoicePoint;
+extern RegistryEntry *currentCutPoint;
 
 extern RegistryEntry **structureIterator;
 

@@ -12,12 +12,10 @@ File *programFile;
 RWModes rwMode;
 Arity argumentCount;
 
-CodeIndex haltIndex;
-
 template <typename T> T read() { return Raw::read<T>(*instructionSource); }
 
 void resetMachine() {
-  Serial.println("Reset");
+  cout << "Reset" << endl;
   resetMemory();
 }
 
@@ -30,14 +28,12 @@ void executeInstructions(Client *client) {
   File actualProgramFile = SPIFFS.open(codePath);
   programFile = &actualProgramFile;
 
-  haltIndex = programFile->size();
-
   while (executeMode == ExecuteModes::query) {
     executeInstruction();
   }
 
   if (!exceptionRaised) {
-    Serial.println("Executing Program");
+    cout << "Executing Program" << endl;
     instructionSource = programFile;
 
     RegistryEntry **permanentVariables = newEnvironment(argumentCount);
@@ -64,7 +60,7 @@ void executeProgram(Client *client) {
   }
 
   if (exceptionRaised) {
-    Serial.println("Exception");
+    cout << "Exception" << endl;
     Raw::write(*client, Results::exception);
 
     return;
@@ -72,10 +68,10 @@ void executeProgram(Client *client) {
 
   if (querySucceeded) {
     if (currentChoicePoint == nullptr) {
-      Serial.println("Done");
+      cout << "Done" << endl;
       Raw::write(*client, Results::success);
     } else {
-      Serial.println("Choice Points");
+      cout << "Choice Points" << endl;
       Raw::write(*client, Results::choicePoints);
     }
 
@@ -84,287 +80,286 @@ void executeProgram(Client *client) {
     return;
   }
 
-  Serial.println("Failure!");
+  cout << "Failure!" << endl;
   Raw::write(*client, Results::failure);
 }
 
-/*
-
 void executeInstruction() {
-  Serial.println();
   Opcode opcode = Raw::read<Opcode>(*instructionSource);
-  Serial.print("Executing opcode ");
-  Serial.println(static_cast<int>(opcode), HEX);
+
+  cout << "Executing opcode " << std::hex << static_cast<size_t>(opcode)
+       << ": ";
 
   switch (opcode) {
   case Opcode::putVariableXnAi:
-    Serial.println("putVariableXnAi");
+    cout << "putVariableXnAi" << endl;
     Instructions::putVariableXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::putVariableYnAi:
-    Serial.println("putVariableYnAi");
+    cout << "putVariableYnAi" << endl;
     Instructions::putVariableYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::putValueXnAi:
-    Serial.println("putValueXnAi");
+    cout << "putValueXnAi" << endl;
     Instructions::putValueXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::putValueYnAi:
-    Serial.println("putValueYnAi");
+    cout << "putValueYnAi" << endl;
     Instructions::putValueYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::putStructure:
-    Serial.println("putStructure");
+    cout << "putStructure" << endl;
     Instructions::putStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::putList:
-    Serial.println("putList");
+    cout << "putList" << endl;
     Instructions::putList(read<Ai>());
     break;
   case Opcode::putConstant:
-    Serial.println("putConstant");
+    cout << "putConstant" << endl;
     Instructions::putConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::putInteger:
-    Serial.println("putInteger");
+    cout << "putInteger" << endl;
     Instructions::putInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::putVoid:
-    Serial.println("putVoid");
+    cout << "putVoid" << endl;
     Instructions::putVoid(read<VoidCount>(), read<Ai>());
     break;
   case Opcode::getVariableXnAi:
-    Serial.println("getVariableXnAi");
+    cout << "getVariableXnAi" << endl;
     Instructions::getVariableXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::getVariableYnAi:
-    Serial.println("getVariableYnAi");
+    cout << "getVariableYnAi" << endl;
     Instructions::getVariableYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::getValueXnAi:
-    Serial.println("getValueXnAi");
+    cout << "getValueXnAi" << endl;
     Instructions::getValueXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::getValueYnAi:
-    Serial.println("getValueYnAi");
+    cout << "getValueYnAi" << endl;
     Instructions::getValueYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::getStructure:
-    Serial.println("getStructure");
+    cout << "getStructure" << endl;
     Instructions::getStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::getList:
-    Serial.println("getList");
+    cout << "getList" << endl;
     Instructions::getList(read<Ai>());
     break;
   case Opcode::getConstant:
-    Serial.println("getConstant");
+    cout << "getConstant" << endl;
     Instructions::getConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::getInteger:
-    Serial.println("getInteger");
+    cout << "getInteger" << endl;
     Instructions::getInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::setVariableXn:
-    Serial.println("setVariableXn");
+    cout << "setVariableXn" << endl;
     Instructions::setVariableXn(read<Xn>());
     break;
   case Opcode::setVariableYn:
-    Serial.println("setVariableYn");
+    cout << "setVariableYn" << endl;
     Instructions::setVariableYn(read<Yn>());
     break;
   case Opcode::setValueXn:
-    Serial.println("setValueXn");
+    cout << "setValueXn" << endl;
     Instructions::setValueXn(read<Xn>());
     break;
   case Opcode::setValueYn:
-    Serial.println("setValueYn");
+    cout << "setValueYn" << endl;
     Instructions::setValueYn(read<Yn>());
     break;
   case Opcode::setConstant:
-    Serial.println("setConstant");
+    cout << "setConstant" << endl;
     Instructions::setConstant(read<Constant>());
     break;
   case Opcode::setInteger:
-    Serial.println("setInteger");
+    cout << "setInteger" << endl;
     Instructions::setInteger(read<Integer>());
     break;
   case Opcode::setVoid:
-    Serial.println("setVoid");
+    cout << "setVoid" << endl;
     Instructions::setVoid(read<VoidCount>());
     break;
   case Opcode::unifyVariableXn:
-    Serial.println("unifyVariableXn");
+    cout << "unifyVariableXn" << endl;
     Instructions::unifyVariableXn(read<Xn>());
     break;
   case Opcode::unifyVariableYn:
-    Serial.println("unifyVariableYn");
+    cout << "unifyVariableYn" << endl;
     Instructions::unifyVariableYn(read<Yn>());
     break;
   case Opcode::unifyValueXn:
-    Serial.println("unifyValueXn");
+    cout << "unifyValueXn" << endl;
     Instructions::unifyValueXn(read<Xn>());
     break;
   case Opcode::unifyValueYn:
-    Serial.println("unifyValueYn");
+    cout << "unifyValueYn" << endl;
     Instructions::unifyValueYn(read<Yn>());
     break;
   case Opcode::unifyConstant:
-    Serial.println("unifyConstant");
+    cout << "unifyConstant" << endl;
     Instructions::unifyConstant(read<Constant>());
     break;
   case Opcode::unifyInteger:
-    Serial.println("unifyInteger");
+    cout << "unifyInteger" << endl;
     Instructions::unifyInteger(read<Integer>());
     break;
   case Opcode::unifyVoid:
-    Serial.println("unifyVoid");
+    cout << "unifyVoid" << endl;
     Instructions::unifyVoid(read<VoidCount>());
     break;
   case Opcode::allocate:
-    Serial.println("allocate");
+    cout << "allocate" << endl;
     Instructions::allocate(read<EnvironmentSize>());
     break;
   case Opcode::trim:
-    Serial.println("trim");
+    cout << "trim" << endl;
     Instructions::trim(read<EnvironmentSize>());
     break;
   case Opcode::deallocate:
-    Serial.println("deallocate");
+    cout << "deallocate" << endl;
     Instructions::deallocate();
     break;
   case Opcode::call:
-    Serial.println("call");
+    cout << "call" << endl;
     Instructions::call(read<LabelIndex>());
     break;
   case Opcode::execute:
-    Serial.println("execute");
+    cout << "execute" << endl;
     Instructions::execute(read<LabelIndex>());
     break;
   case Opcode::proceed:
-    Serial.println("proceed");
+    cout << "proceed" << endl;
     Instructions::proceed();
     break;
   case Opcode::tryMeElse:
-    Serial.println("tryMeElse");
+    cout << "tryMeElse" << endl;
     Instructions::tryMeElse(read<LabelIndex>());
     break;
   case Opcode::retryMeElse:
-    Serial.println("retryMeElse");
+    cout << "retryMeElse" << endl;
     Instructions::retryMeElse(read<LabelIndex>());
     break;
   case Opcode::trustMe:
-    Serial.println("trustMe");
+    cout << "trustMe" << endl;
     Instructions::trustMe();
     break;
   case Opcode::neckCut:
-    Serial.println("neckCut");
+    cout << "neckCut" << endl;
     Instructions::neckCut();
     break;
   case Opcode::getLevel:
-    Serial.println("getLevel");
+    cout << "getLevel" << endl;
     Instructions::getLevel(read<Yn>());
     break;
   case Opcode::cut:
-    Serial.println("cut");
+    cout << "cut" << endl;
     Instructions::cut(read<Yn>());
     break;
   case Opcode::greaterThan:
-    Serial.println("greaterThan");
+    cout << "greaterThan" << endl;
     Instructions::greaterThan();
     break;
   case Opcode::lessThan:
-    Serial.println("lessThan");
+    cout << "lessThan" << endl;
     Instructions::lessThan();
     break;
   case Opcode::lessThanOrEqualTo:
-    Serial.println("lessThanOrEqualTo");
+    cout << "lessThanOrEqualTo" << endl;
     Instructions::lessThanOrEqualTo();
     break;
   case Opcode::greaterThanOrEqualTo:
-    Serial.println("greaterThanOrEqualTo");
+    cout << "greaterThanOrEqualTo" << endl;
     Instructions::greaterThanOrEqualTo();
     break;
   case Opcode::notEqual:
-    Serial.println("notEqual");
+    cout << "notEqual" << endl;
     Instructions::notEqual();
     break;
   case Opcode::equals:
-    Serial.println("equals");
+    cout << "equals" << endl;
     Instructions::equals();
     break;
   case Opcode::is:
-    Serial.println("is");
+    cout << "is" << endl;
     Instructions::is();
     break;
   case Opcode::noOp:
-    Serial.println("noOp");
+    cout << "noOp" << endl;
     Instructions::noOp();
     break;
   case Opcode::fail:
-    Serial.println("fail");
+    cout << "fail" << endl;
     Instructions::fail();
     break;
   case Opcode::unify:
-    Serial.println("unify");
+    cout << "unify" << endl;
     Instructions::unify();
     break;
   case Opcode::configureDigitalPin:
-    Serial.println("configureDigitalPin");
+    cout << "configureDigitalPin" << endl;
     Instructions::configureDigitalPin(read<DigitalPinModes>());
     break;
   case Opcode::digitalReadPin:
-    Serial.println("digitalReadPin");
+    cout << "digitalReadPin" << endl;
     Instructions::digitalReadPin();
     break;
   case Opcode::digitalWritePin:
-    Serial.println("digitalWritePin");
+    cout << "digitalWritePin" << endl;
     Instructions::digitalWritePin();
     break;
   case Opcode::pinIsAnalogInput:
-    Serial.println("pinIsAnalogInput");
+    cout << "pinIsAnalogInput" << endl;
     Instructions::pinIsAnalogInput();
     break;
   case Opcode::configureChannel:
-    Serial.println("configureChannel");
+    cout << "configureChannel" << endl;
     Instructions::configureChannel();
     break;
   case Opcode::pinIsAnalogOutput:
-    Serial.println("pinIsAnalogOutput");
+    cout << "pinIsAnalogOutput" << endl;
     Instructions::pinIsAnalogOutput();
     break;
   case Opcode::analogReadPin:
-    Serial.println("analogReadPin");
+    cout << "analogReadPin" << endl;
     Instructions::analogReadPin();
     break;
   case Opcode::analogWritePin:
-    Serial.println("analogWritePin");
+    cout << "analogWritePin" << endl;
     Instructions::analogWritePin();
     break;
   default:
-    Serial.printf("Unknown opcode %x\n", static_cast<uint8_t>(opcode));
+    cout << "Unknown opcode \"" << std::hex << static_cast<size_t>(opcode)
+         << "\"" << endl;
     Ancillary::failWithException();
     break;
   }
+
+  cout << endl;
 }
 
 namespace Instructions {
-using Ancillary::addToTrail;
 using Ancillary::backtrack;
 using Ancillary::bind;
 using Ancillary::compare;
-using Ancillary::deref;
 using Ancillary::evaluateExpression;
 using Ancillary::failWithException;
 using Ancillary::getChannel;
 using Ancillary::getPin;
 using Ancillary::lookupLabel;
 using Ancillary::tidyTrail;
-using Ancillary::topOfStack;
 using Ancillary::unify;
 using Ancillary::unwindTrail;
 using Ancillary::virtualPredicate;
 
+/*
 void putVariableXnAi(Xn xn, Ai ai) {
 #ifdef VERBOSE_LOG
   Serial.printf("Xn - %u\n", xn);
@@ -516,7 +511,7 @@ void getStructure(Functor f, Arity n, Ai ai) {
   switch (derefAi.type) {
   case Value::Type::reference:
 #ifdef VERBOSE_LOG
-    Serial.println("Writing structure");
+    cout << "Writing structure" << endl;
 #endif
     heap[h].makeStructure(h + 1);
     heap[h + 1].makeFunctor(f, n);
@@ -526,7 +521,7 @@ void getStructure(Functor f, Arity n, Ai ai) {
     return;
   case Value::Type::structure:
 #ifdef VERBOSE_LOG
-    Serial.println("Reading structure");
+    cout << "Reading structure" << endl;
 #endif
     if (heap[derefAi.h].f == f && heap[derefAi.h].n == n) {
       s = derefAi.h + 1;
@@ -551,7 +546,7 @@ void getList(Ai ai) {
   switch (derefAi.type) {
   case Value::Type::reference:
 #ifdef VERBOSE_LOG
-    Serial.println("Writing list");
+    cout << "Writing list" << endl;
 #endif
     heap[h].makeList(h + 1);
     bind(derefAi, heap[h]);
@@ -560,7 +555,7 @@ void getList(Ai ai) {
     return;
   case Value::Type::list:
 #ifdef VERBOSE_LOG
-    Serial.println("Reading list");
+    cout << "Reading list" << endl;
 #endif
     s = derefAi.h;
     rwMode = RWModes::read;
@@ -582,14 +577,14 @@ void getConstant(Constant c, Ai ai) {
   switch (derefAi.type) {
   case Value::Type::reference:
 #ifdef VERBOSE_LOG
-    Serial.println("Writing constant");
+    cout << "Writing constant" << endl;
 #endif
     addToTrail(derefAi.h);
     derefAi.makeConstant(c);
     return;
   case Value::Type::constant:
 #ifdef VERBOSE_LOG
-    Serial.println("Reading constant");
+    cout << "Reading constant" << endl;
 #endif
     if (c != derefAi.c) {
       backtrack();
@@ -612,14 +607,14 @@ void getInteger(Integer i, Ai ai) {
   switch (derefAi.type) {
   case Value::Type::reference:
 #ifdef VERBOSE_LOG
-    Serial.println("Writing integer");
+    cout << "Writing integer" << endl;
 #endif
     addToTrail(derefAi.h);
     derefAi.makeInteger(i);
     return;
   case Value::Type::integer:
 #ifdef VERBOSE_LOG
-    Serial.println("Reading integer");
+    cout << "Reading integer" << endl;
 #endif
     if (i != derefAi.i) {
       backtrack();
@@ -1103,7 +1098,7 @@ void cut(Yn yn) {
 #endif
 
   if (e->ys[yn].type != Value::Type::level) {
-    Serial.println("Value is not a level");
+    cout << "Value is not a level" << endl;
     failWithException();
     return;
   }
@@ -1317,12 +1312,12 @@ void analogWritePin() {
   }
 
   if (pinValue < 0) {
-    Serial.println("Analog pin write values must be positive");
+    cout << "Analog pin write values must be positive" << endl;
   }
 
   ledcWrite(channelID, static_cast<uint32_t>(pinValue));
 }
-
+// */
 } // namespace Instructions
 
 namespace Ancillary {
@@ -1338,186 +1333,161 @@ LabelTableEntry lookupLabel(LabelIndex p) {
   return entry;
 }
 
-void *topOfStack() {
-#ifdef VERBOSE_LOG
-  Serial.printf("e - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
-  Serial.printf("b - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
-#endif
-
-  if (static_cast<void *>(e) >= static_cast<void *>(b)) {
-#ifdef VERBOSE_LOG
-    Serial.println("e higher");
-#endif
-    return e->ys + e->n;
-  } else {
-#ifdef VERBOSE_LOG
-    Serial.println("b higher");
-#endif
-    return b->args + b->n;
-  }
-}
-
 void backtrack() {
   if (exceptionRaised) {
     return;
   }
 
-  Serial.println("\n ---- Backtrack! ---- \n");
+  cout << endl << " ---- Backtrack! ---- " << endl << endl;
 
 #ifdef VERBOSE_LOG
-  Serial.printf("Choice point: %x\n", reinterpret_cast<uint8_t *>(b) - stack);
+  cout << "Choice point: " << *currentChoicePoint << endl;
 #endif
 
-  if (static_cast<void *>(b) == static_cast<void *>(stack)) {
+  if (currentChoicePoint == nullptr) {
     failAndExit();
     return;
   }
 
 #ifdef VERBOSE_LOG
-  Serial.printf("Moving b0 from %x to %x\n",
-                reinterpret_cast<uint8_t *>(b0) - stack,
-                reinterpret_cast<uint8_t *>(b->b0) - stack);
+  cout << "Current cut point: " << *currentCutPoint << endl;
 #endif
 
-  b0 = b->b0;
-  programFile->seek(lookupLabel(b->bp).entryPoint);
+  if (currentCutPoint->type != RegistryEntry::Type::choicePoint) {
+    cout << "Not a choice point!" << endl;
+    failWithException();
+    return;
+  }
+
+  currentCutPoint = currentChoicePoint->body<ChoicePoint>().currentCutPoint;
+
+#ifdef VERBOSE_LOG
+  cout << "New cut choice point: " << *currentCutPoint << endl;
+#endif
+
+  programFile->seek(
+      lookupLabel(currentChoicePoint->body<ChoicePoint>().retryLabel)
+          .entryPoint);
 }
 
 void failAndExit() { querySucceeded = false; }
 
 void failWithException() { exceptionRaised = true; }
 
-Value &deref(Value &a) {
-#ifdef VERBOSE_LOG
-  Serial.print("Dereferencing value:");
-  a.dump();
-#endif
-  if (a.type == Value::Type::reference) {
-    return deref(a.h);
-  } else {
-    return a;
-  }
-}
-
-Value &deref(HeapIndex derefH) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Heap index %u:", static_cast<uint16_t>(derefH));
-  heap[derefH].dump();
-#endif
-  if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
-    return deref(heap[derefH].h);
-  } else {
-    return heap[derefH];
-  }
-}
-
-void bind(Value &a1, Value &a2) {
-  if (a1.type == Value::Type::reference && a2.type == Value::Type::reference &&
-      a1.h == a2.h) {
+void bind(RegistryEntry *a1, RegistryEntry *a2) {
+  if (a1 == a2) {
     return;
   }
 
-  if (a1.type == Value::Type::reference &&
-      ((a2.type != Value::Type::reference) || (a2.h < a1.h))) {
-    addToTrail(a1.h);
-    a1 = a2;
+  if (a1->type == RegistryEntry::Type::reference &&
+      a2->type == RegistryEntry::Type::reference &&
+      a1->body<RegistryEntry *>() == a2->body<RegistryEntry *>()) {
+    return;
+  }
+
+  if (a1->type == RegistryEntry::Type::reference &&
+      ((a2->type != RegistryEntry::Type::reference) ||
+       (a2->body<RegistryEntry *>() < a1->body<RegistryEntry *>()))) {
+    trail(a1);
+    a1->mutableBody<RegistryEntry *>() = a2;
   } else {
-    addToTrail(a2.h);
-    a2 = a1;
+    trail(a2);
+    a2->mutableBody<RegistryEntry *>() = a1;
   }
 }
 
-void addToTrail(HeapIndex a) {
-  if (a < hb) {
+void trail(RegistryEntry *a) {
+  if (currentChoicePoint != nullptr && a < currentChoicePoint) {
 #ifdef VERBOSE_LOG
-    Serial.printf("Adding %u to the trail\n", a);
+    cout << "Adding " << std::hex << a << " to the trail" << endl;
 #endif
-    trail[tr] = a;
-    tr = tr + 1;
+    newTrailItem(a);
   } else {
 #ifndef VERBOSE_LOG
-    Serial.printf("Address %u is not conditional\n", a);
+    cout << "Address " << std::hex << a << " is not conditional" << endl;
 #endif
   }
 }
 
-void unwindTrail(TrailIndex a1, TrailIndex a2) {
+void unwindTrail() {
 #ifdef VERBOSE_LOG
-  Serial.printf("Unwinding from %u to %u\n", a1, a2);
+  cout << "Unwinding trail" << endl;
 #endif
-  for (TrailIndex i = a1; i < a2; ++i) {
-#ifndef VERBOSE_LOG
-    Serial.printf("Resetting address %u\n", trail[i]);
-#endif
-    heap[trail[i]].makeReference(trail[i]);
-  }
-}
 
-void tidyTrail() {
-  for (TrailIndex i = b->tr; i < tr;) {
-    if (trail[i] < hb) {
-      --i;
-    } else {
-      trail[i] = trail[tr - 1];
-      --tr;
+  if (currentChoicePoint != nullptr) {
+    while (trailHead > currentChoicePoint) {
+      trailHead->mutableBody<TrailItem>().item->resetToVariable();
+      trailHead = trailHead->mutableBody<TrailItem>().nextItem;
     }
   }
 }
 
-bool unify(Value &a1, Value &a2) {
+void tidyTrail() { tidyTrail(trailHead); }
+
+void tidyTrail(RegistryEntry *&head) {
+  if (head == nullptr || currentChoicePoint == nullptr ||
+      head < currentChoicePoint) {
+    return;
+  }
+
+  if (head->body<TrailItem>().item > currentChoicePoint) {
+    head = head->mutableBody<TrailItem>().nextItem;
+  }
+
+  tidyTrail(head->mutableBody<TrailItem>().nextItem);
+}
+
+bool unify(RegistryEntry *a1, RegistryEntry *a2) {
 #ifdef VERBOSE_LOG
-  Serial.println("Unify:");
-  Serial.print("a1: ");
-  a1.dump();
-  Serial.print("a2: ");
-  a2.dump();
+  cout << "Unify:" << endl;
+  cout << "a1: " << *a1 << endl;
+  cout << "a2: " << *a2 << endl;
 #endif
 
-  Value &d1 = deref(a1);
-  Value &d2 = deref(a2);
+  RegistryEntry *d1 = a1->deref();
+  RegistryEntry *d2 = a2->deref();
 
 #ifdef VERBOSE_LOG
-  Serial.print("d1: ");
-  d1.dump();
-  Serial.print("d2: ");
-  d2.dump();
+  cout << "d1: " << *d1 << endl;
+  cout << "d2: " << *d2 << endl;
 #endif
 
-  if (d1.type == Value::Type::reference || d2.type == Value::Type::reference) {
+  if (d1->type == RegistryEntry::Type::reference ||
+      d2->type == RegistryEntry::Type::reference) {
     bind(d1, d2);
     return true;
   }
 
-  if (d1.type != d2.type) {
+  if (d1->type != d2->type) {
     return false;
   }
 
-  switch (d1.type) {
-  case Value::Type::constant:
-    return d1.c == d2.c;
-  case Value::Type::integer:
-    return d1.i == d2.i;
-  case Value::Type::list:
-    return unify(heap[d1.h], heap[d2.h]) &&
-           unify(heap[d1.h + 1], heap[d2.h + 1]);
-  case Value::Type::structure: {
-    Value &h1 = heap[d1.h];
-    Value &h2 = heap[d2.h];
+  switch (d1->type) {
+  case RegistryEntry::Type::constant:
+    return d1->body<Constant>() == d2->body<Constant>();
+  case RegistryEntry::Type::integer:
+    return d1->body<Integer>() == d2->body<Integer>();
+  case RegistryEntry::Type::list:
+    return unify(d1->body<List>().subterms[0], d2->body<List>().subterms[0]) &&
+           unify(d1->body<List>().subterms[1], d2->body<List>().subterms[1]);
+  case RegistryEntry::Type::structure: {
+    Structure &s1 = d1->mutableBody<Structure>();
+    Structure &s2 = d2->mutableBody<Structure>();
 
-    if (h1.f != h2.f) {
+    if ((s1.functor != s2.functor) || (s1.arity != s2.arity)) {
       return false;
     }
 
-    for (Arity n = 1; n <= h1.n; ++n) {
-      if (!unify(heap[d1.h + n], heap[d2.h + n])) {
+    for (Arity i = 1; i <= s1.arity; ++i) {
+      if (!unify(s1.subterms[i], s2.subterms[i])) {
         return false;
       }
     }
     return true;
   }
   default:
-    Serial.printf("Error during unify. Unknown type %u\n",
-                  static_cast<uint8_t>(d1.type));
+    cout << "Error during unify. Unknown type " << std::hex
+         << static_cast<size_t>(d1->type) << endl;
     return false;
   }
 }
@@ -1532,77 +1502,75 @@ Comparison compare(Integer i1, Integer i2) {
   return Comparison::equals;
 }
 
-Comparison compare(Value &e1, Value &e2) {
-  return compare(evaluateExpression(e1), evaluateExpression(e2));
+Comparison compare(const RegistryEntry *a1, const RegistryEntry *a2) {
+  return compare(evaluateExpression(a1), evaluateExpression(a2));
 }
 
-Integer evaluateExpression(Value &a) {
+Integer evaluateExpression(const RegistryEntry *a) {
   if (exceptionRaised) {
     return 0;
   }
 
 #ifdef VERBOSE_LOG
-  Serial.print("Evaluating Expression: ");
-  a.dump();
+  cout << "Evaluating Expression: " << std::hex << *a << endl;
 #endif
 
-  Value &derefA = deref(a);
+  const RegistryEntry *d = a->deref();
 
 #ifdef VERBOSE_LOG
-  Serial.print("Derefs to: ");
-  derefA.dump();
+  cout << "Derefs to: " << *d << endl;
 #endif
 
-  switch (derefA.type) {
-  case Value::Type::integer:
-    return derefA.i;
-  case Value::Type::structure:
-    return evaluateStructure(derefA);
+  switch (d->type) {
+  case RegistryEntry::Type::integer:
+    return d->body<Integer>();
+  case RegistryEntry::Type::structure:
+    return evaluateStructure(d->body<Structure>());
   default:
-    Serial.printf("Exception: invalid expression type %u\n",
-                  static_cast<uint8_t>(derefA.type));
+    cout << "Exception: invalid expression type " << std::hex
+         << static_cast<size_t>(d->type) << endl;
     failWithException();
     return 0;
   }
 }
 
-Integer evaluateStructure(Value &a) {
+Integer evaluateStructure(const Structure &structure) {
   if (exceptionRaised) {
     return 0;
   }
 
-  switch (static_cast<SpecialStructures>(heap[a.h].f)) {
+  switch (static_cast<SpecialStructures>(structure.functor)) {
   case SpecialStructures::add:
-    switch (heap[a.h].n) {
+    switch (structure.arity) {
     case 1:
-      return evaluateExpression(heap[a.h + 1]);
+      return evaluateExpression(structure.subterms[0]);
     case 2:
-      return evaluateExpression(heap[a.h + 1]) +
-             evaluateExpression(heap[a.h + 2]);
+      return evaluateExpression(structure.subterms[0]) +
+             evaluateExpression(structure.subterms[1]);
     default:
       break;
     }
   case SpecialStructures::subtract:
-    switch (heap[a.h].n) {
+    switch (structure.arity) {
     case 1:
-      return -evaluateExpression(heap[a.h + 1]);
+      return -evaluateExpression(structure.subterms[0]);
     case 2:
-      return evaluateExpression(heap[a.h + 1]) -
-             evaluateExpression(heap[a.h + 2]);
+      return evaluateExpression(structure.subterms[0]) -
+             evaluateExpression(structure.subterms[1]);
     default:
       break;
     }
   case SpecialStructures::multiply:
-    if (heap[a.h].n == 2) {
-      return evaluateExpression(heap[a.h + 1]) *
-             evaluateExpression(heap[a.h + 2]);
+    if (structure.arity == 2) {
+      return evaluateExpression(structure.subterms[0]) *
+             evaluateExpression(structure.subterms[1]);
     }
   case SpecialStructures::divide:
-    if (heap[a.h].n == 2) {
-      Integer i1 = evaluateExpression(heap[a.h + 1]);
-      Integer i2 = evaluateExpression(heap[a.h + 2]);
+    if (structure.arity == 2) {
+      Integer i1 = evaluateExpression(structure.subterms[0]);
+      Integer i2 = evaluateExpression(structure.subterms[1]);
       if (i2 == 0) {
-        Serial.println("Exception: divide by 0");
+        cout << "Exception: divide by 0" << endl;
         failWithException();
         return 0;
       }
@@ -1612,14 +1580,13 @@ Integer evaluateStructure(Value &a) {
   default:
     break;
   }
-  Serial.printf("Exception: not an operator: %u/%u\n",
-                static_cast<uint16_t>(heap[a.h].f),
-                static_cast<uint8_t>(heap[a.h].n));
+  cout << "Exception: not an operator: " << structure.functor << "/"
+       << structure.arity;
   failWithException();
   return 0;
 }
 
-uint8_t getPin(Value &a) {
+uint8_t getPin(const RegistryEntry *a) {
   Integer i = evaluateExpression(a);
 
   if (exceptionRaised) {
@@ -1627,7 +1594,7 @@ uint8_t getPin(Value &a) {
   }
 
   if (i < 0 || i >= 256) {
-    Serial.printf("Exception: pin out of range: %i\n", i);
+    cout << "Exception: pin out of range: " << std::dec << i << std::endl;
 
     failWithException();
     return 0;
@@ -1636,7 +1603,7 @@ uint8_t getPin(Value &a) {
   return static_cast<uint8_t>(i);
 }
 
-uint8_t getChannel(Value &a) {
+uint8_t getChannel(RegistryEntry *a) {
   Integer channelInt = evaluateExpression(a);
 
   if (exceptionRaised) {
@@ -1644,8 +1611,7 @@ uint8_t getChannel(Value &a) {
   }
 
   if (channelInt < 0 || channelInt > 15) {
-    Serial.printf("Invalid channel number \"%i\"\n",
-                  static_cast<int>(channelInt));
+    cout << "Invalid channel number \"" << channelInt << "\"";
 
     failWithException();
     return 0;
@@ -1657,11 +1623,9 @@ uint8_t getChannel(Value &a) {
 void virtualPredicate(Arity n) {
   if (executeMode == ExecuteModes::query) {
     executeMode = ExecuteModes::program;
-    cp = haltIndex;
+    continuePoint = haltIndex;
     programFile->seek(haltIndex);
     argumentCount = n;
   }
 }
-
 } // namespace Ancillary
-// */
