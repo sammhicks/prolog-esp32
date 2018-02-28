@@ -1,24 +1,6 @@
 #pragma once
 
-#include <limits>
-
-#include "value.h"
-
-extern size_t tupleRegistrySize;
-extern RegistryEntry *nextFreeRegistryEntry;
-extern uint8_t *nextFreeTuple;
-extern RegistryEntry *trailHead;
-
-extern CodeIndex continuePoint;
-extern RegistryEntry *currentEnvironment;
-extern RegistryEntry *currentChoicePoint;
-extern RegistryEntry *currentCutPoint;
-extern Arity argumentCount;
-
-extern RegistryEntry *currentStructure;
-extern Arity currentStructureSubtermIndex;
-
-void resetMemory();
+#include "registers.h"
 
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type);
 Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n = 0);

@@ -29,14 +29,10 @@ struct Tuple;
 struct Structure;
 struct List;
 struct Environment;
+struct ChoicePoint;
+struct TrailItem;
 
-const Xn registerCount = 32;
-const size_t TupleRegistryCapacity = 1024;
-const size_t TuplesHeapCapacity = 4096;
-
-extern RegistryEntry *registers[registerCount];
-extern RegistryEntry tupleRegistry[TupleRegistryCapacity];
-extern uint8_t tuplesHeap[TuplesHeapCapacity];
+#include "registers.h"
 
 extern const size_t ScalarSize;
 

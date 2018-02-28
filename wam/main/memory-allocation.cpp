@@ -1,33 +1,4 @@
-#include "memory.h"
-
-RegistryEntry *registers[registerCount];
-RegistryEntry tupleRegistry[TupleRegistryCapacity];
-uint8_t tuplesHeap[TuplesHeapCapacity];
-
-size_t tupleRegistrySize;
-RegistryEntry *nextFreeRegistryEntry;
-uint8_t *nextFreeTuple;
-RegistryEntry *trailHead;
-
-CodeIndex continuePoint;
-RegistryEntry *currentEnvironment;
-RegistryEntry *currentChoicePoint;
-RegistryEntry *currentCutPoint;
-Arity argumentCount;
-
-RegistryEntry *currentStructure;
-Arity currentStructureSubtermIndex;
-
-void resetMemory() {
-  tupleRegistrySize = 0;
-  nextFreeRegistryEntry = nullptr;
-  nextFreeTuple = tuplesHeap;
-  trailHead = nullptr;
-
-  currentEnvironment = nullptr;
-  currentChoicePoint = nullptr;
-  currentCutPoint = nullptr;
-}
+#include "memory-allocation.h"
 
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   RegistryEntry *newEntry;

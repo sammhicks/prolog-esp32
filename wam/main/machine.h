@@ -4,7 +4,7 @@
 #include <limits>
 
 #include "instruction.h"
-#include "memory.h"
+#include "memory-allocation.h"
 #include "raw-io.h"
 #include "verbose-log.h"
 
