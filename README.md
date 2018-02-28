@@ -29,3 +29,12 @@ Running Prolog code on a microcontroller
     + Translates more naturally into C arrays
 + I insert proceed instructions after deallocate instructions not succeeded by an execute instruction
     + Solves edge case of returning from virtual predicates and cuts
++ Structures' and Lists' bodies are a list of registry entry indices
+    + Detaches Structure and contents
+    + Allows easier rearrangement of memory
+
+
+## Ideas for Futher Work
++ Multi-Precision Numbers
++ User input request
++ Dynamic Predicates
