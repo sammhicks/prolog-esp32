@@ -6,20 +6,22 @@ uint8_t tuplesHeap[TuplesHeapCapacity];
 
 size_t tupleRegistrySize;
 RegistryEntry *nextFreeRegistryEntry;
-Tuple *nextFreeTuple;
+uint8_t *nextFreeTuple;
 RegistryEntry *trailHead;
 
 CodeIndex continuePoint;
 RegistryEntry *currentEnvironment;
 RegistryEntry *currentChoicePoint;
 RegistryEntry *currentCutPoint;
+Arity argumentCount;
 
-RegistryEntry **structureIterator;
+RegistryEntry *currentStructure;
+Arity currentStructureSubtermIndex;
 
 void resetMemory() {
   tupleRegistrySize = 0;
   nextFreeRegistryEntry = nullptr;
-  nextFreeTuple = reinterpret_cast<Tuple *>(tuplesHeap);
+  nextFreeTuple = tuplesHeap;
   trailHead = nullptr;
 
   currentEnvironment = nullptr;
@@ -31,12 +33,24 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   RegistryEntry *newEntry;
 
   if (nextFreeRegistryEntry == nullptr) {
+#ifdef VERBOSE_LOG
+    Serial << "\tNew Registry Entry: ";
+#endif
+
     newEntry = tupleRegistry + tupleRegistrySize;
     ++tupleRegistrySize;
   } else {
+#ifdef VERBOSE_LOG
+    Serial << "\tReusing Registry Entry: ";
+#endif
+
     newEntry = nextFreeRegistryEntry;
     nextFreeRegistryEntry = nextFreeRegistryEntry->next;
   }
+
+#ifdef VERBOSE_LOG
+  Serial << (newEntry - tupleRegistry) << endl;
+#endif
 
   newEntry->type = type;
 
@@ -44,13 +58,24 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
 }
 
 Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n) {
-  Tuple *tuple = nextFreeTuple;
+  Tuple *tuple = reinterpret_cast<Tuple *>(nextFreeTuple);
   nextFreeTuple += (sizeof(Tuple) + headSize + n * sizeof(RegistryEntry *));
   tuple->entry = entry;
+
+#ifdef VERBOSE_LOG
+  Serial << "\tNew Tuple at "
+         << (reinterpret_cast<uint8_t *>(tuple) - tuplesHeap)
+         << " with an entry at " << (tuple->entry - tupleRegistry) << endl;
+#endif
+
   return tuple;
 }
 
 RegistryEntry *newVariable() {
+#ifdef VERBOSE_LOG
+  Serial << "New Variable:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::reference);
 
   entry->tuple = newTuple(entry, ScalarSize);
@@ -61,6 +86,10 @@ RegistryEntry *newVariable() {
 }
 
 RegistryEntry *newStructure(Functor f, Arity n) {
+#ifdef VERBOSE_LOG
+  Serial << "New Structure:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::structure);
 
   entry->tuple = newTuple(entry, sizeof(Structure), n);
@@ -74,12 +103,17 @@ RegistryEntry *newStructure(Functor f, Arity n) {
     structure.subterms[i] = nullptr;
   }
 
-  structureIterator = structure.subterms;
+  currentStructure = entry;
+  currentStructureSubtermIndex = 0;
 
   return entry;
 }
 
 RegistryEntry *newList() {
+#ifdef VERBOSE_LOG
+  Serial << "New List:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::list);
 
   entry->tuple = newTuple(entry, 0, 2);
@@ -89,12 +123,17 @@ RegistryEntry *newList() {
   list.subterms[0] = nullptr;
   list.subterms[1] = nullptr;
 
-  structureIterator = list.subterms;
+  currentStructure = entry;
+  currentStructureSubtermIndex = 0;
 
   return entry;
 }
 
 RegistryEntry *newConstant(Constant c) {
+#ifdef VERBOSE_LOG
+  Serial << "New Constant:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::constant);
 
   entry->tuple = newTuple(entry, ScalarSize);
@@ -105,6 +144,10 @@ RegistryEntry *newConstant(Constant c) {
 }
 
 RegistryEntry *newInteger(Integer i) {
+#ifdef VERBOSE_LOG
+  Serial << "New Integer:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::integer);
 
   entry->tuple = newTuple(entry, ScalarSize);
@@ -114,7 +157,11 @@ RegistryEntry *newInteger(Integer i) {
   return entry;
 }
 
-RegistryEntry **newEnvironment(EnvironmentSize n) {
+RegistryEntry *newEnvironment(EnvironmentSize n) {
+#ifdef VERBOSE_LOG
+  Serial << "New Environment of size " << n << ":" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::environment);
 
   entry->tuple = newTuple(entry, sizeof(Environment), n);
@@ -132,13 +179,17 @@ RegistryEntry **newEnvironment(EnvironmentSize n) {
 
   currentEnvironment = entry;
 
-  return environment.permanentVariables;
+  return entry;
 }
 
-RegistryEntry *newChoicePoint(LabelIndex retryLabel, ChoicePointSize n) {
+RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
+#ifdef VERBOSE_LOG
+  Serial << "New Choice Point:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::choicePoint);
 
-  entry->tuple = newTuple(entry, sizeof(ChoicePoint), n);
+  entry->tuple = newTuple(entry, sizeof(ChoicePoint), argumentCount);
 
   ChoicePoint &choicePoint = entry->mutableBody<ChoicePoint>();
 
@@ -147,9 +198,9 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel, ChoicePointSize n) {
   choicePoint.nextChoicePoint = currentChoicePoint;
   choicePoint.retryLabel = retryLabel;
   choicePoint.currentCutPoint = currentCutPoint;
-  choicePoint.savedRegisterCount = n;
+  choicePoint.savedRegisterCount = argumentCount;
 
-  for (ChoicePointSize i = 0; i < n; ++i) {
+  for (ChoicePointSize i = 0; i < argumentCount; ++i) {
     choicePoint.savedRegisters[i] = registers[i];
   }
 
@@ -159,6 +210,10 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel, ChoicePointSize n) {
 }
 
 void newTrailItem(RegistryEntry *reference) {
+#ifdef VERBOSE_LOG
+  Serial << "New Trail Item:" << endl;
+#endif
+
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::trailItem);
 
   entry->tuple = newTuple(entry, sizeof(TrailItem));
@@ -167,4 +222,35 @@ void newTrailItem(RegistryEntry *reference) {
   entry->mutableBody<TrailItem>().nextItem = trailHead;
 
   trailHead = entry;
+}
+
+RegistryEntry *&currentStructureSubterm() {
+  RegistryEntry *&subterm = currentStructure->mutableBody<Structure>()
+                                .subterms[currentStructureSubtermIndex];
+
+  ++currentStructureSubtermIndex;
+
+  return subterm;
+}
+
+void restoreChoicePoint(LabelIndex l) {
+  restoreChoicePoint(currentChoicePoint->mutableBody<ChoicePoint>(), l);
+}
+
+void restoreChoicePoint(ChoicePoint &b, LabelIndex l) {
+  for (ChoicePointSize i = 0; i < b.savedRegisterCount; ++i) {
+    registers[i] = b.savedRegisters[i];
+  }
+
+  currentEnvironment = b.currentEnvironment;
+  continuePoint = b.continuePoint;
+
+  b.retryLabel = l;
+
+  Serial << "Unwinding Trail" << endl;
+
+  while (trailHead > currentChoicePoint) {
+    trailHead->mutableBody<TrailItem>().item->resetToVariable();
+    trailHead = trailHead->mutableBody<TrailItem>().nextItem;
+  }
 }

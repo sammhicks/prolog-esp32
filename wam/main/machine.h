@@ -1,7 +1,6 @@
 #pragma once
 #pragma pack(push, 1)
 
-#include <iostream>
 #include <limits>
 
 #include "instruction.h"
@@ -11,15 +10,10 @@
 
 #include "SPIFFS.h"
 
-using std::cout;
-using std::endl;
-
 extern const char *codePath;
 extern const char *labelTablePath;
 
 const uint8_t analogResolution = 12;
-
-const CodeIndex haltIndex = std::numeric_limits<CodeIndex>::max();
 
 enum class ExecuteModes : uint8_t { query, program };
 
@@ -37,13 +31,13 @@ struct LabelTableEntry {
 };
 
 extern ExecuteModes executeMode;
+extern CodeIndex haltIndex;
 extern bool querySucceeded;
 extern bool exceptionRaised;
 extern Stream *instructionSource;
 extern File *programFile;
 
 extern RWModes rwMode;
-extern Arity argumentCount;
 
 void resetMachine();
 
@@ -129,15 +123,16 @@ void analogWritePin();
 
 namespace Ancillary {
 LabelTableEntry lookupLabel(LabelIndex l);
+RegistryEntry *&lookupPermanentVariable(Yn yn);
 void backtrack();
 void failAndExit();
 void failWithException();
 void bind(RegistryEntry *a1, RegistryEntry *a2);
 void trail(RegistryEntry *a);
-void unwindTrail();
 void tidyTrail();
 void tidyTrail(RegistryEntry *&head);
 bool unify(RegistryEntry *a1, RegistryEntry *a2);
+bool unify(RegistryEntry *a1, Integer i2);
 Comparison compare(Integer i1, Integer i2);
 Comparison compare(const RegistryEntry *a1, const RegistryEntry *a2);
 Integer evaluateExpression(const RegistryEntry *a);

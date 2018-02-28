@@ -14,10 +14,9 @@ read_solution(Stream, Query, _Constants, _Structures) :-
 
 read_solution(Stream, Query, Constants, Structures) :-
 	setup_state(Empty_State, Constants, Structures),
-	get_byte(Stream, Arity),
-	length(Arguments, Arity),
-	fetch_registers(Arguments, Stream, Empty_State, Initial_State),
-	fetch_compounds(Stream, Initial_State, _),
+	value(Registers, Stream, Stream),
+	unwrap_value(Registers, Arguments, Empty_State, Initial_State),
+	fetch_values(Stream, Initial_State),
 	compound_name_arguments(Query, _, Arguments).
 
 
@@ -25,61 +24,15 @@ setup_state(State, Constants, Structures) :-
 	state(State, Constants, Structures, [], []).
 
 
-fetch_registers([], _Stream, State, State).
-
-fetch_registers([Value|Values], Stream) -->
-	fetch_register(Value, Stream),
-	fetch_registers(Values, Stream).
-
-
-fetch_register(Value, Stream, Current_State, New_State) :-
-	get_byte_block(Stream, Bytes),
-	value(Wrapped_Value, Bytes, []),
-	unwrap_value(Wrapped_Value, Value, Current_State, New_State).
-
-
-fetch_compounds(_Stream, State, State) :-
-	state(State, _Constants, _Structures, [], _Discovered_Values),
+fetch_values(_Stream, State) :-
+	state(State, _, _, [], _),
 	!.
 
-fetch_compounds(Stream) -->
-	pop_item_to_read(Compound),
-	!,
-	fetch_compound(Compound, Stream),
-	fetch_compounds(Stream).
-
-
-fetch_compound(structure(H, Value), _Stream, State, State) :-
-	state(State, _Constants, _Structures, _Items_To_Read, Discovered_Values),
-	memberchk(structure(H, Value), Discovered_Values),
-	!.
-
-fetch_compound(structure(H, Value), Stream, State0, State) :-
-	state(State0, _Constants, Structures, _Items_To_Read, _Discovered_Values),
-	fetch_structure(Stream, H, ID, Wrapped_Arguments),
-	memberchk(Name-ID, Structures),
-	unwrap_values(Wrapped_Arguments, Arguments, State0, State1),
-	compound_name_arguments(Value, Name, Arguments),
-	push_discovered_item(structure(H, Value), State1, State).
-
-fetch_compound(list(H, Value), _Stream, State, State) :-
-	state(State, _Constants, _Structures, _Items_To_Read, Discovered_Values),
-	memberchk(list(H, Value), Discovered_Values),
-	!.
-
-fetch_compound(list(H, Value), Stream, State0, State) :-
-	state(State0, _Constants, _Structures, _Items_To_Read, _Discovered_Values),
-	fetch_list(Stream, H, Wrapped_Arguments),
-	unwrap_values(Wrapped_Arguments, [Head, Tail], State0, State1),
-	Value = [Head|Tail],
-	push_discovered_item(structure(H, Value), State1, State).
-
-
-unwrap_values([], [], State, State).
-
-unwrap_values([Wrapped_Value|Wrapped_Values], [Value|Values]) -->
-	unwrap_value(Wrapped_Value, Value),
-	unwrap_values(Wrapped_Values, Values).
+fetch_values(Stream, State0) :-
+	pop_value_to_read(Address, Value, State0, State1),
+	fetch_value(Stream, Address, Wrapped_Value),
+	unwrap_value(Wrapped_Value, Value, State1, State),
+	fetch_values(Stream, State).
 
 
 unwrap_value(reference(H), Value, State, State) :-
@@ -91,11 +44,15 @@ unwrap_value(reference(H), Value, Current_State, New_State) :-
 	state(Current_State, Constants, Structures, Items_To_Read, Discovered_Values),
 	state(New_State, Constants, Structures, Items_To_Read, [(H->Value)|Discovered_Values]).
 
-unwrap_value(structure(H), Value) -->
-	push_item_to_read(structure(H, Value)).
+unwrap_value(structure(ID, Subterm_Addresses), Structure, Current_State, New_State) :-
+	state(Current_State, _, Structures, _, _),
+	nth0(ID, Structures, Functor),
+	push_values_to_read(Subterm_Addresses, Arguments, Current_State, New_State),
+	compound_name_arguments(Structure, Functor, Arguments).
 
-unwrap_value(list(H), Value) -->
-	push_item_to_read(list(H, Value)).
+unwrap_value(list(Head_Address, Tail_Address), [Head|Tail]) -->
+	push_value_to_read(Head_Address, Head),
+	push_value_to_read(Tail_Address, Tail).
 
 unwrap_value(constant(ID), C, State, State) :-
 	state(State, Constants, _, _, _),
@@ -103,22 +60,36 @@ unwrap_value(constant(ID), C, State, State) :-
 
 unwrap_value(integer(I), I, State, State).
 
+unwrap_value(environment(Addresses), Values) -->
+	push_values_to_read(Addresses, Values).
 
-pop_item_to_read(Item_To_Read, Current_State, New_State) :-
-	state(Current_State, Constants, Structures, [Item_To_Read|Items_To_Read], Discovered_Values),
+
+pop_value_to_read(Address, Value, Current_State, New_State) :-
+	state(Current_State, Constants, Structures, [Address_Value|Items_To_Read], Discovered_Values),
+	address_value(Address, Value, Address_Value),
 	state(New_State, Constants, Structures, Items_To_Read, Discovered_Values).
 
 
-push_item_to_read(Item_To_Read, Current_State, New_State) :-
+push_values_to_read([], [], State, State).
+
+push_values_to_read([Address|Addresses], [Value|Values]) -->
+	push_value_to_read(Address, Value),
+	push_values_to_read(Addresses, Values).
+
+
+push_value_to_read(Address, Value, State, State) :-
+	state(State, _Constants, _Structures, _Items_To_Read, Discovered_Values),
+	address_value(Address, Value, Address_Value),
+	memberchk(Address_Value, Discovered_Values),
+	!.
+
+push_value_to_read(Address, Value, Current_State, New_State) :-
 	state(Current_State, Constants, Structures, Items_To_Read, Discovered_Values),
-	state(New_State, Constants, Structures, [Item_To_Read|Items_To_Read], Discovered_Values).
+	address_value(Address, Value, Address_Value),
+	state(New_State, Constants, Structures, [Address_Value|Items_To_Read], [Address_Value|Discovered_Values]).
 
 
-push_discovered_item(Discovered_Value, Current_State, New_State) :-
-	state(Current_State, Constants, Structures, Items_To_Read, Discovered_Values),
-	state(New_State, Constants, Structures, Items_To_Read, [Discovered_Value|Discovered_Values]).
-
-
+address_value(Address, Value, Address->Value).
 
 state(state(Constants, Structures, Items_To_Read, Discovered_Values), Constants, Structures, Items_To_Read, Discovered_Values).
 

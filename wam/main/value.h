@@ -6,6 +6,7 @@
 #include <cstdint>
 
 #include "raw-io.h"
+#include "serial-stream.h"
 #include "verbose-log.h"
 
 typedef uint8_t Vn;
@@ -25,6 +26,17 @@ typedef uint16_t LabelIndex;
 
 struct RegistryEntry;
 struct Tuple;
+struct Structure;
+struct List;
+struct Environment;
+
+const Xn registerCount = 32;
+const size_t TupleRegistryCapacity = 1024;
+const size_t TuplesHeapCapacity = 4096;
+
+extern RegistryEntry *registers[registerCount];
+extern RegistryEntry tupleRegistry[TupleRegistryCapacity];
+extern uint8_t tuplesHeap[TuplesHeapCapacity];
 
 extern const size_t ScalarSize;
 
@@ -47,23 +59,28 @@ struct RegistryEntry {
   Tuple *tuple;
 
   template <typename T> T &mutableBody() {
-    return *reinterpret_cast<T *>(this + 1);
+    return *reinterpret_cast<T *>(tuple + 1);
   }
   template <typename T> const T &body() const {
-    return *reinterpret_cast<const T *>(this + 1);
+    return *reinterpret_cast<const T *>(tuple + 1);
   }
 
   RegistryEntry *deref();
   const RegistryEntry *deref() const;
 
   void resetToVariable();
+  void bindTo(RegistryEntry *other);
+  void bindToVariable(RegistryEntry *reference);
+  void bindToConstant(Constant c);
+  void bindToInteger(Integer i);
 
-  std::ostream &dump(std::ostream &os) const;
+  Print &dump(Print &os) const;
 
   void sendToClient(Client &client) const;
+  static void sendToClient(Client &client, const Structure &s);
+  static void sendToClient(Client &client, const List &l);
+  static void sendToClient(Client &client, const Environment &e);
 };
-
-std::ostream &operator<<(std::ostream &os, const RegistryEntry &entry);
 
 struct Tuple {
   RegistryEntry *entry;
@@ -101,5 +118,12 @@ struct TrailItem {
   RegistryEntry *item;
   RegistryEntry *nextItem;
 };
+
+Print &operator<<(Print &os, const RegistryEntry &entry);
+Print &operator<<(Print &os, const RegistryEntry::Type &t);
+Print &operator<<(Print &os, const Structure &s);
+Print &operator<<(Print &os, const Environment &e);
+Print &operator<<(Print &os, const ChoicePoint &b);
+Print &operator<<(Print &os, const TrailItem &ti);
 
 #pragma pack(pop)

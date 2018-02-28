@@ -7,9 +7,7 @@
 	      reset_machine/1,
 	      run_query/3,
 	      get_next_answer/2,
-	      fetch_structure/4,
-	      fetch_list/3,
-	      get_byte_block/2,
+	      fetch_value/3,
 	      put_bytes/2
 	  ]).
 
@@ -62,31 +60,10 @@ get_next_answer(Stream, Results) :-
 	get_results(Stream, Results).
 
 
-fetch_structure(Stream, H, Name, Arguments) :-
-	heap_index(H, Bytes, []),
+fetch_value(Stream, Address, Value) :-
+	registry_entry(Address, Bytes, []),
 	put_command_with_block(Stream, fetch_structure, Bytes),
-	get_byte_block(Stream, Header),
-	functor_arity(Name, Arity, Header, []),
-	length(Arguments, Arity),
-	wrapped_values(Arguments, Stream).
-
-
-fetch_list(Stream, H, [Head, Tail]) :-
-	heap_index(H, Bytes, []),
-	put_command_with_block(Stream, fetch_list, Bytes),
-	wrapped_values([Head, Tail], Stream).
-
-
-wrapped_values([], _Stream).
-
-wrapped_values([Value|Values], Stream) :-
-	wrapped_value(Stream, Value),
-	wrapped_values(Values, Stream).
-
-
-wrapped_value(Stream, Value) :-
-	get_byte_block(Stream, Bytes),
-	value(Value, Bytes, []).
+	value(Value, Stream, Stream).
 
 
 put_command_with_block(Stream, Command, Block) :-
@@ -100,19 +77,6 @@ put_bytes([], Stream) :-
 put_bytes([Code|Codes], Stream) :-
 	put_byte(Stream, Code),
 	put_bytes(Codes, Stream).
-
-
-get_byte_block(Stream, Block) :-
-	get_byte(Stream, Length),
-	length(Block, Length),
-	get_bytes(Block, Stream).
-
-
-get_bytes([], _Stream).
-
-get_bytes([Code|Codes], Stream) :-
-	get_byte(Stream, Code),
-	get_bytes(Codes, Stream).
 
 
 get_boolean(Stream) :-

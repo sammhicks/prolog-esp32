@@ -17,6 +17,4 @@ void updateCode(Client &client);
 
 void updateLabelTable(Client &client);
 
-void readStructure(Client &client);
-
-void readList(Client &client);
+void readValue(Client &client);

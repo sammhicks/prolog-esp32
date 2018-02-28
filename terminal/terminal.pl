@@ -9,8 +9,9 @@
 	  ]).
 
 
-:- use_module(library(socket)).
+:- use_module(library(lazy_lists)).
 :- use_module(library(random)).
+:- use_module(library(socket)).
 
 :- use_module('..'/compiler/compiler).
 :- use_module(command).

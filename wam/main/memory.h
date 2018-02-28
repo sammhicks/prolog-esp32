@@ -1,26 +1,22 @@
 #pragma once
 
+#include <limits>
+
 #include "value.h"
-
-const Xn registerCount = 32;
-const size_t TupleRegistryCapacity = 1024;
-const size_t TuplesHeapCapacity = 4096;
-
-extern RegistryEntry *registers[registerCount];
-extern RegistryEntry tupleRegistry[TupleRegistryCapacity];
-extern uint8_t tuplesHeap[TuplesHeapCapacity];
 
 extern size_t tupleRegistrySize;
 extern RegistryEntry *nextFreeRegistryEntry;
-extern Tuple *nextFreeTuple;
+extern uint8_t *nextFreeTuple;
 extern RegistryEntry *trailHead;
 
 extern CodeIndex continuePoint;
 extern RegistryEntry *currentEnvironment;
 extern RegistryEntry *currentChoicePoint;
 extern RegistryEntry *currentCutPoint;
+extern Arity argumentCount;
 
-extern RegistryEntry **structureIterator;
+extern RegistryEntry *currentStructure;
+extern Arity currentStructureSubtermIndex;
 
 void resetMemory();
 
@@ -32,6 +28,11 @@ RegistryEntry *newStructure(Functor f, Arity n);
 RegistryEntry *newList();
 RegistryEntry *newConstant(Constant c);
 RegistryEntry *newInteger(Integer i);
-RegistryEntry **newEnvironment(EnvironmentSize n);
-void newChoicePoint(ChoicePointSize n);
+RegistryEntry *newEnvironment(EnvironmentSize n);
+RegistryEntry *newChoicePoint(LabelIndex retryLabel);
 void newTrailItem(RegistryEntry *reference);
+
+RegistryEntry *&currentStructureSubterm();
+
+void restoreChoicePoint(LabelIndex l = std::numeric_limits<LabelIndex>::max());
+void restoreChoicePoint(ChoicePoint &b, LabelIndex l);
