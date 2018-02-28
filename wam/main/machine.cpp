@@ -57,7 +57,10 @@ void getNextAnswer(Client *client) {
 
 void executeProgram(Client *client) {
   while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
+#ifdef VERBOSE_LOG
     Serial << "Current Point: " << programFile->position() << endl;
+#endif
+
     executeInstruction();
   }
 
@@ -76,8 +79,6 @@ void executeProgram(Client *client) {
       Serial << "Choice Points" << endl;
       Raw::write(*client, Results::choicePoints);
     }
-
-    Serial << "Environment: " << (currentEnvironment - tupleRegistry) << endl;
 
     currentEnvironment->sendToClient(*client);
 
@@ -818,12 +819,9 @@ void unifyVoid(VoidCount n) {
 void allocate(EnvironmentSize n) {
 #ifdef VERBOSE_LOG
   Serial << "Current environment: " << *currentEnvironment;
-#endif
-
-  RegistryEntry *e = newEnvironment(n);
-
-#ifdef VERBOSE_LOG
-  Serial << "New Environment:" << *e;
+  Serial << "New Environment:" << newEnvironment(n);
+#else
+  newEnvironment(n);
 #endif
 }
 
@@ -845,6 +843,7 @@ void deallocate() {
 #ifdef VERBOSE_LOG
   Serial << "Deallocating environment: " << *currentEnvironment;
 #endif
+
   continuePoint = currentEnvironment->body<Environment>().continuePoint;
   currentEnvironment = currentEnvironment->body<Environment>().nextEnvironment;
 
@@ -857,6 +856,7 @@ void call(LabelIndex p) {
 #ifdef VERBOSE_LOG
   Serial << "Calling label " << p << endl;
 #endif
+
   switch (executeMode) {
   case ExecuteModes::query:
     executeMode = ExecuteModes::program;
@@ -908,10 +908,10 @@ void proceed() {
 }
 
 void tryMeElse(LabelIndex l) {
-  RegistryEntry *b = newChoicePoint(l);
-
 #ifdef VERBOSE_LOG
-  Serial << "New Choice Point: " << *b << endl;
+  Serial << "New Choice Point: " << newChoicePoint(l);
+#else
+  newChoicePoint(l);
 #endif
 }
 
@@ -922,7 +922,9 @@ void retryMeElse(LabelIndex l) {
 
   restoreChoicePoint(l);
 
+#ifdef VERBOSE_LOG
   Serial << "New Choice Point: " << *currentChoicePoint << endl;
+#endif
 }
 
 void trustMe() {
@@ -934,11 +936,13 @@ void trustMe() {
 
   currentChoicePoint = currentChoicePoint->body<ChoicePoint>().nextChoicePoint;
 
+#ifdef VERBOSE_LOG
   if (currentChoicePoint == nullptr) {
     Serial << "No more choice points" << endl;
   } else {
     Serial << "New Choice Point: " << *currentChoicePoint << endl;
   }
+#endif
 }
 
 void neckCut() {
@@ -950,11 +954,13 @@ void neckCut() {
 
     currentChoicePoint = currentCutPoint;
 
+#ifdef VERBOSE_LOG
     if (currentChoicePoint == nullptr) {
       Serial << "No more choice points" << endl;
     } else {
       Serial << "New Choice Point: " << *currentChoicePoint << endl;
     }
+#endif
 
     tidyTrail();
   }
@@ -1113,9 +1119,7 @@ void digitalWritePin() {
     digitalWrite(pinID, HIGH);
     break;
   default:
-    Serial.printf("Invalid digital pin value \"%i\"\n",
-                  static_cast<int>(pinValue));
-
+    Serial << "Invalid digital pin value \"" << pinValue << "\"" << endl;
     failWithException();
     return;
   }
@@ -1190,6 +1194,7 @@ void analogWritePin() {
 
   if (pinValue < 0) {
     Serial << "Analog pin write values must be positive" << endl;
+    return;
   }
 
   ledcWrite(channelID, static_cast<uint32_t>(pinValue));
@@ -1279,9 +1284,11 @@ void trail(RegistryEntry *a) {
 #ifdef VERBOSE_LOG
     Serial << "Adding " << (a - tupleRegistry) << " to the trail" << endl;
 #endif
+
     newTrailItem(a);
   } else {
-#ifndef VERBOSE_LOG
+
+#ifdef VERBOSE_LOG
     Serial << "Address " << (a - tupleRegistry) << " is not conditional"
            << endl;
 #endif
