@@ -225,8 +225,28 @@ void newTrailItem(RegistryEntry *reference) {
 }
 
 RegistryEntry *&currentStructureSubterm() {
-  RegistryEntry *&subterm = currentStructure->mutableBody<Structure>()
-                                .subterms[currentStructureSubtermIndex];
+  switch (currentStructure->type) {
+  case RegistryEntry::Type::structure:
+    return currentStructureSubterm(currentStructure->mutableBody<Structure>());
+  case RegistryEntry::Type::list:
+    return currentStructureSubterm(currentStructure->mutableBody<List>());
+  default:
+    Serial << "Type " << currentStructure->type << " is not a structure or list"
+           << endl;
+    throw "Not a structure or a list";
+  }
+}
+
+RegistryEntry *&currentStructureSubterm(Structure &s) {
+  RegistryEntry *&subterm = s.subterms[currentStructureSubtermIndex];
+
+  ++currentStructureSubtermIndex;
+
+  return subterm;
+}
+
+RegistryEntry *&currentStructureSubterm(List &l) {
+  RegistryEntry *&subterm = l.subterms[currentStructureSubtermIndex];
 
   ++currentStructureSubtermIndex;
 

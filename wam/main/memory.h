@@ -33,6 +33,8 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel);
 void newTrailItem(RegistryEntry *reference);
 
 RegistryEntry *&currentStructureSubterm();
+RegistryEntry *&currentStructureSubterm(Structure &s);
+RegistryEntry *&currentStructureSubterm(List &l);
 
 void restoreChoicePoint(LabelIndex l = std::numeric_limits<LabelIndex>::max());
 void restoreChoicePoint(ChoicePoint &b, LabelIndex l);

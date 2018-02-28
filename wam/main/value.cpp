@@ -29,7 +29,7 @@ const RegistryEntry *RegistryEntry::deref() const {
 
 void RegistryEntry::resetToVariable() {
 #ifdef VERBOSE_LOG
-  Serial << "Resetting " << this << " to variable" << endl;
+  Serial << "Resetting " << (this - tupleRegistry) << " to variable" << endl;
 #endif
 
   type = Type::reference;
@@ -94,7 +94,7 @@ Print &RegistryEntry::dump(Print &os) const {
     os << "\t\tStructure: " << body<Structure>() << endl;
     break;
   case Type::list:
-    os << "\t\tList" << endl;
+    os << "\t\tList" << body<List>() << endl;
     break;
   case Type::constant:
     os << "\t\tConstant: " << body<Constant>() << endl;
@@ -123,7 +123,17 @@ Print &RegistryEntry::dump(Print &os) const {
 Print &operator<<(Print &os, const RegistryEntry::Type &t) { return os; }
 
 Print &operator<<(Print &os, const Structure &s) {
-  return os << s.functor << "/" << s.arity;
+  os << s.functor << "/" << s.arity << " (";
+
+  for (Arity i = 0; i < s.arity; ++i) {
+    os << (s.subterms[i] - tupleRegistry) << ", ";
+  }
+
+  return os << ")";
+}
+
+Print &operator<<(Print &os, const List &l) {
+  return os << "[" << l.subterms[0] << ", " << l.subterms[1] << "]" << endl;
 }
 
 Print &operator<<(Print &os, const Environment &e) {
@@ -149,8 +159,6 @@ Print &operator<<(Print &os, const ChoicePoint &b) {
 Print &operator<<(Print &os, const TrailItem &ti) { return os; }
 
 void RegistryEntry::sendToClient(Client &client) const {
-  dump(Serial);
-
   Raw::write(client, type);
 
   switch (type) {

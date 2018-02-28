@@ -127,5 +127,5 @@ void readValue(Client &client) {
 
   Serial << "Reading entry: " << *entry << endl;
 
-  entry->sendToClient(client);
+  entry->deref()->sendToClient(client);
 }

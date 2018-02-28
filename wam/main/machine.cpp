@@ -1226,10 +1226,14 @@ void backtrack() {
   }
 
 #ifdef VERBOSE_LOG
-  Serial << "Current cut point: " << *currentCutPoint << endl;
+  if (currentCutPoint == nullptr) {
+    Serial << "No cut point" << endl;
+  } else {
+    Serial << "Current cut point: " << *currentCutPoint << endl;
+  }
 #endif
 
-  if (currentCutPoint->type != RegistryEntry::Type::choicePoint) {
+  if (currentChoicePoint->type != RegistryEntry::Type::choicePoint) {
     Serial << "Not a choice point!" << endl;
     failWithException();
     return;
@@ -1238,7 +1242,11 @@ void backtrack() {
   currentCutPoint = currentChoicePoint->body<ChoicePoint>().currentCutPoint;
 
 #ifdef VERBOSE_LOG
-  Serial << "New cut choice point: " << *currentCutPoint << endl;
+  if (currentCutPoint == nullptr) {
+    Serial << "No cut point" << endl;
+  } else {
+    Serial << "New cut point: " << *currentCutPoint << endl;
+  }
 #endif
 
   programFile->seek(

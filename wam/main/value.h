@@ -122,6 +122,7 @@ struct TrailItem {
 Print &operator<<(Print &os, const RegistryEntry &entry);
 Print &operator<<(Print &os, const RegistryEntry::Type &t);
 Print &operator<<(Print &os, const Structure &s);
+Print &operator<<(Print &os, const List &l);
 Print &operator<<(Print &os, const Environment &e);
 Print &operator<<(Print &os, const ChoicePoint &b);
 Print &operator<<(Print &os, const TrailItem &ti);

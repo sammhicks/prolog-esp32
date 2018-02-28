@@ -46,7 +46,7 @@ unwrap_value(reference(H), Value, Current_State, New_State) :-
 
 unwrap_value(structure(ID, Subterm_Addresses), Structure, Current_State, New_State) :-
 	state(Current_State, _, Structures, _, _),
-	nth0(ID, Structures, Functor),
+	memberchk(Functor-ID, Structures),
 	push_values_to_read(Subterm_Addresses, Arguments, Current_State, New_State),
 	compound_name_arguments(Structure, Functor, Arguments).
 

@@ -43,10 +43,10 @@ reference(reference(H)) -->
 
 structure(structure(Functor, Subterms)) -->
 	uint16(Functor),
+	uint8(Arity),
 	{
 	    length(Subterms, Arity)
 	},
-	uint8(Arity),
 	registry_entries(Subterms).
 
 
