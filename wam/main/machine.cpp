@@ -963,10 +963,12 @@ void neckCut() {
 void getLevel(Yn yn) {
 #ifdef VERBOSE_LOG
   Serial << "Yn - " << yn << endl;
-#endif
 
-#ifdef VERBOSE_LOG
-  Serial << "Level is " << *currentCutPoint << endl;
+  if (currentCutPoint == nullptr) {
+    Serial << "No cut point" << endl;
+  } else {
+    Serial << "Level is " << *currentCutPoint << endl;
+  }
 #endif
 
   lookupPermanentVariable(yn) = currentCutPoint;
@@ -979,7 +981,8 @@ void cut(Yn yn) {
 
   RegistryEntry *cutPoint = lookupPermanentVariable(yn);
 
-  if (cutPoint->type != RegistryEntry::Type::choicePoint) {
+  if (cutPoint != nullptr &&
+      cutPoint->type != RegistryEntry::Type::choicePoint) {
     Serial << "Value is not a choice point" << endl;
     failWithException();
     return;
@@ -987,7 +990,8 @@ void cut(Yn yn) {
 
   if (currentChoicePoint > cutPoint) {
 #ifdef VERBOSE_LOG
-    Serial << "Cutting " << currentChoicePoint << " to " << cutPoint << endl;
+    Serial << "Cutting " << (currentChoicePoint - tupleRegistry) << " to "
+           << (cutPoint - tupleRegistry) << endl;
 #endif
 
     currentChoicePoint = cutPoint;
