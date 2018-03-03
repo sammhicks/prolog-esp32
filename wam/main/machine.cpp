@@ -21,24 +21,22 @@ void resetMachine() {
 }
 
 void performGarbageCollection() {
-  if (garbageCollectionRunning) {
-    switch (garbageCollectionState) {
-    case GarbageCollectionStates::scan:
-      if (scanStep()) {
-        initSweeping();
-      }
-      break;
-    case GarbageCollectionStates::sweep:
-      if (sweepStep()) {
-        initScanning();
-
-        if (deadCount == 0) {
-          Serial << "pausing garbage collection" << endl;
-          garbageCollectionRunning = false;
-        }
-      }
-      break;
+  switch (garbageCollectionState) {
+  case GarbageCollectionStates::scan:
+    if (scanStep()) {
+      initSweeping();
     }
+    break;
+  case GarbageCollectionStates::sweep:
+    if (sweepStep()) {
+      initScanning();
+
+      if (deadCount == 0) {
+        Serial << "pausing garbage collection" << endl;
+        garbageCollectionRunning = false;
+      }
+    }
+    break;
   }
 }
 
@@ -79,18 +77,36 @@ void getNextAnswer(Client *client) {
 }
 
 void executeProgram(Client *client) {
+  unsigned long excessTime = 0;
+
   while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
 #ifdef VERBOSE_LOG
     Serial << "Current Point: " << programFile->position() << endl;
 #endif
 
-    executeInstruction();
+    unsigned long targetTime = micros() + excessTime;
 
-    for (int i = 0; i < 5; ++i) {
-      performGarbageCollection();
-    }
+    do {
+      executeInstruction();
+    } while (micros() < targetTime);
+
+    excessTime = micros() - targetTime;
 
     yieldProcessor();
+
+    if (garbageCollectionRunning) {
+      targetTime = micros() + excessTime;
+
+      do {
+        performGarbageCollection();
+      } while (micros() < targetTime);
+
+      excessTime = micros() - targetTime;
+
+      yieldProcessor();
+    } else {
+      excessTime = 0;
+    }
   }
 
   if (exceptionRaised) {
