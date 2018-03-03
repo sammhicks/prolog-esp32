@@ -20,6 +20,7 @@ RegistryEntry *currentChoicePoint;
 RegistryEntry *currentCutPoint;
 RegistryEntry *trailHead;
 
+bool garbageCollectionRunning;
 GarbageCollectionStates garbageCollectionState;
 RegistryEntry *scanCurrentHead;
 RegistryEntry *scanNextHead;
@@ -39,4 +40,6 @@ void resetMemory() {
   currentEnvironment = nullptr;
   currentChoicePoint = nullptr;
   currentCutPoint = nullptr;
+
+  garbageCollectionRunning = false;
 }

@@ -27,6 +27,7 @@ extern RegistryEntry *currentChoicePoint;
 extern RegistryEntry *currentCutPoint;
 extern RegistryEntry *trailHead;
 
+extern bool garbageCollectionRunning;
 extern GarbageCollectionStates garbageCollectionState;
 extern RegistryEntry *scanCurrentHead;
 extern RegistryEntry *scanNextHead;

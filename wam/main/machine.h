@@ -144,6 +144,7 @@ Integer evaluateStructure(const Structure &structure);
 uint8_t getPin(const RegistryEntry *a);
 uint8_t getChannel(RegistryEntry *a);
 void virtualPredicate(Arity n);
+void resumeGarbageCollection();
 } // namespace Ancillary*/
 
 #pragma pack(pop)

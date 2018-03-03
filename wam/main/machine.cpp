@@ -21,17 +21,24 @@ void resetMachine() {
 }
 
 void performGarbageCollection() {
-  switch (garbageCollectionState) {
-  case GarbageCollectionStates::scan:
-    if (scanStep()) {
-      initSweeping();
+  if (garbageCollectionRunning) {
+    switch (garbageCollectionState) {
+    case GarbageCollectionStates::scan:
+      if (scanStep()) {
+        initSweeping();
+      }
+      break;
+    case GarbageCollectionStates::sweep:
+      if (sweepStep()) {
+        initScanning();
+
+        if (deadCount == 0) {
+          Serial << "pausing garbage collection" << endl;
+          garbageCollectionRunning = false;
+        }
+      }
+      break;
     }
-    break;
-  case GarbageCollectionStates::sweep:
-    if (sweepStep()) {
-      initScanning();
-    }
-    break;
   }
 }
 
@@ -398,6 +405,7 @@ using Ancillary::getChannel;
 using Ancillary::getPin;
 using Ancillary::lookupLabel;
 using Ancillary::lookupPermanentVariable;
+using Ancillary::resumeGarbageCollection;
 using Ancillary::tidyTrail;
 using Ancillary::trail;
 using Ancillary::unify;
@@ -871,6 +879,7 @@ void trim(EnvironmentSize n) {
 #endif
 
   currentEnvironment->mutableBody<Environment>().size -= n;
+  resumeGarbageCollection();
 
 #ifdef VERBOSE_LOG
   Serial << " to " << currentEnvironment->body<Environment>().size;
@@ -884,6 +893,7 @@ void deallocate() {
 
   continuePoint = currentEnvironment->body<Environment>().continuePoint;
   currentEnvironment = currentEnvironment->body<Environment>().nextEnvironment;
+  resumeGarbageCollection();
 
 #ifdef VERBOSE_LOG
   Serial << "New environment: " << *currentEnvironment;
@@ -1307,6 +1317,8 @@ void backtrack() {
   programFile->seek(
       lookupLabel(currentChoicePoint->body<ChoicePoint>().retryLabel)
           .entryPoint);
+
+  resumeGarbageCollection();
 }
 
 void failAndExit() { querySucceeded = false; }
@@ -1558,6 +1570,14 @@ void virtualPredicate(Arity n) {
     continuePoint = haltIndex;
     programFile->seek(haltIndex);
     argumentCount = n;
+  }
+}
+
+void resumeGarbageCollection() {
+  if (!garbageCollectionRunning) {
+    Serial << "resuming garbage collection";
+
+    garbageCollectionRunning = true;
   }
 }
 } // namespace Ancillary
