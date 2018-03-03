@@ -41,3 +41,8 @@ Print &operator<<(Print &os, int32_t n) {
   os.print(n, DEC);
   return os;
 }
+
+Print &operator<<(Print &os, double n) {
+  os.print(n);
+  return os;
+}

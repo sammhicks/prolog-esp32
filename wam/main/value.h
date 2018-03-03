@@ -24,6 +24,11 @@ typedef Vn EnvironmentSize;
 typedef Vn ChoicePointSize;
 typedef uint16_t LabelIndex;
 
+enum class GarbageCollectionStates : uint8_t {
+  scan,
+  sweep,
+};
+
 struct RegistryEntry;
 struct Tuple;
 struct Structure;
@@ -45,7 +50,7 @@ struct RegistryEntry {
     integer,
     environment,
     choicePoint,
-    trailItem
+    trailItem,
   };
 
   bool marked;
@@ -60,6 +65,9 @@ struct RegistryEntry {
   template <typename T> const T &body() const {
     return *reinterpret_cast<const T *>(tuple + 1);
   }
+
+  static size_t tupleSize(size_t headSize, Arity n);
+  size_t tupleSize();
 
   RegistryEntry *deref();
   const RegistryEntry *deref() const;

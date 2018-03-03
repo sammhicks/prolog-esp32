@@ -3,6 +3,34 @@
 const size_t ScalarSize = std::max(sizeof(RegistryEntry *),
                                    std::max(sizeof(Constant), sizeof(Integer)));
 
+size_t RegistryEntry::tupleSize(size_t headSize, Arity n) {
+  return sizeof(Tuple) + headSize + n * sizeof(RegistryEntry *);
+}
+
+size_t RegistryEntry::tupleSize() {
+  switch (type) {
+  case RegistryEntry::Type::reference:
+    return tupleSize(0, 1);
+  case RegistryEntry::Type::structure:
+    return tupleSize(sizeof(Structure), body<Structure>().arity);
+  case RegistryEntry::Type::list:
+    return tupleSize(0, 2);
+  case RegistryEntry::Type::constant:
+    return tupleSize(ScalarSize, 0);
+  case RegistryEntry::Type::integer:
+    return tupleSize(ScalarSize, 0);
+  case RegistryEntry::Type::environment:
+    return tupleSize(sizeof(Environment), body<Environment>().capacity);
+  case RegistryEntry::Type::choicePoint:
+    return tupleSize(sizeof(ChoicePoint),
+                     body<ChoicePoint>().savedRegisterCount);
+  case RegistryEntry::Type::trailItem:
+    return tupleSize(0, 2);
+  default:
+    return 0;
+  }
+}
+
 RegistryEntry *RegistryEntry::deref() {
 #ifdef VERBOSE_LOG
   Serial << "Dereferencing " << *this;

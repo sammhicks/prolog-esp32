@@ -25,12 +25,22 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
 
   newEntry->type = type;
 
+  switch (garbageCollectionState) {
+  case GarbageCollectionStates::scan:
+    newEntry->marked = false;
+    scanNext(newEntry);
+    break;
+  case GarbageCollectionStates::sweep:
+    newEntry->marked = true;
+    break;
+  }
+
   return newEntry;
 }
 
 Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n) {
   Tuple *tuple = reinterpret_cast<Tuple *>(nextFreeTuple);
-  nextFreeTuple += (sizeof(Tuple) + headSize + n * sizeof(RegistryEntry *));
+  nextFreeTuple += RegistryEntry::tupleSize(headSize, n);
   tuple->entry = entry;
 
 #ifdef VERBOSE_LOG

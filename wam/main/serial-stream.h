@@ -14,3 +14,4 @@ Print &operator<<(Print &os, uint16_t n);
 Print &operator<<(Print &os, uint32_t n);
 Print &operator<<(Print &os, int16_t n);
 Print &operator<<(Print &os, int32_t n);
+Print &operator<<(Print &os, double n);

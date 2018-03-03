@@ -1,6 +1,6 @@
 #pragma once
 
-#include "registers.h"
+#include "memory-scanning.h"
 
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type);
 Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n = 0);

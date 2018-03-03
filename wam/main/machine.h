@@ -5,6 +5,8 @@
 
 #include "instruction.h"
 #include "memory-allocation.h"
+#include "memory-scanning.h"
+#include "memory-sweeping.h"
 #include "raw-io.h"
 #include "verbose-log.h"
 
@@ -40,6 +42,8 @@ extern File *programFile;
 extern RWModes rwMode;
 
 void resetMachine();
+
+void performGarbageCollection();
 
 void executeInstructions(Client *client);
 

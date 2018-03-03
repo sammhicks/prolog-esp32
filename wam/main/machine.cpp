@@ -17,6 +17,22 @@ template <typename T> T read() { return Raw::read<T>(*instructionSource); }
 void resetMachine() {
   Serial << "Reset" << endl;
   resetMemory();
+  initScanning();
+}
+
+void performGarbageCollection() {
+  switch (garbageCollectionState) {
+  case GarbageCollectionStates::scan:
+    if (scanStep()) {
+      initSweeping();
+    }
+    break;
+  case GarbageCollectionStates::sweep:
+    if (sweepStep()) {
+      initScanning();
+    }
+    break;
+  }
 }
 
 void executeInstructions(Client *client) {
@@ -62,6 +78,12 @@ void executeProgram(Client *client) {
 #endif
 
     executeInstruction();
+
+    for (int i = 0; i < 5; ++i) {
+      performGarbageCollection();
+    }
+
+    yieldProcessor();
   }
 
   if (exceptionRaised) {
@@ -878,6 +900,10 @@ void call(LabelIndex p) {
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
 
+  for (Xn i = argumentCount; i < registerCount; ++i) {
+    registers[i] = nullptr;
+  }
+
   currentCutPoint = currentChoicePoint;
 }
 
@@ -896,6 +922,10 @@ void execute(LabelIndex p) {
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
+
+  for (Xn i = argumentCount; i < registerCount; ++i) {
+    registers[i] = nullptr;
+  }
 
   currentCutPoint = currentChoicePoint;
 }
