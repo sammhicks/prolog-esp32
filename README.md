@@ -36,6 +36,7 @@ Running Prolog code on a microcontroller
     + Runs concurrently with instruction execution
         + Paused when all tuples are live
         + Resumed on deallocation, trimming, and backtracking
+        + Ratio of Instruction execution to garbage collection depends on memory usage: `ratio = usage / (1 - usage)`
     + Unified memory space for heap, stack, environments, choice points, trail
         + Trail unwinding controlled by relative position of choice points and trail items
         + No penalty for using heap more than stack or stack more than heap etc
