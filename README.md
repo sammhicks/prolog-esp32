@@ -32,6 +32,17 @@ Running Prolog code on a microcontroller
 + Structures' and Lists' bodies are a list of registry entry indices
     + Detaches Structure and contents
     + Allows easier rearrangement of memory
++ Garbage Collection
+    + Runs concurrently with instruction execution
+        + Paused when all tuples are live
+        + Resumed on deallocation, trimming, and backtracking
+    + Unified memory space for heap, stack, environments, choice points, trail
+        + Trail unwinding controlled by relative position of choice points and trail items
+        + No penalty for using heap more than stack or stack more than heap etc
+        + Environments have size and capacity
+            + Size reduced upon trimming, capacity unchanged
+            + When scanning, only permanent variabes with index < size are scanned
+                + No space saving in environment, but trimmed variables are swept
 
 
 ## Ideas for Futher Work
