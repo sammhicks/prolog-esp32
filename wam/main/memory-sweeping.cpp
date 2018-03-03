@@ -23,13 +23,13 @@ bool sweepStep() {
 #endif
 
   if (static_cast<void *>(sweepSource) >= static_cast<void *>(nextFreeTuple)) {
+    nextFreeTuple = sweepDestination;
+
     Serial << "Livesize: " << (liveCount * 100.0) / (liveCount + deadCount)
            << "%" << endl;
 
-    nextFreeTuple = sweepDestination;
-
-    Serial << "Registry Entry Usage: "
-           << (liveCount * 100.0) / tupleRegistryCapacity << "%" << endl;
+    Serial << "Registry Usage: " << (liveCount * 100.0) / tupleRegistryCapacity
+           << "%" << endl;
 
     Serial << "Tuple Heap Usage: "
            << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity << "%"

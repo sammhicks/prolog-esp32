@@ -93,6 +93,22 @@ void executeProgram(Client *client) {
     return;
   }
 
+  size_t registryEntryUsage = tupleRegistrySize;
+  RegistryEntry *liveIter = nextFreeRegistryEntry;
+
+  while (liveIter != nullptr) {
+    --registryEntryUsage;
+
+    liveIter = liveIter->next;
+  }
+
+  Serial << "Registry Usage: "
+         << (registryEntryUsage * 100.0) / tupleRegistryCapacity << "%" << endl;
+
+  Serial << "Tuple Heap Usage: "
+         << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity << "%"
+         << endl;
+
   if (querySucceeded) {
     if (currentChoicePoint == nullptr) {
       Serial << "Done" << endl;
