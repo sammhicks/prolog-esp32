@@ -32,7 +32,7 @@ void performGarbageCollection() {
       initScanning();
 
       if (deadCount == 0) {
-        Serial << "pausing garbage collection" << endl;
+        LOG(Serial << "pausing garbage collection" << endl);
         garbageCollectionRunning = false;
       }
     }
@@ -55,7 +55,7 @@ void executeInstructions(Client *client) {
   }
 
   if (!exceptionRaised) {
-    Serial << "Executing Program" << endl;
+    LOG(Serial << "Executing Program" << endl);
     instructionSource = programFile;
 
     newEnvironment(argumentCount);
@@ -80,9 +80,7 @@ void executeProgram(Client *client) {
   unsigned long excessTime = 0;
 
   while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
-#ifdef VERBOSE_LOG
-    Serial << "Current Point: " << programFile->position() << endl;
-#endif
+    LOG(Serial << "Current Point: " << programFile->position() << endl);
 
     unsigned long targetTime = micros() + excessTime;
 
@@ -95,11 +93,23 @@ void executeProgram(Client *client) {
     yieldProcessor();
 
     if (garbageCollectionRunning) {
-      targetTime = micros() + excessTime;
+      double registryEntryUsage = static_cast<double>(tupleRegistryUsageCount) /
+                                  static_cast<double>(tupleRegistryCapacity);
+      double tupleUsage = static_cast<double>(nextFreeTuple - tuplesHeap) /
+                          static_cast<double>(tuplesHeapCapacity);
+      double garbageCollectionScaling =
+          std::max(registryEntryUsage, tupleUsage) / (1.0 - tupleUsage);
 
-      do {
+      VERBOSE(Serial << "registry usage" << registryEntryUsage << endl);
+      VERBOSE(Serial << "tuple usage" << tupleUsage << endl);
+      VERBOSE(Serial << "garbage collection scaling: "
+                     << garbageCollectionScaling << endl);
+
+      targetTime = micros() + excessTime * garbageCollectionScaling;
+
+      while (micros() < targetTime) {
         performGarbageCollection();
-      } while (micros() < targetTime);
+      }
 
       excessTime = micros() - targetTime;
 
@@ -116,17 +126,9 @@ void executeProgram(Client *client) {
     return;
   }
 
-  size_t registryEntryUsage = tupleRegistrySize;
-  RegistryEntry *liveIter = nextFreeRegistryEntry;
-
-  while (liveIter != nullptr) {
-    --registryEntryUsage;
-
-    liveIter = liveIter->next;
-  }
-
   Serial << "Registry Usage: "
-         << (registryEntryUsage * 100.0) / tupleRegistryCapacity << "%" << endl;
+         << (tupleRegistryUsageCount * 100.0) / tupleRegistryCapacity << "%"
+         << endl;
 
   Serial << "Tuple Heap Usage: "
          << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity << "%"
@@ -153,260 +155,260 @@ void executeProgram(Client *client) {
 void executeInstruction() {
   Opcode opcode = Raw::read<Opcode>(*instructionSource);
 
-  Serial << "Executing opcode " << opcode << ": ";
+  LOG(Serial << "Executing opcode " << opcode << ": ");
 
   switch (opcode) {
   case Opcode::putVariableXnAi:
-    Serial << "putVariableXnAi" << endl;
+    LOG(Serial << "putVariableXnAi" << endl);
     Instructions::putVariableXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::putVariableYnAi:
-    Serial << "putVariableYnAi" << endl;
+    LOG(Serial << "putVariableYnAi" << endl);
     Instructions::putVariableYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::putValueXnAi:
-    Serial << "putValueXnAi" << endl;
+    LOG(Serial << "putValueXnAi" << endl);
     Instructions::putValueXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::putValueYnAi:
-    Serial << "putValueYnAi" << endl;
+    LOG(Serial << "putValueYnAi" << endl);
     Instructions::putValueYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::putStructure:
-    Serial << "putStructure" << endl;
+    LOG(Serial << "putStructure" << endl);
     Instructions::putStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::putList:
-    Serial << "putList" << endl;
+    LOG(Serial << "putList" << endl);
     Instructions::putList(read<Ai>());
     break;
   case Opcode::putConstant:
-    Serial << "putConstant" << endl;
+    LOG(Serial << "putConstant" << endl);
     Instructions::putConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::putInteger:
-    Serial << "putInteger" << endl;
+    LOG(Serial << "putInteger" << endl);
     Instructions::putInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::putVoid:
-    Serial << "putVoid" << endl;
+    LOG(Serial << "putVoid" << endl);
     Instructions::putVoid(read<VoidCount>(), read<Ai>());
     break;
   case Opcode::getVariableXnAi:
-    Serial << "getVariableXnAi" << endl;
+    LOG(Serial << "getVariableXnAi" << endl);
     Instructions::getVariableXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::getVariableYnAi:
-    Serial << "getVariableYnAi" << endl;
+    LOG(Serial << "getVariableYnAi" << endl);
     Instructions::getVariableYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::getValueXnAi:
-    Serial << "getValueXnAi" << endl;
+    LOG(Serial << "getValueXnAi" << endl);
     Instructions::getValueXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::getValueYnAi:
-    Serial << "getValueYnAi" << endl;
+    LOG(Serial << "getValueYnAi" << endl);
     Instructions::getValueYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::getStructure:
-    Serial << "getStructure" << endl;
+    LOG(Serial << "getStructure" << endl);
     Instructions::getStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::getList:
-    Serial << "getList" << endl;
+    LOG(Serial << "getList" << endl);
     Instructions::getList(read<Ai>());
     break;
   case Opcode::getConstant:
-    Serial << "getConstant" << endl;
+    LOG(Serial << "getConstant" << endl);
     Instructions::getConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::getInteger:
-    Serial << "getInteger" << endl;
+    LOG(Serial << "getInteger" << endl);
     Instructions::getInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::setVariableXn:
-    Serial << "setVariableXn" << endl;
+    LOG(Serial << "setVariableXn" << endl);
     Instructions::setVariableXn(read<Xn>());
     break;
   case Opcode::setVariableYn:
-    Serial << "setVariableYn" << endl;
+    LOG(Serial << "setVariableYn" << endl);
     Instructions::setVariableYn(read<Yn>());
     break;
   case Opcode::setValueXn:
-    Serial << "setValueXn" << endl;
+    LOG(Serial << "setValueXn" << endl);
     Instructions::setValueXn(read<Xn>());
     break;
   case Opcode::setValueYn:
-    Serial << "setValueYn" << endl;
+    LOG(Serial << "setValueYn" << endl);
     Instructions::setValueYn(read<Yn>());
     break;
   case Opcode::setConstant:
-    Serial << "setConstant" << endl;
+    LOG(Serial << "setConstant" << endl);
     Instructions::setConstant(read<Constant>());
     break;
   case Opcode::setInteger:
-    Serial << "setInteger" << endl;
+    LOG(Serial << "setInteger" << endl);
     Instructions::setInteger(read<Integer>());
     break;
   case Opcode::setVoid:
-    Serial << "setVoid" << endl;
+    LOG(Serial << "setVoid" << endl);
     Instructions::setVoid(read<VoidCount>());
     break;
   case Opcode::unifyVariableXn:
-    Serial << "unifyVariableXn" << endl;
+    LOG(Serial << "unifyVariableXn" << endl);
     Instructions::unifyVariableXn(read<Xn>());
     break;
   case Opcode::unifyVariableYn:
-    Serial << "unifyVariableYn" << endl;
+    LOG(Serial << "unifyVariableYn" << endl);
     Instructions::unifyVariableYn(read<Yn>());
     break;
   case Opcode::unifyValueXn:
-    Serial << "unifyValueXn" << endl;
+    LOG(Serial << "unifyValueXn" << endl);
     Instructions::unifyValueXn(read<Xn>());
     break;
   case Opcode::unifyValueYn:
-    Serial << "unifyValueYn" << endl;
+    LOG(Serial << "unifyValueYn" << endl);
     Instructions::unifyValueYn(read<Yn>());
     break;
   case Opcode::unifyConstant:
-    Serial << "unifyConstant" << endl;
+    LOG(Serial << "unifyConstant" << endl);
     Instructions::unifyConstant(read<Constant>());
     break;
   case Opcode::unifyInteger:
-    Serial << "unifyInteger" << endl;
+    LOG(Serial << "unifyInteger" << endl);
     Instructions::unifyInteger(read<Integer>());
     break;
   case Opcode::unifyVoid:
-    Serial << "unifyVoid" << endl;
+    LOG(Serial << "unifyVoid" << endl);
     Instructions::unifyVoid(read<VoidCount>());
     break;
   case Opcode::allocate:
-    Serial << "allocate" << endl;
+    LOG(Serial << "allocate" << endl);
     Instructions::allocate(read<EnvironmentSize>());
     break;
   case Opcode::trim:
-    Serial << "trim" << endl;
+    LOG(Serial << "trim" << endl);
     Instructions::trim(read<EnvironmentSize>());
     break;
   case Opcode::deallocate:
-    Serial << "deallocate" << endl;
+    LOG(Serial << "deallocate" << endl);
     Instructions::deallocate();
     break;
   case Opcode::call:
-    Serial << "call" << endl;
+    LOG(Serial << "call" << endl);
     Instructions::call(read<LabelIndex>());
     break;
   case Opcode::execute:
-    Serial << "execute" << endl;
+    LOG(Serial << "execute" << endl);
     Instructions::execute(read<LabelIndex>());
     break;
   case Opcode::proceed:
-    Serial << "proceed" << endl;
+    LOG(Serial << "proceed" << endl);
     Instructions::proceed();
     break;
   case Opcode::tryMeElse:
-    Serial << "tryMeElse" << endl;
+    LOG(Serial << "tryMeElse" << endl);
     Instructions::tryMeElse(read<LabelIndex>());
     break;
   case Opcode::retryMeElse:
-    Serial << "retryMeElse" << endl;
+    LOG(Serial << "retryMeElse" << endl);
     Instructions::retryMeElse(read<LabelIndex>());
     break;
   case Opcode::trustMe:
-    Serial << "trustMe" << endl;
+    LOG(Serial << "trustMe" << endl);
     Instructions::trustMe();
     break;
   case Opcode::neckCut:
-    Serial << "neckCut" << endl;
+    LOG(Serial << "neckCut" << endl);
     Instructions::neckCut();
     break;
   case Opcode::getLevel:
-    Serial << "getLevel" << endl;
+    LOG(Serial << "getLevel" << endl);
     Instructions::getLevel(read<Yn>());
     break;
   case Opcode::cut:
-    Serial << "cut" << endl;
+    LOG(Serial << "cut" << endl);
     Instructions::cut(read<Yn>());
     break;
   case Opcode::greaterThan:
-    Serial << "greaterThan" << endl;
+    LOG(Serial << "greaterThan" << endl);
     Instructions::greaterThan();
     break;
   case Opcode::lessThan:
-    Serial << "lessThan" << endl;
+    LOG(Serial << "lessThan" << endl);
     Instructions::lessThan();
     break;
   case Opcode::lessThanOrEqualTo:
-    Serial << "lessThanOrEqualTo" << endl;
+    LOG(Serial << "lessThanOrEqualTo" << endl);
     Instructions::lessThanOrEqualTo();
     break;
   case Opcode::greaterThanOrEqualTo:
-    Serial << "greaterThanOrEqualTo" << endl;
+    LOG(Serial << "greaterThanOrEqualTo" << endl);
     Instructions::greaterThanOrEqualTo();
     break;
   case Opcode::notEqual:
-    Serial << "notEqual" << endl;
+    LOG(Serial << "notEqual" << endl);
     Instructions::notEqual();
     break;
   case Opcode::equals:
-    Serial << "equals" << endl;
+    LOG(Serial << "equals" << endl);
     Instructions::equals();
     break;
   case Opcode::is:
-    Serial << "is" << endl;
+    LOG(Serial << "is" << endl);
     Instructions::is();
     break;
   case Opcode::noOp:
-    Serial << "noOp" << endl;
+    LOG(Serial << "noOp" << endl);
     Instructions::noOp();
     break;
   case Opcode::fail:
-    Serial << "fail" << endl;
+    LOG(Serial << "fail" << endl);
     Instructions::fail();
     break;
   case Opcode::unify:
-    Serial << "unify" << endl;
+    LOG(Serial << "unify" << endl);
     Instructions::unify();
     break;
   case Opcode::configureDigitalPin:
-    Serial << "configureDigitalPin" << endl;
+    LOG(Serial << "configureDigitalPin" << endl);
     Instructions::configureDigitalPin(read<DigitalPinModes>());
     break;
   case Opcode::digitalReadPin:
-    Serial << "digitalReadPin" << endl;
+    LOG(Serial << "digitalReadPin" << endl);
     Instructions::digitalReadPin();
     break;
   case Opcode::digitalWritePin:
-    Serial << "digitalWritePin" << endl;
+    LOG(Serial << "digitalWritePin" << endl);
     Instructions::digitalWritePin();
     break;
   case Opcode::pinIsAnalogInput:
-    Serial << "pinIsAnalogInput" << endl;
+    LOG(Serial << "pinIsAnalogInput" << endl);
     Instructions::pinIsAnalogInput();
     break;
   case Opcode::configureChannel:
-    Serial << "configureChannel" << endl;
+    LOG(Serial << "configureChannel" << endl);
     Instructions::configureChannel();
     break;
   case Opcode::pinIsAnalogOutput:
-    Serial << "pinIsAnalogOutput" << endl;
+    LOG(Serial << "pinIsAnalogOutput" << endl);
     Instructions::pinIsAnalogOutput();
     break;
   case Opcode::analogReadPin:
-    Serial << "analogReadPin" << endl;
+    LOG(Serial << "analogReadPin" << endl);
     Instructions::analogReadPin();
     break;
   case Opcode::analogWritePin:
-    Serial << "analogWritePin" << endl;
+    LOG(Serial << "analogWritePin" << endl);
     Instructions::analogWritePin();
     break;
   default:
-    Serial << "Unknown opcode \"" << opcode << "\"" << endl;
+    LOG(Serial << "Unknown opcode \"" << opcode << "\"" << endl);
     Ancillary::failWithException();
     break;
   }
 
-  Serial << endl;
+  LOG(Serial << endl);
 }
 
 namespace Instructions {
@@ -429,84 +431,66 @@ using Ancillary::virtualPredicate;
 ;
 
 void putVariableXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[xn] = newVariable();
   registers[ai] = registers[xn];
 }
 
 void putVariableYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   lookupPermanentVariable(yn) = newVariable();
   registers[ai] = lookupPermanentVariable(yn);
 }
 
 void putValueXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = registers[xn];
 }
 
 void putValueYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = lookupPermanentVariable(yn);
 }
 
 void putStructure(Functor f, Arity n, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "f  - " << f << endl;
-  Serial << "n  - " << n << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "f  - " << f << endl);
+  VERBOSE(Serial << "n  - " << n << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = newStructure(f, n);
 }
 
 void putList(Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = newList();
 }
 
 void putConstant(Constant c, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "c  - " << c << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = newConstant(c);
 }
 
 void putInteger(Integer i, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "i  - " << i << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "i  - " << i << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = newInteger(i);
 }
 
 void putVoid(VoidCount n, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "n  - " << n << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "n  - " << n << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   while (n > 0) {
     registers[ai] = newVariable();
@@ -516,28 +500,22 @@ void putVoid(VoidCount n, Ai ai) {
 }
 
 void getVariableXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[xn] = registers[ai];
 }
 
 void getVariableYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   lookupPermanentVariable(yn) = registers[ai];
 }
 
 void getValueXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   if (!unify(registers[xn], registers[ai])) {
     backtrack();
@@ -545,10 +523,8 @@ void getValueXnAi(Xn xn, Ai ai) {
 }
 
 void getValueYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   if (!unify(lookupPermanentVariable(yn), registers[ai])) {
     backtrack();
@@ -556,26 +532,20 @@ void getValueYnAi(Yn yn, Ai ai) {
 }
 
 void getStructure(Functor f, Arity n, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "f  - " << f << endl;
-  Serial << "n  - " << n << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "f  - " << f << endl);
+  VERBOSE(Serial << "n  - " << n << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   RegistryEntry *d = registers[ai]->deref();
 
   switch (d->type) {
   case RegistryEntry::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial << "Writing structure" << endl;
-#endif
+    VERBOSE(Serial << "Writing structure" << endl);
     bind(d, newStructure(f, n));
     rwMode = RWModes::write;
     return;
   case RegistryEntry::Type::structure:
-#ifdef VERBOSE_LOG
-    Serial << "Reading structure" << endl;
-#endif
+    VERBOSE(Serial << "Reading structure" << endl);
     if (d->body<Structure>().functor == f && d->body<Structure>().arity == n) {
       currentStructure = d;
       currentStructureSubtermIndex = 0;
@@ -591,24 +561,18 @@ void getStructure(Functor f, Arity n, Ai ai) {
 }
 
 void getList(Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   RegistryEntry *d = registers[ai]->deref();
 
   switch (d->type) {
   case RegistryEntry::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial << "Writing list" << endl;
-#endif
+    VERBOSE(Serial << "Writing list" << endl);
     bind(d, newList());
     rwMode = RWModes::write;
     return;
   case RegistryEntry::Type::list:
-#ifdef VERBOSE_LOG
-    Serial << "Reading list" << endl;
-#endif
+    VERBOSE(Serial << "Reading list" << endl);
     currentStructure = d;
     currentStructureSubtermIndex = 0;
     rwMode = RWModes::read;
@@ -620,25 +584,19 @@ void getList(Ai ai) {
 }
 
 void getConstant(Constant c, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "c  - " << c << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   RegistryEntry *d = registers[ai]->deref();
 
   switch (d->type) {
   case RegistryEntry::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial << "Writing constant" << endl;
-#endif
+    VERBOSE(Serial << "Writing constant" << endl);
     trail(d);
     d->bindToConstant(c);
     return;
   case RegistryEntry::Type::constant:
-#ifdef VERBOSE_LOG
-    Serial << "Reading constant" << endl;
-#endif
+    VERBOSE(Serial << "Reading constant" << endl);
     if (c != d->body<Constant>()) {
       backtrack();
     }
@@ -650,25 +608,19 @@ void getConstant(Constant c, Ai ai) {
 }
 
 void getInteger(Integer i, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial << "i  - " << i << endl;
-  Serial << "Ai - " << ai << endl;
-#endif
+  VERBOSE(Serial << "i  - " << i << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   RegistryEntry *d = registers[ai]->deref();
 
   switch (d->type) {
   case RegistryEntry::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial << "Writing integer" << endl;
-#endif
+    VERBOSE(Serial << "Writing integer" << endl);
     trail(d);
     d->bindToInteger(i);
     return;
   case RegistryEntry::Type::integer:
-#ifdef VERBOSE_LOG
-    Serial << "Reading integer" << endl;
-#endif
+    VERBOSE(Serial << "Reading integer" << endl);
     if (i != d->body<Integer>()) {
       backtrack();
     }
@@ -680,57 +632,43 @@ void getInteger(Integer i, Ai ai) {
 }
 
 void setVariableXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
   currentStructureSubterm() = registers[xn] = newVariable();
 }
 
 void setVariableYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   currentStructureSubterm() = lookupPermanentVariable(yn) = newVariable();
 }
 
 void setValueXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
   currentStructureSubterm() = registers[xn];
 }
 
 void setValueYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   currentStructureSubterm() = lookupPermanentVariable(yn);
 }
 
 void setConstant(Constant c) {
-#ifdef VERBOSE_LOG
-  Serial << "c  - " << c << endl;
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
 
   currentStructureSubterm() = newConstant(c);
 }
 
 void setInteger(Integer i) {
-#ifdef VERBOSE_LOG
-  Serial << "i - " << i << endl;
-#endif
+  VERBOSE(Serial << "i - " << i << endl);
 
   currentStructureSubterm() = newInteger(i);
 }
 
 void setVoid(VoidCount n) {
-#ifdef VERBOSE_LOG
-  Serial << "n  - " << n << endl;
-#endif
+  VERBOSE(Serial << "n  - " << n << endl);
 
   while (n > 0) {
     currentStructureSubterm() = newVariable();
@@ -739,9 +677,7 @@ void setVoid(VoidCount n) {
 }
 
 void unifyVariableXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
   switch (rwMode) {
   case RWModes::read:
@@ -754,9 +690,7 @@ void unifyVariableXn(Xn xn) {
 }
 
 void unifyVariableYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   switch (rwMode) {
   case RWModes::read:
@@ -769,9 +703,7 @@ void unifyVariableYn(Yn yn) {
 }
 
 void unifyValueXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial << "Xn - " << xn << endl;
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
   switch (rwMode) {
   case RWModes::read:
@@ -786,9 +718,7 @@ void unifyValueXn(Xn xn) {
 }
 
 void unifyValueYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   switch (rwMode) {
   case RWModes::read:
@@ -803,9 +733,7 @@ void unifyValueYn(Yn yn) {
 }
 
 void unifyConstant(Constant c) {
-#ifdef VERBOSE_LOG
-  Serial << "c  - " << c << endl;
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
 
   switch (rwMode) {
   case RWModes::read: {
@@ -832,9 +760,7 @@ void unifyConstant(Constant c) {
 }
 
 void unifyInteger(Integer i) {
-#ifdef VERBOSE_LOG
-  Serial << "i - " << i << endl;
-#endif
+  VERBOSE(Serial << "i - " << i << endl);
 
   switch (rwMode) {
   case RWModes::read: {
@@ -861,9 +787,7 @@ void unifyInteger(Integer i) {
 }
 
 void unifyVoid(VoidCount n) {
-#ifdef VERBOSE_LOG
-  Serial << "n  - " << n << endl;
-#endif
+  VERBOSE(Serial << "n  - " << n << endl);
 
   switch (rwMode) {
   case RWModes::read:
@@ -879,47 +803,36 @@ void unifyVoid(VoidCount n) {
 }
 
 void allocate(EnvironmentSize n) {
-#ifdef VERBOSE_LOG
-  Serial << "Current environment: " << *currentEnvironment;
-  Serial << "New Environment:" << newEnvironment(n);
-#else
+  VERBOSE(Serial << "Current environment: " << *currentEnvironment);
+
   newEnvironment(n);
-#endif
+
+  VERBOSE(Serial << "New Environment:" << currentEnvironment);
 }
 
 void trim(EnvironmentSize n) {
-#ifdef VERBOSE_LOG
-  Serial << "Trimming " << n << " items" << endl;
-  Serial << "Environment size from "
-         << currentEnvironment->body<Environment>().size;
-#endif
+  VERBOSE(Serial << "Trimming " << n << " items" << endl);
+  VERBOSE(Serial << "Environment size from "
+                 << currentEnvironment->body<Environment>().size);
 
   currentEnvironment->mutableBody<Environment>().size -= n;
   resumeGarbageCollection();
 
-#ifdef VERBOSE_LOG
-  Serial << " to " << currentEnvironment->body<Environment>().size;
-#endif
+  VERBOSE(Serial << " to " << currentEnvironment->body<Environment>().size);
 }
 
 void deallocate() {
-#ifdef VERBOSE_LOG
-  Serial << "Deallocating environment: " << *currentEnvironment;
-#endif
+  VERBOSE(Serial << "Deallocating environment: " << *currentEnvironment);
 
   continuePoint = currentEnvironment->body<Environment>().continuePoint;
   currentEnvironment = currentEnvironment->body<Environment>().nextEnvironment;
   resumeGarbageCollection();
 
-#ifdef VERBOSE_LOG
-  Serial << "New environment: " << *currentEnvironment;
-#endif
+  VERBOSE(Serial << "New environment: " << *currentEnvironment);
 }
 
 void call(LabelIndex p) {
-#ifdef VERBOSE_LOG
-  Serial << "Calling label " << p << endl;
-#endif
+  VERBOSE(Serial << "Calling label " << p << endl);
 
   switch (executeMode) {
   case ExecuteModes::query:
@@ -932,12 +845,10 @@ void call(LabelIndex p) {
   }
   LabelTableEntry entry = lookupLabel(p);
 
-#ifdef VERBOSE_LOG
-  Serial << "\tcp - " << continuePoint << endl;
-  Serial << "\tb  - " << currentChoicePoint << endl;
-  Serial << "\tp  - " << entry.entryPoint << endl;
-  Serial << "\targument count - " << entry.arity << endl;
-#endif
+  VERBOSE(Serial << "\tcp - " << continuePoint << endl);
+  VERBOSE(Serial << "\tb  - " << currentChoicePoint << endl);
+  VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
+  VERBOSE(Serial << "\targument count - " << entry.arity << endl);
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
@@ -950,17 +861,13 @@ void call(LabelIndex p) {
 }
 
 void execute(LabelIndex p) {
-#ifdef VERBOSE_LOG
-  Serial << "Executing label " << p << endl;
-  Serial << "\tb - " << currentChoicePoint << endl;
-#endif
+  VERBOSE(Serial << "Executing label " << p << endl);
+  VERBOSE(Serial << "\tb - " << currentChoicePoint << endl);
 
   LabelTableEntry entry = lookupLabel(p);
 
-#ifdef VERBOSE_LOG
-  Serial << "\tp  - " << entry.entryPoint << endl;
-  Serial << "\targument count - " << entry.arity << endl;
-#endif
+  VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
+  VERBOSE(Serial << "\targument count - " << entry.arity << endl);
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
@@ -973,104 +880,82 @@ void execute(LabelIndex p) {
 }
 
 void proceed() {
-#ifdef VERBOSE_LOG
-  Serial << "Proceeding to " << continuePoint << endl;
-#endif
+  VERBOSE(Serial << "Proceeding to " << continuePoint << endl);
   programFile->seek(continuePoint);
 }
 
 void tryMeElse(LabelIndex l) {
-#ifdef VERBOSE_LOG
-  Serial << "New Choice Point: " << newChoicePoint(l);
-#else
   newChoicePoint(l);
-#endif
+
+  VERBOSE(Serial << "New Choice Point: " << currentChoicePoint);
 }
 
 void retryMeElse(LabelIndex l) {
-#ifdef VERBOSE_LOG
-  Serial << "Current Choice Point: " << *currentChoicePoint << endl;
-#endif
+  VERBOSE(Serial << "Current Choice Point: " << *currentChoicePoint << endl);
 
   restoreChoicePoint(l);
 
-#ifdef VERBOSE_LOG
-  Serial << "New Choice Point: " << *currentChoicePoint << endl;
-#endif
+  VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
 }
 
 void trustMe() {
-#ifdef VERBOSE_LOG
-  Serial << "Current Choice Point: " << *currentChoicePoint << endl;
-#endif
+  VERBOSE(Serial << "Current Choice Point: " << *currentChoicePoint << endl);
 
   restoreChoicePoint();
 
   currentChoicePoint = currentChoicePoint->body<ChoicePoint>().nextChoicePoint;
 
-#ifdef VERBOSE_LOG
   if (currentChoicePoint == nullptr) {
-    Serial << "No more choice points" << endl;
+    VERBOSE(Serial << "No more choice points" << endl);
   } else {
-    Serial << "New Choice Point: " << *currentChoicePoint << endl;
+    VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
   }
-#endif
 }
 
 void neckCut() {
   if (currentChoicePoint > currentCutPoint) {
-#ifdef VERBOSE_LOG
-    Serial << "Cutting " << currentChoicePoint << " to " << currentCutPoint
-           << endl;
-#endif
+    VERBOSE(Serial << "Cutting " << currentChoicePoint << " to "
+                   << currentCutPoint << endl);
 
     currentChoicePoint = currentCutPoint;
 
-#ifdef VERBOSE_LOG
     if (currentChoicePoint == nullptr) {
-      Serial << "No more choice points" << endl;
+      VERBOSE(Serial << "No more choice points" << endl);
     } else {
-      Serial << "New Choice Point: " << *currentChoicePoint << endl;
+      VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
     }
-#endif
 
     tidyTrail();
   }
 }
 
 void getLevel(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   if (currentCutPoint == nullptr) {
-    Serial << "No cut point" << endl;
+    VERBOSE(Serial << "No cut point" << endl);
   } else {
-    Serial << "Level is " << *currentCutPoint << endl;
+    VERBOSE(Serial << "Level is " << *currentCutPoint << endl);
   }
-#endif
 
   lookupPermanentVariable(yn) = currentCutPoint;
 }
 
 void cut(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial << "Yn - " << yn << endl;
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   RegistryEntry *cutPoint = lookupPermanentVariable(yn);
 
   if (cutPoint != nullptr &&
       cutPoint->type != RegistryEntry::Type::choicePoint) {
-    Serial << "Value is not a choice point" << endl;
+    VERBOSE(Serial << "Value is not a choice point" << endl);
     failWithException();
     return;
   }
 
   if (currentChoicePoint > cutPoint) {
-#ifdef VERBOSE_LOG
-    Serial << "Cutting " << (currentChoicePoint - tupleRegistry) << " to "
-           << (cutPoint - tupleRegistry) << endl;
-#endif
+    VERBOSE(Serial << "Cutting " << (currentChoicePoint - tupleRegistry)
+                   << " to " << (cutPoint - tupleRegistry) << endl);
 
     currentChoicePoint = cutPoint;
     tidyTrail();
@@ -1295,24 +1180,20 @@ void backtrack() {
     return;
   }
 
-  Serial << endl << " ---- Backtrack! ---- " << endl << endl;
+  LOG(Serial << endl << " ---- Backtrack! ---- " << endl << endl);
 
-#ifdef VERBOSE_LOG
-  Serial << "Choice point: " << *currentChoicePoint << endl;
-#endif
+  VERBOSE(Serial << "Choice point: " << *currentChoicePoint << endl);
 
   if (currentChoicePoint == nullptr) {
     failAndExit();
     return;
   }
 
-#ifdef VERBOSE_LOG
   if (currentCutPoint == nullptr) {
-    Serial << "No cut point" << endl;
+    VERBOSE(Serial << "No cut point" << endl);
   } else {
-    Serial << "Current cut point: " << *currentCutPoint << endl;
+    VERBOSE(Serial << "Current cut point: " << *currentCutPoint << endl);
   }
-#endif
 
   if (currentChoicePoint->type != RegistryEntry::Type::choicePoint) {
     Serial << "Not a choice point!" << endl;
@@ -1322,13 +1203,11 @@ void backtrack() {
 
   currentCutPoint = currentChoicePoint->body<ChoicePoint>().currentCutPoint;
 
-#ifdef VERBOSE_LOG
   if (currentCutPoint == nullptr) {
-    Serial << "No cut point" << endl;
+    VERBOSE(Serial << "No cut point" << endl);
   } else {
-    Serial << "New cut point: " << *currentCutPoint << endl;
+    VERBOSE(Serial << "New cut point: " << *currentCutPoint << endl);
   }
-#endif
 
   programFile->seek(
       lookupLabel(currentChoicePoint->body<ChoicePoint>().retryLabel)
@@ -1355,17 +1234,14 @@ void bind(RegistryEntry *a1, RegistryEntry *a2) {
 
 void trail(RegistryEntry *a) {
   if (currentChoicePoint != nullptr && a < currentChoicePoint) {
-#ifdef VERBOSE_LOG
-    Serial << "Adding " << (a - tupleRegistry) << " to the trail" << endl;
-#endif
+    VERBOSE(Serial << "Adding " << (a - tupleRegistry) << " to the trail"
+                   << endl);
 
     newTrailItem(a);
   } else {
 
-#ifdef VERBOSE_LOG
-    Serial << "Address " << (a - tupleRegistry) << " is not conditional"
-           << endl;
-#endif
+    VERBOSE(Serial << "Address " << (a - tupleRegistry) << " is not conditional"
+                   << endl);
   }
 }
 
@@ -1385,19 +1261,15 @@ void tidyTrail(RegistryEntry *&head) {
 }
 
 bool unify(RegistryEntry *a1, RegistryEntry *a2) {
-#ifdef VERBOSE_LOG
-  Serial << "Unify:" << endl;
-  Serial << "a1: " << *a1 << endl;
-  Serial << "a2: " << *a2 << endl;
-#endif
+  VERBOSE(Serial << "Unify:" << endl);
+  VERBOSE(Serial << "a1: " << *a1 << endl);
+  VERBOSE(Serial << "a2: " << *a2 << endl);
 
   RegistryEntry *d1 = a1->deref();
   RegistryEntry *d2 = a2->deref();
 
-#ifdef VERBOSE_LOG
-  Serial << "d1: " << *d1 << endl;
-  Serial << "d2: " << *d2 << endl;
-#endif
+  VERBOSE(Serial << "d1: " << *d1 << endl);
+  VERBOSE(Serial << "d2: " << *d2 << endl);
 
   if (d1->type == RegistryEntry::Type::reference ||
       d2->type == RegistryEntry::Type::reference) {
@@ -1472,15 +1344,11 @@ Integer evaluateExpression(const RegistryEntry *a) {
     return 0;
   }
 
-#ifdef VERBOSE_LOG
-  Serial << "Evaluating Expression: " << *a << endl;
-#endif
+  VERBOSE(Serial << "Evaluating Expression: " << *a << endl);
 
   const RegistryEntry *d = a->deref();
 
-#ifdef VERBOSE_LOG
-  Serial << "Derefs to: " << *d << endl;
-#endif
+  VERBOSE(Serial << "Derefs to: " << *d << endl);
 
   switch (d->type) {
   case RegistryEntry::Type::integer:
@@ -1591,7 +1459,7 @@ void virtualPredicate(Arity n) {
 
 void resumeGarbageCollection() {
   if (!garbageCollectionRunning) {
-    Serial << "resuming garbage collection";
+    LOG(Serial << "resuming garbage collection");
 
     garbageCollectionRunning = true;
   }

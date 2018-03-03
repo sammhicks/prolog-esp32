@@ -4,24 +4,18 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   RegistryEntry *newEntry;
 
   if (nextFreeRegistryEntry == nullptr) {
-#ifdef VERBOSE_LOG
-    Serial << "\tNew Registry Entry: ";
-#endif
+    VERBOSE(Serial << "\tNew Registry Entry: ");
 
     newEntry = tupleRegistry + tupleRegistrySize;
     ++tupleRegistrySize;
   } else {
-#ifdef VERBOSE_LOG
-    Serial << "\tReusing Registry Entry: ";
-#endif
+    VERBOSE(Serial << "\tReusing Registry Entry: ");
 
     newEntry = nextFreeRegistryEntry;
     nextFreeRegistryEntry = nextFreeRegistryEntry->next;
   }
 
-#ifdef VERBOSE_LOG
-  Serial << (newEntry - tupleRegistry) << endl;
-#endif
+  VERBOSE(Serial << (newEntry - tupleRegistry) << endl);
 
   newEntry->type = type;
 
@@ -35,6 +29,8 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
     break;
   }
 
+  ++tupleRegistryUsageCount;
+
   return newEntry;
 }
 
@@ -43,19 +39,16 @@ Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n) {
   nextFreeTuple += RegistryEntry::tupleSize(headSize, n);
   tuple->entry = entry;
 
-#ifdef VERBOSE_LOG
-  Serial << "\tNew Tuple at "
-         << (reinterpret_cast<uint8_t *>(tuple) - tuplesHeap)
-         << " with an entry at " << (tuple->entry - tupleRegistry) << endl;
-#endif
+  VERBOSE(Serial << "\tNew Tuple at "
+                 << (reinterpret_cast<uint8_t *>(tuple) - tuplesHeap)
+                 << " with an entry at " << (tuple->entry - tupleRegistry)
+                 << endl);
 
   return tuple;
 }
 
 RegistryEntry *newVariable() {
-#ifdef VERBOSE_LOG
-  Serial << "New Variable:" << endl;
-#endif
+  VERBOSE(Serial << "New Variable:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::reference);
 
@@ -67,9 +60,7 @@ RegistryEntry *newVariable() {
 }
 
 RegistryEntry *newStructure(Functor f, Arity n) {
-#ifdef VERBOSE_LOG
-  Serial << "New Structure:" << endl;
-#endif
+  VERBOSE(Serial << "New Structure:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::structure);
 
@@ -91,9 +82,7 @@ RegistryEntry *newStructure(Functor f, Arity n) {
 }
 
 RegistryEntry *newList() {
-#ifdef VERBOSE_LOG
-  Serial << "New List:" << endl;
-#endif
+  VERBOSE(Serial << "New List:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::list);
 
@@ -111,9 +100,7 @@ RegistryEntry *newList() {
 }
 
 RegistryEntry *newConstant(Constant c) {
-#ifdef VERBOSE_LOG
-  Serial << "New Constant:" << endl;
-#endif
+  VERBOSE(Serial << "New Constant:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::constant);
 
@@ -125,9 +112,7 @@ RegistryEntry *newConstant(Constant c) {
 }
 
 RegistryEntry *newInteger(Integer i) {
-#ifdef VERBOSE_LOG
-  Serial << "New Integer:" << endl;
-#endif
+  VERBOSE(Serial << "New Integer:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::integer);
 
@@ -139,9 +124,7 @@ RegistryEntry *newInteger(Integer i) {
 }
 
 RegistryEntry *newEnvironment(EnvironmentSize n) {
-#ifdef VERBOSE_LOG
-  Serial << "New Environment of size " << n << ":" << endl;
-#endif
+  VERBOSE(Serial << "New Environment of size " << n << ":" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::environment);
 
@@ -164,9 +147,7 @@ RegistryEntry *newEnvironment(EnvironmentSize n) {
 }
 
 RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
-#ifdef VERBOSE_LOG
-  Serial << "New Choice Point:" << endl;
-#endif
+  VERBOSE(Serial << "New Choice Point:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::choicePoint);
 
@@ -191,9 +172,7 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
 }
 
 void newTrailItem(RegistryEntry *reference) {
-#ifdef VERBOSE_LOG
-  Serial << "New Trail Item:" << endl;
-#endif
+  VERBOSE(Serial << "New Trail Item:" << endl);
 
   RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::trailItem);
 
@@ -248,7 +227,7 @@ void restoreChoicePoint(ChoicePoint &b, LabelIndex l) {
 
   b.retryLabel = l;
 
-  Serial << "Unwinding Trail" << endl;
+  VERBOSE(Serial << "Unwinding Trail" << endl);
 
   while (trailHead > currentChoicePoint) {
     trailHead->mutableBody<TrailItem>().item->resetToVariable();

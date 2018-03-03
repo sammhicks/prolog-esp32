@@ -9,6 +9,7 @@ const size_t tuplesHeapCapacity = 2 << 15;
 
 extern RegistryEntry *registers[registerCount];
 
+extern size_t tupleRegistryUsageCount;
 extern size_t tupleRegistrySize;
 extern RegistryEntry *nextFreeRegistryEntry;
 extern RegistryEntry tupleRegistry[tupleRegistryCapacity];

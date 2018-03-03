@@ -2,11 +2,10 @@
 
 size_t liveCount;
 size_t deadCount;
+size_t previousLiveCount;
 
 void initSweeping() {
-#ifdef VERBOSE_LOG
-  Serial << "Init Sweeping" << endl;
-#endif
+  VERBOSE(Serial << "Init Sweeping" << endl);
 
   garbageCollectionState = GarbageCollectionStates::sweep;
 
@@ -18,22 +17,21 @@ void initSweeping() {
 }
 
 bool sweepStep() {
-#ifdef VERBOSE_LOG
-  Serial << "Sweep" << endl;
-#endif
+  VERBOSE(Serial << "Sweep" << endl);
 
   if (static_cast<void *>(sweepSource) >= static_cast<void *>(nextFreeTuple)) {
+    // Shrink that tuple stack to fit usage
     nextFreeTuple = sweepDestination;
 
-    Serial << "Livesize: " << (liveCount * 100.0) / (liveCount + deadCount)
-           << "%" << endl;
+    LOG(Serial << "Livesize: " << (liveCount * 100.0) / (liveCount + deadCount)
+               << "%" << endl);
 
-    Serial << "Registry Usage: " << (liveCount * 100.0) / tupleRegistryCapacity
-           << "%" << endl;
+    LOG(Serial << "Registry Usage: "
+               << (liveCount * 100.0) / tupleRegistryCapacity << "%" << endl);
 
-    Serial << "Tuple Heap Usage: "
-           << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity << "%"
-           << endl;
+    LOG(Serial << "Tuple Heap Usage: "
+               << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity
+               << "%" << endl);
 
     return true;
   }
@@ -42,9 +40,8 @@ bool sweepStep() {
   size_t tupleSize = entry->tupleSize();
 
   if (entry->marked) {
-#ifdef VERBOSE_LOG
-    Serial << "Entry " << (entry - tupleRegistry) << " is live" << endl;
-#endif
+    VERBOSE(Serial << "Entry " << (entry - tupleRegistry) << " is live"
+                   << endl);
 
     ++liveCount;
 
@@ -58,12 +55,14 @@ bool sweepStep() {
 
     entry->marked = false;
   } else {
-    Serial << "Entry " << (entry - tupleRegistry) << " is dead" << endl;
+    LOG(Serial << "Entry " << (entry - tupleRegistry) << " is dead" << endl);
 
     ++deadCount;
 
     entry->next = nextFreeRegistryEntry;
     nextFreeRegistryEntry = entry;
+
+    --tupleRegistryUsageCount;
 
     sweepSource += tupleSize;
   }

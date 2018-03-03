@@ -32,9 +32,7 @@ size_t RegistryEntry::tupleSize() {
 }
 
 RegistryEntry *RegistryEntry::deref() {
-#ifdef VERBOSE_LOG
-  Serial << "Dereferencing " << *this;
-#endif
+  VERBOSE(Serial << "Dereferencing " << *this);
 
   if (type == Type::reference && mutableBody<RegistryEntry *>() != this) {
     return mutableBody<RegistryEntry *>()->deref();
@@ -44,9 +42,7 @@ RegistryEntry *RegistryEntry::deref() {
 }
 
 const RegistryEntry *RegistryEntry::deref() const {
-#ifdef VERBOSE_LOG
-  Serial << "Dereferencing " << *this;
-#endif
+  VERBOSE(Serial << "Dereferencing " << *this);
 
   if (type == Type::reference && body<const RegistryEntry *>() != this) {
     return body<const RegistryEntry *>()->deref();
@@ -56,9 +52,8 @@ const RegistryEntry *RegistryEntry::deref() const {
 }
 
 void RegistryEntry::resetToVariable() {
-#ifdef VERBOSE_LOG
-  Serial << "Resetting " << (this - tupleRegistry) << " to variable" << endl;
-#endif
+  VERBOSE(Serial << "Resetting " << (this - tupleRegistry) << " to variable"
+                 << endl);
 
   type = Type::reference;
 

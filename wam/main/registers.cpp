@@ -2,6 +2,7 @@
 
 RegistryEntry *registers[registerCount];
 
+size_t tupleRegistryUsageCount;
 size_t tupleRegistrySize;
 RegistryEntry *nextFreeRegistryEntry;
 RegistryEntry tupleRegistry[tupleRegistryCapacity];
@@ -32,6 +33,7 @@ void resetMemory() {
     registers[i] = nullptr;
   }
 
+  tupleRegistryUsageCount = 0;
   tupleRegistrySize = 0;
   nextFreeRegistryEntry = nullptr;
   nextFreeTuple = tuplesHeap;

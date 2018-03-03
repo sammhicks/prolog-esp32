@@ -3,9 +3,7 @@
 using Scanning::scanEntry;
 
 void initScanning() {
-#ifdef VERBOSE_LOG
-  Serial << "Init Scanning" << endl;
-#endif
+  VERBOSE(Serial << "Init Scanning" << endl);
 
   garbageCollectionState = GarbageCollectionStates::scan;
   scanCurrentHead = nullptr;
@@ -22,20 +20,14 @@ void initScanning() {
 }
 
 bool scanStep() {
-#ifdef VERBOSE_LOG
-  Serial << "Scan Step: " << scanCurrentHead << endl;
-#endif
+  VERBOSE(Serial << "Scan Step: " << scanCurrentHead << endl);
   if (scanCurrentHead == nullptr) {
     if (scanNextHead == nullptr) {
-#ifdef VERBOSE_LOG
-      Serial << "Finished scanning" << endl;
-#endif
+      VERBOSE(Serial << "Finished scanning" << endl);
       return true;
     }
 
-#ifdef VERBOSE_LOG
-    Serial << "Scanning next" << endl;
-#endif
+    VERBOSE(Serial << "Scanning next" << endl);
 
     scanCurrentHead = scanNextHead;
     scanNextHead = nullptr;
@@ -44,42 +36,32 @@ bool scanStep() {
   scanEntry(scanCurrentHead);
   scanCurrentHead = scanCurrentHead->next;
 
-#ifdef VERBOSE_LOG
-  Serial << "New Current Head: " << scanCurrentHead << endl;
-#endif
+  VERBOSE(Serial << "New Current Head: " << scanCurrentHead << endl);
 
   return false;
 }
 
 void scanNext(RegistryEntry *entry) {
-#ifdef VERBOSE_LOG
-  Serial << "Adding to next: " << entry << endl;
-#endif
+  VERBOSE(Serial << "Adding to next: " << entry << endl);
 
   if (entry == nullptr) {
     return;
   }
 
   if (entry->marked) {
-#ifdef VERBOSE_LOG
-    Serial << "entry is marked" << endl;
-#endif
+    VERBOSE(Serial << "entry is marked" << endl);
 
     return;
   }
 
   entry->marked = true;
 
-#ifdef VERBOSE_LOG
-  Serial << "Current Next: " << scanNextHead << endl;
-#endif
+  VERBOSE(Serial << "Current Next: " << scanNextHead << endl);
 
   entry->next = scanNextHead;
   scanNextHead = entry;
 
-#ifdef VERBOSE_LOG
-  Serial << "New Next: " << entry << endl;
-#endif
+  VERBOSE(Serial << "New Next: " << entry << endl);
 }
 
 namespace Scanning {
@@ -111,9 +93,7 @@ void scanEntry(RegistryEntry *entry) {
 }
 
 void scanBody(const Structure &structure) {
-#ifdef VERBOSE_LOG
-  Serial << "Scanning structure" << endl;
-#endif
+  VERBOSE(Serial << "Scanning structure" << endl);
 
   for (Arity i = 0; i < structure.arity; ++i) {
     scanNext(structure.subterms[i]);
@@ -121,18 +101,14 @@ void scanBody(const Structure &structure) {
 }
 
 void scanBody(const List &list) {
-#ifdef VERBOSE_LOG
-  Serial << "Scanning list" << endl;
-#endif
+  VERBOSE(Serial << "Scanning list" << endl);
 
   scanNext(list.subterms[0]);
   scanNext(list.subterms[1]);
 }
 
 void scanBody(const Environment &environment) {
-#ifdef VERBOSE_LOG
-  Serial << "Scanning Environment" << endl;
-#endif
+  VERBOSE(Serial << "Scanning Environment" << endl);
 
   scanNext(environment.nextEnvironment);
 
@@ -142,9 +118,7 @@ void scanBody(const Environment &environment) {
 }
 
 void scanBody(const ChoicePoint &choicePoint) {
-#ifdef VERBOSE_LOG
-  Serial << "Scanning choice point" << endl;
-#endif
+  VERBOSE(Serial << "Scanning choice point" << endl);
 
   scanNext(choicePoint.currentEnvironment);
   scanNext(choicePoint.nextChoicePoint);
@@ -156,9 +130,7 @@ void scanBody(const ChoicePoint &choicePoint) {
 }
 
 void scanBody(const TrailItem &item) {
-#ifdef VERBOSE_LOG
-  Serial << "Scanning trail item" << endl;
-#endif
+  VERBOSE(Serial << "Scanning trail item" << endl);
 
   scanNext(item.item);
   scanNext(item.nextItem);
