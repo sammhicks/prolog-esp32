@@ -1,29 +1,29 @@
 #include "memory-allocation.h"
 
+bool spaceForRegistryEntry() {
+  if (nextFreeRegistryEntry != nullptr) {
+    return true;
+  }
+
+  if (tupleRegistrySize < tupleRegistryCapacity) {
+    return true;
+  }
+
+  Serial << "Stall (registry entry)!" << endl;
+
+  fullGarbageCollection();
+
+  return (nextFreeRegistryEntry != nullptr);
+}
+
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   RegistryEntry *newEntry;
 
   if (nextFreeRegistryEntry == nullptr) {
-    if (tupleRegistrySize >= tupleRegistryCapacity) {
-      Serial << "Stall (registry entry)!" << endl;
+    VERBOSE(Serial << "\tNew Registry Entry: ");
 
-      fullGarbageCollection();
-
-      if (nextFreeRegistryEntry == nullptr) {
-        Serial << "No more registry entries!" << endl;
-        return nullptr;
-      }
-
-      VERBOSE(Serial << "\tReusing Registry Entry: ");
-
-      newEntry = nextFreeRegistryEntry;
-      nextFreeRegistryEntry = nextFreeRegistryEntry->next;
-    } else {
-      VERBOSE(Serial << "\tNew Registry Entry: ");
-
-      newEntry = tupleRegistry + tupleRegistrySize;
-      ++tupleRegistrySize;
-    }
+    newEntry = tupleRegistry + tupleRegistrySize;
+    ++tupleRegistrySize;
   } else {
     VERBOSE(Serial << "\tReusing Registry Entry: ");
 
@@ -50,22 +50,23 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   return newEntry;
 }
 
-Tuple *newTuple(size_t headSize, Arity n) {
+bool spaceForTuple(size_t headSize, Arity n) {
   size_t newTupleSize = RegistryEntry::tupleSize(headSize, n);
 
-  if ((nextFreeTuple + newTupleSize) >= (tuplesHeap + tuplesHeapCapacity)) {
-    Serial << "Stall (tuples heap)!" << endl;
-
-    fullGarbageCollection();
-
-    if ((nextFreeTuple + newTupleSize) >= (tuplesHeap + tuplesHeapCapacity)) {
-      Serial << "No more space for tuples!" << endl;
-      return nullptr;
-    }
+  if ((nextFreeTuple + newTupleSize) < (tuplesHeap + tuplesHeapCapacity)) {
+    return true;
   }
 
+  Serial << "Stall (tuples heap)!" << endl;
+
+  fullGarbageCollection();
+
+  return ((nextFreeTuple + newTupleSize) < (tuplesHeap + tuplesHeapCapacity));
+}
+
+Tuple *newTuple(size_t headSize, Arity n) {
   Tuple *tuple = reinterpret_cast<Tuple *>(nextFreeTuple);
-  nextFreeTuple += newTupleSize;
+  nextFreeTuple += RegistryEntry::tupleSize(headSize, n);
 
   VERBOSE(Serial << "\tNew Tuple at "
                  << (reinterpret_cast<uint8_t *>(tuple) - tuplesHeap) << endl);
@@ -75,21 +76,20 @@ Tuple *newTuple(size_t headSize, Arity n) {
 
 RegistryEntry *newRegistryEntryWithTuple(RegistryEntry::Type type,
                                          size_t headSize, Arity n) {
+
+  if (!spaceForRegistryEntry()) {
+    Serial << "No space for registry entry!" << endl;
+    return nullptr;
+  }
+
+  if (!spaceForTuple(headSize, n)) {
+    Serial << "No space for tuple!" << endl;
+    return nullptr;
+  }
+
   RegistryEntry *entry = newRegistryEntry(type);
 
-  if (entry == nullptr) {
-    return nullptr;
-  }
-
-  partialNewRegistryEntry = entry;
-
   Tuple *tuple = newTuple(headSize, n);
-
-  if (tuple == nullptr) {
-    return nullptr;
-  }
-
-  partialNewRegistryEntry = nullptr;
 
   entry->tuple = tuple;
   tuple->entry = entry;

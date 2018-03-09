@@ -44,7 +44,7 @@ Running Prolog code on a microcontroller
             + Size reduced upon trimming, capacity unchanged
             + When scanning, only permanent variabes with index < size are scanned
                 + No space saving in environment, but trimmed variables are swept
-
+        + No need to implement set_local_value, put_unsafe_variable, etc 
 
 ## Ideas for Futher Work
 + Multi-Precision Numbers

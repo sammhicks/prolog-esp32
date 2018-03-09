@@ -89,7 +89,7 @@ void executeProgram(Client *client) {
 
       targetTime = micros() + excessTime * garbageCollectionScaling;
 
-      /*while (garbageCollectionRunning && (micros() < targetTime)) {
+      while (garbageCollectionRunning && (micros() < targetTime)) {
         garbageCollectionStep();
       }
 
@@ -97,9 +97,7 @@ void executeProgram(Client *client) {
         excessTime = micros() - targetTime;
       } else {
         excessTime = 0;
-      }*/
-
-      excessTime = 0;
+      }
     } else {
       excessTime = 0;
     }

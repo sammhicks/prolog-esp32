@@ -2,7 +2,10 @@
 
 #include "garbage-collection.h"
 
+bool spaceForRegistryEntry();
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type);
+
+bool spaceForTuple(size_t headSize, Arity n);
 Tuple *newTuple(size_t headSize, Arity n);
 
 RegistryEntry *newRegistryEntryWithTuple(RegistryEntry::Type type,

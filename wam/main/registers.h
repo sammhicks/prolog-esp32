@@ -34,7 +34,6 @@ extern RegistryEntry *scanCurrentHead;
 extern RegistryEntry *scanNextHead;
 extern uint8_t *sweepSource;
 extern uint8_t *sweepDestination;
-extern RegistryEntry *partialNewRegistryEntry;
 
 void resetMemory();
 
