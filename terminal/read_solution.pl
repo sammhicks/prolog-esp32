@@ -3,8 +3,9 @@
 	      read_solution/4   % +Stream, +Query, Constants, Structures
 	  ]).
 
-:- use_module(value).
 :- use_module(microcontroller_io).
+:- use_module(queue).
+:- use_module(value).
 
 
 read_solution(Stream, Query, _Constants, _Structures) :-
@@ -16,23 +17,30 @@ read_solution(Stream, Query, Constants, Structures) :-
 	setup_state(Empty_State, Constants, Structures),
 	value(Registers, Stream, Stream),
 	unwrap_value(Registers, Arguments, Empty_State, Initial_State),
-	fetch_values(Stream, Initial_State),
-	compound_name_arguments(Query, _, Arguments).
+	compound_name_arity(Query, Name, _),
+	compound_name_arguments(Working_Query, Name, Arguments),
+	fetch_values(Stream, Working_Query, Initial_State),
+	nl,
+	nl,
+	Query = Working_Query.
 
 
 setup_state(State, Constants, Structures) :-
-	state(State, Constants, Structures, [], []).
+	new_queue(Items_To_Read),
+	state(State, Constants, Structures, Items_To_Read, []).
 
 
-fetch_values(_Stream, State) :-
-	state(State, _, _, [], _),
+fetch_values(_Stream, _Working_Query, State) :-
+	state(State, _, _, Items_To_Read, _),
+	queue_empty(Items_To_Read),
 	!.
 
-fetch_values(Stream, State0) :-
+fetch_values(Stream, Working_Query, State0) :-
+	writeln(Working_Query),
 	pop_value_to_read(Address, Value, State0, State1),
 	fetch_value(Stream, Address, Wrapped_Value),
 	unwrap_value(Wrapped_Value, Value, State1, State),
-	fetch_values(Stream, State).
+	fetch_values(Stream, Working_Query, State).
 
 
 unwrap_value(reference(H), Value, State, State) :-
@@ -65,9 +73,10 @@ unwrap_value(environment(Addresses), Values) -->
 
 
 pop_value_to_read(Address, Value, Current_State, New_State) :-
-	state(Current_State, Constants, Structures, [Address_Value|Items_To_Read], Discovered_Values),
+	state(Current_State, Constants, Structures, Items_To_Read, Discovered_Values),
+	queue_pop(Address_Value, Items_To_Read, Remaining_Items_To_Read),
 	address_value(Address, Value, Address_Value),
-	state(New_State, Constants, Structures, Items_To_Read, Discovered_Values).
+	state(New_State, Constants, Structures, Remaining_Items_To_Read, Discovered_Values).
 
 
 push_values_to_read([], [], State, State).
@@ -86,7 +95,8 @@ push_value_to_read(Address, Value, State, State) :-
 push_value_to_read(Address, Value, Current_State, New_State) :-
 	state(Current_State, Constants, Structures, Items_To_Read, Discovered_Values),
 	address_value(Address, Value, Address_Value),
-	state(New_State, Constants, Structures, [Address_Value|Items_To_Read], [Address_Value|Discovered_Values]).
+	queue_push(Address_Value, Items_To_Read, New_Items_To_Read),
+	state(New_State, Constants, Structures, New_Items_To_Read, [Address_Value|Discovered_Values]).
 
 
 address_value(Address, Value, Address->Value).

@@ -8,14 +8,13 @@
 	      run_query/1
 	  ]).
 
-
-:- use_module(library(lazy_lists)).
 :- use_module(library(random)).
 :- use_module(library(socket)).
 
 :- use_module('..'/compiler/compiler).
 :- use_module(command).
 :- use_module(microcontroller_io).
+:- use_module(queue).
 :- use_module(read_solution).
 :- use_module(read_terms).
 

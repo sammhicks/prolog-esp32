@@ -125,12 +125,12 @@ void updateLabelTable(Client &client) {
 void readValue(Client &client) {
   RegistryEntry *entry = Raw::read<RegistryEntry *>(client);
 
-  Serial << "Reading entry: ";
+  LOG(Serial << "Reading entry: ");
 
 #ifdef VERBOSE_LOG
-  Serial << *entry << endl;
+  LOG(Serial << *entry << endl);
 #else
-  Serial << (entry - tupleRegistry) << endl;
+  LOG(Serial << (entry - tupleRegistry) << endl);
 #endif
 
   entry->deref()->sendToClient(client);
