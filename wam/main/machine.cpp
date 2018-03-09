@@ -97,8 +97,8 @@ void executeProgram(Client *client) {
                                   static_cast<double>(tupleRegistryCapacity);
       double tupleUsage = static_cast<double>(nextFreeTuple - tuplesHeap) /
                           static_cast<double>(tuplesHeapCapacity);
-      double garbageCollectionScaling =
-          std::max(registryEntryUsage, tupleUsage) / (1.0 - tupleUsage);
+      double maxUsage = std::max(registryEntryUsage, tupleUsage);
+      double garbageCollectionScaling = maxUsage / (1.0 - maxUsage);
 
       VERBOSE(Serial << "registry usage" << registryEntryUsage << endl);
       VERBOSE(Serial << "tuple usage" << tupleUsage << endl);
