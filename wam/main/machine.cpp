@@ -77,6 +77,8 @@ void getNextAnswer(Client *client) {
 }
 
 void executeProgram(Client *client) {
+  unsigned long nextYieldTime = millis() + yieldPeriod;
+
   unsigned long excessTime = 0;
 
   while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
@@ -89,8 +91,6 @@ void executeProgram(Client *client) {
     } while (micros() < targetTime);
 
     excessTime = micros() - targetTime;
-
-    yieldProcessor();
 
     if (garbageCollectionRunning) {
       double registryEntryUsage = static_cast<double>(tupleRegistryUsageCount) /
@@ -112,10 +112,14 @@ void executeProgram(Client *client) {
       }
 
       excessTime = micros() - targetTime;
-
-      yieldProcessor();
     } else {
       excessTime = 0;
+    }
+
+    if (millis() > nextYieldTime) {
+      yieldProcessor();
+
+      nextYieldTime = micros() + yieldPeriod;
     }
   }
 

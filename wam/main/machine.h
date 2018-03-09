@@ -15,6 +15,8 @@
 extern const char *codePath;
 extern const char *labelTablePath;
 
+const unsigned long yieldPeriod = 1000;
+
 const uint8_t analogResolution = 12;
 
 enum class ExecuteModes : uint8_t { query, program };
