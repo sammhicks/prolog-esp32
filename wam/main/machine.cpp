@@ -119,7 +119,7 @@ void executeProgram(Client *client) {
     if (millis() > nextYieldTime) {
       yieldProcessor();
 
-      nextYieldTime = micros() + yieldPeriod;
+      nextYieldTime = millis() + yieldPeriod;
     }
   }
 
