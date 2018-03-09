@@ -50,3 +50,4 @@ Running Prolog code on a microcontroller
 + Multi-Precision Numbers
 + User input request
 + Dynamic Predicates
++ Exception Handling

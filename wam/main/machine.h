@@ -128,8 +128,10 @@ void analogWritePin();
 } // namespace Instructions
 
 namespace Ancillary {
+RegistryEntry *nullCheck(RegistryEntry *entry);
 LabelTableEntry lookupLabel(LabelIndex l);
-RegistryEntry *&lookupPermanentVariable(Yn yn);
+RegistryEntry *permanentVariable(Yn yn);
+RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value);
 void backtrack();
 void failAndExit();
 void failWithException();

@@ -27,6 +27,7 @@ RegistryEntry *scanCurrentHead;
 RegistryEntry *scanNextHead;
 uint8_t *sweepSource;
 uint8_t *sweepDestination;
+RegistryEntry *partialNewRegistryEntry;
 
 void resetMemory() {
   for (Xn i = 0; i < registerCount; ++i) {
@@ -44,4 +45,5 @@ void resetMemory() {
   currentCutPoint = nullptr;
 
   garbageCollectionRunning = false;
+  partialNewRegistryEntry = nullptr;
 }

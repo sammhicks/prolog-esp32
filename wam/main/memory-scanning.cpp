@@ -9,6 +9,7 @@ void initScanning() {
   scanCurrentHead = nullptr;
   scanNextHead = nullptr;
 
+  scanNext(partialNewRegistryEntry);
   scanNext(currentEnvironment);
   scanNext(currentChoicePoint);
   scanNext(currentCutPoint);

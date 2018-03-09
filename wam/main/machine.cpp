@@ -20,26 +20,6 @@ void resetMachine() {
   initScanning();
 }
 
-void performGarbageCollection() {
-  switch (garbageCollectionState) {
-  case GarbageCollectionStates::scan:
-    if (scanStep()) {
-      initSweeping();
-    }
-    break;
-  case GarbageCollectionStates::sweep:
-    if (sweepStep()) {
-      initScanning();
-
-      if (deadCount == 0) {
-        LOG(Serial << "pausing garbage collection" << endl);
-        garbageCollectionRunning = false;
-      }
-    }
-    break;
-  }
-}
-
 void executeInstructions(Client *client) {
   executeMode = ExecuteModes::query;
   querySucceeded = true;
@@ -58,10 +38,12 @@ void executeInstructions(Client *client) {
     LOG(Serial << "Executing Program" << endl);
     instructionSource = programFile;
 
-    newEnvironment(argumentCount);
+    Ancillary::nullCheck(newEnvironment(argumentCount));
 
-    for (EnvironmentSize i = 0; i < argumentCount; ++i) {
-      Ancillary::lookupPermanentVariable(i) = registers[i];
+    if (!exceptionRaised) {
+      for (EnvironmentSize i = 0; i < argumentCount; ++i) {
+        Ancillary::setPermanentVariable(i, registers[i]);
+      }
     }
   }
 
@@ -107,11 +89,17 @@ void executeProgram(Client *client) {
 
       targetTime = micros() + excessTime * garbageCollectionScaling;
 
-      while (micros() < targetTime) {
-        performGarbageCollection();
+      /*while (garbageCollectionRunning && (micros() < targetTime)) {
+        garbageCollectionStep();
       }
 
-      excessTime = micros() - targetTime;
+      if (garbageCollectionRunning) {
+        excessTime = micros() - targetTime;
+      } else {
+        excessTime = 0;
+      }*/
+
+      excessTime = 0;
     } else {
       excessTime = 0;
     }
@@ -129,6 +117,8 @@ void executeProgram(Client *client) {
 
     return;
   }
+
+  fullGarbageCollection();
 
   Serial << "Registry Usage: "
          << (tupleRegistryUsageCount * 100.0) / tupleRegistryCapacity << "%"
@@ -426,8 +416,10 @@ using Ancillary::failWithException;
 using Ancillary::getChannel;
 using Ancillary::getPin;
 using Ancillary::lookupLabel;
-using Ancillary::lookupPermanentVariable;
+using Ancillary::nullCheck;
+using Ancillary::permanentVariable;
 using Ancillary::resumeGarbageCollection;
+using Ancillary::setPermanentVariable;
 using Ancillary::tidyTrail;
 using Ancillary::trail;
 using Ancillary::unify;
@@ -438,16 +430,14 @@ void putVariableXnAi(Xn xn, Ai ai) {
   VERBOSE(Serial << "Xn - " << xn << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[xn] = newVariable();
-  registers[ai] = registers[xn];
+  nullCheck(registers[ai] = registers[xn] = newVariable());
 }
 
 void putVariableYnAi(Yn yn, Ai ai) {
   VERBOSE(Serial << "Yn - " << yn << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  lookupPermanentVariable(yn) = newVariable();
-  registers[ai] = lookupPermanentVariable(yn);
+  nullCheck(registers[ai] = setPermanentVariable(yn, newVariable()));
 }
 
 void putValueXnAi(Xn xn, Ai ai) {
@@ -461,7 +451,7 @@ void putValueYnAi(Yn yn, Ai ai) {
   VERBOSE(Serial << "Yn - " << yn << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai] = lookupPermanentVariable(yn);
+  registers[ai] = permanentVariable(yn);
 }
 
 void putStructure(Functor f, Arity n, Ai ai) {
@@ -469,35 +459,35 @@ void putStructure(Functor f, Arity n, Ai ai) {
   VERBOSE(Serial << "n  - " << n << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai] = newStructure(f, n);
+  nullCheck(registers[ai] = newStructure(f, n));
 }
 
 void putList(Ai ai) {
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai] = newList();
+  nullCheck(registers[ai] = newList());
 }
 
 void putConstant(Constant c, Ai ai) {
   VERBOSE(Serial << "c  - " << c << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai] = newConstant(c);
+  nullCheck(registers[ai] = newConstant(c));
 }
 
 void putInteger(Integer i, Ai ai) {
   VERBOSE(Serial << "i  - " << i << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai] = newInteger(i);
+  nullCheck(registers[ai] = newInteger(i));
 }
 
 void putVoid(VoidCount n, Ai ai) {
   VERBOSE(Serial << "n  - " << n << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  while (n > 0) {
-    registers[ai] = newVariable();
+  while (!exceptionRaised && n > 0) {
+    nullCheck(registers[ai] = newVariable());
     --n;
     ++ai;
   }
@@ -514,7 +504,7 @@ void getVariableYnAi(Yn yn, Ai ai) {
   VERBOSE(Serial << "Yn - " << yn << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  lookupPermanentVariable(yn) = registers[ai];
+  setPermanentVariable(yn, registers[ai]);
 }
 
 void getValueXnAi(Xn xn, Ai ai) {
@@ -530,7 +520,7 @@ void getValueYnAi(Yn yn, Ai ai) {
   VERBOSE(Serial << "Yn - " << yn << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  if (!unify(lookupPermanentVariable(yn), registers[ai])) {
+  if (!unify(permanentVariable(yn), registers[ai])) {
     backtrack();
   }
 }
@@ -545,7 +535,7 @@ void getStructure(Functor f, Arity n, Ai ai) {
   switch (d->type) {
   case RegistryEntry::Type::reference:
     VERBOSE(Serial << "Writing structure" << endl);
-    bind(d, newStructure(f, n));
+    bind(d, nullCheck(newStructure(f, n)));
     rwMode = RWModes::write;
     return;
   case RegistryEntry::Type::structure:
@@ -572,7 +562,7 @@ void getList(Ai ai) {
   switch (d->type) {
   case RegistryEntry::Type::reference:
     VERBOSE(Serial << "Writing list" << endl);
-    bind(d, newList());
+    bind(d, nullCheck(newList()));
     rwMode = RWModes::write;
     return;
   case RegistryEntry::Type::list:
@@ -638,44 +628,45 @@ void getInteger(Integer i, Ai ai) {
 void setVariableXn(Xn xn) {
   VERBOSE(Serial << "Xn - " << xn << endl);
 
-  currentStructureSubterm() = registers[xn] = newVariable();
+  nullCheck(setCurrentStructureSubterm(registers[xn] = newVariable()));
 }
 
 void setVariableYn(Yn yn) {
   VERBOSE(Serial << "Yn - " << yn << endl);
 
-  currentStructureSubterm() = lookupPermanentVariable(yn) = newVariable();
+  nullCheck(
+      setCurrentStructureSubterm(setPermanentVariable(yn, newVariable())));
 }
 
 void setValueXn(Xn xn) {
   VERBOSE(Serial << "Xn - " << xn << endl);
 
-  currentStructureSubterm() = registers[xn];
+  setCurrentStructureSubterm(registers[xn]);
 }
 
 void setValueYn(Yn yn) {
   VERBOSE(Serial << "Yn - " << yn << endl);
 
-  currentStructureSubterm() = lookupPermanentVariable(yn);
+  setCurrentStructureSubterm(permanentVariable(yn));
 }
 
 void setConstant(Constant c) {
   VERBOSE(Serial << "c  - " << c << endl);
 
-  currentStructureSubterm() = newConstant(c);
+  nullCheck(setCurrentStructureSubterm(newConstant(c)));
 }
 
 void setInteger(Integer i) {
   VERBOSE(Serial << "i - " << i << endl);
 
-  currentStructureSubterm() = newInteger(i);
+  nullCheck(setCurrentStructureSubterm(newInteger(i)));
 }
 
 void setVoid(VoidCount n) {
   VERBOSE(Serial << "n  - " << n << endl);
 
-  while (n > 0) {
-    currentStructureSubterm() = newVariable();
+  while (!exceptionRaised && n > 0) {
+    nullCheck(setCurrentStructureSubterm(newVariable()));
     --n;
   }
 }
@@ -688,7 +679,7 @@ void unifyVariableXn(Xn xn) {
     registers[xn] = currentStructureSubterm();
     break;
   case RWModes::write:
-    currentStructureSubterm() = registers[xn] = newVariable();
+    nullCheck(setCurrentStructureSubterm(registers[xn] = newVariable()));
     break;
   }
 }
@@ -698,10 +689,11 @@ void unifyVariableYn(Yn yn) {
 
   switch (rwMode) {
   case RWModes::read:
-    lookupPermanentVariable(yn) = currentStructureSubterm();
+    setPermanentVariable(yn, currentStructureSubterm());
     break;
   case RWModes::write:
-    currentStructureSubterm() = lookupPermanentVariable(yn) = newVariable();
+    nullCheck(
+        setCurrentStructureSubterm(setPermanentVariable(yn, newVariable())));
     break;
   }
 }
@@ -716,7 +708,7 @@ void unifyValueXn(Xn xn) {
     };
     break;
   case RWModes::write:
-    currentStructureSubterm() = registers[xn];
+    setCurrentStructureSubterm(registers[xn]);
     break;
   }
 }
@@ -726,12 +718,12 @@ void unifyValueYn(Yn yn) {
 
   switch (rwMode) {
   case RWModes::read:
-    if (!unify(lookupPermanentVariable(yn), currentStructureSubterm())) {
+    if (!unify(permanentVariable(yn), currentStructureSubterm())) {
       backtrack();
     };
     break;
   case RWModes::write:
-    currentStructureSubterm() = lookupPermanentVariable(yn);
+    setCurrentStructureSubterm(permanentVariable(yn));
     break;
   }
 }
@@ -758,7 +750,7 @@ void unifyConstant(Constant c) {
     }
   } break;
   case RWModes::write:
-    currentStructureSubterm() = newConstant(c);
+    nullCheck(setCurrentStructureSubterm(newConstant(c)));
     break;
   }
 }
@@ -785,7 +777,7 @@ void unifyInteger(Integer i) {
     }
   } break;
   case RWModes::write:
-    currentStructureSubterm() = newInteger(i);
+    nullCheck(setCurrentStructureSubterm(newInteger(i)));
     break;
   }
 }
@@ -798,8 +790,8 @@ void unifyVoid(VoidCount n) {
     currentStructureSubtermIndex += n;
     break;
   case RWModes::write:
-    while (n > 0) {
-      currentStructureSubterm() = newVariable();
+    while (!exceptionRaised && n > 0) {
+      nullCheck(setCurrentStructureSubterm(newVariable()));
       --n;
     }
     break;
@@ -809,7 +801,7 @@ void unifyVoid(VoidCount n) {
 void allocate(EnvironmentSize n) {
   VERBOSE(Serial << "Current environment: " << *currentEnvironment);
 
-  newEnvironment(n);
+  nullCheck(newEnvironment(n));
 
   VERBOSE(Serial << "New Environment:" << currentEnvironment);
 }
@@ -889,7 +881,7 @@ void proceed() {
 }
 
 void tryMeElse(LabelIndex l) {
-  newChoicePoint(l);
+  nullCheck(newChoicePoint(l));
 
   VERBOSE(Serial << "New Choice Point: " << currentChoicePoint);
 }
@@ -942,13 +934,13 @@ void getLevel(Yn yn) {
     VERBOSE(Serial << "Level is " << *currentCutPoint << endl);
   }
 
-  lookupPermanentVariable(yn) = currentCutPoint;
+  setPermanentVariable(yn, currentCutPoint);
 }
 
 void cut(Yn yn) {
   VERBOSE(Serial << "Yn - " << yn << endl);
 
-  RegistryEntry *cutPoint = lookupPermanentVariable(yn);
+  RegistryEntry *cutPoint = permanentVariable(yn);
 
   if (cutPoint != nullptr &&
       cutPoint->type != RegistryEntry::Type::choicePoint) {
@@ -1163,6 +1155,14 @@ void analogWritePin() {
 } // namespace Instructions
 
 namespace Ancillary {
+RegistryEntry *nullCheck(RegistryEntry *entry) {
+  if (entry == nullptr) {
+    failWithException();
+  }
+
+  return entry;
+}
+
 LabelTableEntry lookupLabel(LabelIndex p) {
   File labelTableFile = SPIFFS.open(labelTablePath);
 
@@ -1175,8 +1175,13 @@ LabelTableEntry lookupLabel(LabelIndex p) {
   return entry;
 }
 
-RegistryEntry *&lookupPermanentVariable(Yn yn) {
+RegistryEntry *permanentVariable(Yn yn) {
   return currentEnvironment->mutableBody<Environment>().permanentVariables[yn];
+}
+
+RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value) {
+  currentEnvironment->mutableBody<Environment>().permanentVariables[yn] = value;
+  return value;
 }
 
 void backtrack() {
@@ -1225,6 +1230,10 @@ void failAndExit() { querySucceeded = false; }
 void failWithException() { exceptionRaised = true; }
 
 void bind(RegistryEntry *a1, RegistryEntry *a2) {
+  if (exceptionRaised) {
+    return;
+  }
+
   if (a1->type == RegistryEntry::Type::reference &&
       ((a2->type != RegistryEntry::Type::reference) ||
        (a2->body<RegistryEntry *>() < a1->body<RegistryEntry *>()))) {
@@ -1241,7 +1250,7 @@ void trail(RegistryEntry *a) {
     VERBOSE(Serial << "Adding " << (a - tupleRegistry) << " to the trail"
                    << endl);
 
-    newTrailItem(a);
+    nullCheck(newTrailItem(a));
   } else {
 
     VERBOSE(Serial << "Address " << (a - tupleRegistry) << " is not conditional"

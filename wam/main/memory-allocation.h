@@ -1,9 +1,12 @@
 #pragma once
 
-#include "memory-scanning.h"
+#include "garbage-collection.h"
 
 RegistryEntry *newRegistryEntry(RegistryEntry::Type type);
-Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n = 0);
+Tuple *newTuple(size_t headSize, Arity n);
+
+RegistryEntry *newRegistryEntryWithTuple(RegistryEntry::Type type,
+                                         size_t headSize, Arity n);
 
 RegistryEntry *newVariable();
 RegistryEntry *newStructure(Functor f, Arity n);
@@ -12,9 +15,10 @@ RegistryEntry *newConstant(Constant c);
 RegistryEntry *newInteger(Integer i);
 RegistryEntry *newEnvironment(EnvironmentSize n);
 RegistryEntry *newChoicePoint(LabelIndex retryLabel);
-void newTrailItem(RegistryEntry *reference);
+RegistryEntry *newTrailItem(RegistryEntry *reference);
 
-RegistryEntry *&currentStructureSubterm();
+RegistryEntry *currentStructureSubterm();
+RegistryEntry *setCurrentStructureSubterm(RegistryEntry *value);
 RegistryEntry *&currentStructureSubterm(Structure &s);
 RegistryEntry *&currentStructureSubterm(List &l);
 

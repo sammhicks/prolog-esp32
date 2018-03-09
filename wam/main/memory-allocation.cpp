@@ -4,10 +4,26 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   RegistryEntry *newEntry;
 
   if (nextFreeRegistryEntry == nullptr) {
-    VERBOSE(Serial << "\tNew Registry Entry: ");
+    if (tupleRegistrySize >= tupleRegistryCapacity) {
+      Serial << "Stall (registry entry)!" << endl;
 
-    newEntry = tupleRegistry + tupleRegistrySize;
-    ++tupleRegistrySize;
+      fullGarbageCollection();
+
+      if (nextFreeRegistryEntry == nullptr) {
+        Serial << "No more registry entries!" << endl;
+        return nullptr;
+      }
+
+      VERBOSE(Serial << "\tReusing Registry Entry: ");
+
+      newEntry = nextFreeRegistryEntry;
+      nextFreeRegistryEntry = nextFreeRegistryEntry->next;
+    } else {
+      VERBOSE(Serial << "\tNew Registry Entry: ");
+
+      newEntry = tupleRegistry + tupleRegistrySize;
+      ++tupleRegistrySize;
+    }
   } else {
     VERBOSE(Serial << "\tReusing Registry Entry: ");
 
@@ -34,25 +50,62 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
   return newEntry;
 }
 
-Tuple *newTuple(RegistryEntry *entry, size_t headSize, Arity n) {
+Tuple *newTuple(size_t headSize, Arity n) {
+  size_t newTupleSize = RegistryEntry::tupleSize(headSize, n);
+
+  if ((nextFreeTuple + newTupleSize) >= (tuplesHeap + tuplesHeapCapacity)) {
+    Serial << "Stall (tuples heap)!" << endl;
+
+    fullGarbageCollection();
+
+    if ((nextFreeTuple + newTupleSize) >= (tuplesHeap + tuplesHeapCapacity)) {
+      Serial << "No more space for tuples!" << endl;
+      return nullptr;
+    }
+  }
+
   Tuple *tuple = reinterpret_cast<Tuple *>(nextFreeTuple);
-  nextFreeTuple += RegistryEntry::tupleSize(headSize, n);
-  tuple->entry = entry;
+  nextFreeTuple += newTupleSize;
 
   VERBOSE(Serial << "\tNew Tuple at "
-                 << (reinterpret_cast<uint8_t *>(tuple) - tuplesHeap)
-                 << " with an entry at " << (tuple->entry - tupleRegistry)
-                 << endl);
+                 << (reinterpret_cast<uint8_t *>(tuple) - tuplesHeap) << endl);
 
   return tuple;
+}
+
+RegistryEntry *newRegistryEntryWithTuple(RegistryEntry::Type type,
+                                         size_t headSize, Arity n) {
+  RegistryEntry *entry = newRegistryEntry(type);
+
+  if (entry == nullptr) {
+    return nullptr;
+  }
+
+  partialNewRegistryEntry = entry;
+
+  Tuple *tuple = newTuple(headSize, n);
+
+  if (tuple == nullptr) {
+    return nullptr;
+  }
+
+  partialNewRegistryEntry = nullptr;
+
+  entry->tuple = tuple;
+  tuple->entry = entry;
+
+  return entry;
 }
 
 RegistryEntry *newVariable() {
   VERBOSE(Serial << "New Variable:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::reference);
+  RegistryEntry *entry =
+      newRegistryEntryWithTuple(RegistryEntry::Type::reference, ScalarSize, 0);
 
-  entry->tuple = newTuple(entry, ScalarSize);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   entry->mutableBody<RegistryEntry *>() = entry;
 
@@ -62,9 +115,12 @@ RegistryEntry *newVariable() {
 RegistryEntry *newStructure(Functor f, Arity n) {
   VERBOSE(Serial << "New Structure:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::structure);
+  RegistryEntry *entry = newRegistryEntryWithTuple(
+      RegistryEntry::Type::structure, sizeof(Structure), n);
 
-  entry->tuple = newTuple(entry, sizeof(Structure), n);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   Structure &structure = entry->mutableBody<Structure>();
 
@@ -84,9 +140,12 @@ RegistryEntry *newStructure(Functor f, Arity n) {
 RegistryEntry *newList() {
   VERBOSE(Serial << "New List:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::list);
+  RegistryEntry *entry =
+      newRegistryEntryWithTuple(RegistryEntry::Type::list, 0, 2);
 
-  entry->tuple = newTuple(entry, 0, 2);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   List &list = entry->mutableBody<List>();
 
@@ -102,9 +161,12 @@ RegistryEntry *newList() {
 RegistryEntry *newConstant(Constant c) {
   VERBOSE(Serial << "New Constant:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::constant);
+  RegistryEntry *entry =
+      newRegistryEntryWithTuple(RegistryEntry::Type::constant, ScalarSize, 0);
 
-  entry->tuple = newTuple(entry, ScalarSize);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   entry->mutableBody<Constant>() = c;
 
@@ -114,9 +176,12 @@ RegistryEntry *newConstant(Constant c) {
 RegistryEntry *newInteger(Integer i) {
   VERBOSE(Serial << "New Integer:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::integer);
+  RegistryEntry *entry =
+      newRegistryEntryWithTuple(RegistryEntry::Type::integer, ScalarSize, 0);
 
-  entry->tuple = newTuple(entry, ScalarSize);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   entry->mutableBody<Integer>() = i;
 
@@ -126,9 +191,12 @@ RegistryEntry *newInteger(Integer i) {
 RegistryEntry *newEnvironment(EnvironmentSize n) {
   VERBOSE(Serial << "New Environment of size " << n << ":" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::environment);
+  RegistryEntry *entry = newRegistryEntryWithTuple(
+      RegistryEntry::Type::environment, sizeof(Environment), n);
 
-  entry->tuple = newTuple(entry, sizeof(Environment), n);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   Environment &environment = entry->mutableBody<Environment>();
 
@@ -149,9 +217,12 @@ RegistryEntry *newEnvironment(EnvironmentSize n) {
 RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
   VERBOSE(Serial << "New Choice Point:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::choicePoint);
+  RegistryEntry *entry = newRegistryEntryWithTuple(
+      RegistryEntry::Type::choicePoint, sizeof(ChoicePoint), argumentCount);
 
-  entry->tuple = newTuple(entry, sizeof(ChoicePoint), argumentCount);
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   ChoicePoint &choicePoint = entry->mutableBody<ChoicePoint>();
 
@@ -171,20 +242,25 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
   return entry;
 }
 
-void newTrailItem(RegistryEntry *reference) {
+RegistryEntry *newTrailItem(RegistryEntry *reference) {
   VERBOSE(Serial << "New Trail Item:" << endl);
 
-  RegistryEntry *entry = newRegistryEntry(RegistryEntry::Type::trailItem);
+  RegistryEntry *entry = newRegistryEntryWithTuple(
+      RegistryEntry::Type::trailItem, sizeof(TrailItem), 0);
 
-  entry->tuple = newTuple(entry, sizeof(TrailItem));
+  if (entry == nullptr) {
+    return nullptr;
+  }
 
   entry->mutableBody<TrailItem>().item = reference;
   entry->mutableBody<TrailItem>().nextItem = trailHead;
 
   trailHead = entry;
+
+  return entry;
 }
 
-RegistryEntry *&currentStructureSubterm() {
+RegistryEntry *currentStructureSubterm() {
   switch (currentStructure->type) {
   case RegistryEntry::Type::structure:
     return currentStructureSubterm(currentStructure->mutableBody<Structure>());
@@ -195,6 +271,23 @@ RegistryEntry *&currentStructureSubterm() {
            << endl;
     throw "Not a structure or a list";
   }
+}
+
+RegistryEntry *setCurrentStructureSubterm(RegistryEntry *value) {
+  switch (currentStructure->type) {
+  case RegistryEntry::Type::structure:
+    currentStructureSubterm(currentStructure->mutableBody<Structure>()) = value;
+    break;
+  case RegistryEntry::Type::list:
+    currentStructureSubterm(currentStructure->mutableBody<List>()) = value;
+    break;
+  default:
+    Serial << "Type " << currentStructure->type << " is not a structure or list"
+           << endl;
+    throw "Not a structure or a list";
+  }
+
+  return value;
 }
 
 RegistryEntry *&currentStructureSubterm(Structure &s) {
