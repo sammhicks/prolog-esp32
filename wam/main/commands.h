@@ -1,6 +1,7 @@
 #pragma once
 
 #include "raw-io.h"
+#include "serial-stream.h"
 
 enum class Command : uint8_t {
   ping = 0x00,
@@ -11,10 +12,11 @@ enum class Command : uint8_t {
   resetMachine = 0x30,
   runQuery,
   getNextAnswer,
-  readStructure = 0x40,
-  readList,
+  readValue = 0x40,
 };
 
 bool commandWaiting(Stream &s);
 
 Command nextCommand(Stream &s);
+
+Print &operator<<(Print &os, const Command &c);

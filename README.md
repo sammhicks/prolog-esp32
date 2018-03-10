@@ -29,3 +29,25 @@ Running Prolog code on a microcontroller
     + Translates more naturally into C arrays
 + I insert proceed instructions after deallocate instructions not succeeded by an execute instruction
     + Solves edge case of returning from virtual predicates and cuts
++ Structures' and Lists' bodies are a list of registry entry indices
+    + Detaches Structure and contents
+    + Allows easier rearrangement of memory
++ Garbage Collection
+    + Runs concurrently with instruction execution
+        + Paused when all tuples are live
+        + Resumed on deallocation, trimming, and backtracking
+        + Ratio of Instruction execution to garbage collection depends on memory usage: `ratio = usage / (1 - usage)`
+    + Unified memory space for heap, stack, environments, choice points, trail
+        + Trail unwinding controlled by relative position of choice points and trail items
+        + No penalty for using heap more than stack or stack more than heap etc
+        + Environments have size and capacity
+            + Size reduced upon trimming, capacity unchanged
+            + When scanning, only permanent variabes with index < size are scanned
+                + No space saving in environment, but trimmed variables are swept
+        + No need to implement set_local_value, put_unsafe_variable, etc 
+
+## Ideas for Futher Work
++ Multi-Precision Numbers
++ User input request
++ Dynamic Predicates
++ Exception Handling

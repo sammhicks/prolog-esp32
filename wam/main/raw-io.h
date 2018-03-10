@@ -1,8 +1,8 @@
 #pragma once
 
-#include <stdexcept>
-
 #include "Client.h"
+
+#include <stdexcept>
 
 #include "yield.h"
 
@@ -22,12 +22,12 @@ template <typename T> T read(Stream &stream) {
   return result;
 }
 
-template <typename T> void write(Client &client, T value) {
-  client.write(reinterpret_cast<uint8_t *>(&value), sizeof(T));
+template <typename T> void write(Client &client, const T value) {
+  client.write(reinterpret_cast<const uint8_t *>(&value), sizeof(T));
 }
 
-template <typename T> void writeBlock(Client &client, T value) {
+template <typename T> void writeBlock(Client &client, const T value) {
   client.write(sizeof(T));
-  client.write(reinterpret_cast<uint8_t *>(&value), sizeof(T));
+  client.write(reinterpret_cast<const uint8_t *>(&value), sizeof(T));
 }
 } // namespace Raw

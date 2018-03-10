@@ -4,49 +4,20 @@ const char *codePath = "/code";
 const char *labelTablePath = "/label-table";
 
 ExecuteModes executeMode;
+CodeIndex haltIndex;
 bool querySucceeded;
 bool exceptionRaised;
 Stream *instructionSource;
 File *programFile;
 
 RWModes rwMode;
-Arity argumentCount;
-HeapIndex h;
-HeapIndex s;
-CodeIndex cp;
-CodeIndex haltIndex;
-TrailIndex tr;
-Environment *e;
-ChoicePoint *b;
-ChoicePoint *b0;
-HeapIndex hb;
-
-Value registers[registerCount];
-Value heap[heapSize];
-uint8_t stack[stackSize];
-HeapIndex trail[trailSize];
 
 template <typename T> T read() { return Raw::read<T>(*instructionSource); }
 
 void resetMachine() {
-  Serial.println("Reset");
-  h = 0;
-  tr = 0;
-
-  e = reinterpret_cast<Environment *>(stack);
-  e->ce = nullptr;
-  e->cp = 0;
-  e->n = 0;
-
-  b = reinterpret_cast<ChoicePoint *>(stack);
-  b->ce = nullptr;
-  b->cp = 0;
-  b->b = nullptr;
-  b->bp = 0;
-  b->tr = 0;
-  b->n = 0;
-
-  b0 = b;
+  Serial << "Reset" << endl;
+  resetMemory();
+  initScanning();
 }
 
 void executeInstructions(Client *client) {
@@ -57,20 +28,22 @@ void executeInstructions(Client *client) {
 
   File actualProgramFile = SPIFFS.open(codePath);
   programFile = &actualProgramFile;
-
-  haltIndex = programFile->size();
+  haltIndex = actualProgramFile.size();
 
   while (executeMode == ExecuteModes::query) {
     executeInstruction();
   }
 
   if (!exceptionRaised) {
-    Serial.println("Executing Program");
+    LOG(Serial << "Executing Program" << endl);
     instructionSource = programFile;
 
-    e->n = argumentCount;
-    for (Arity n = 0; n < argumentCount; ++n) {
-      e->ys[n] = registers[n];
+    Ancillary::nullCheck(newEnvironment(argumentCount));
+
+    if (!exceptionRaised) {
+      for (EnvironmentSize i = 0; i < argumentCount; ++i) {
+        Ancillary::setPermanentVariable(i, registers[i]);
+      }
     }
   }
 
@@ -86,437 +59,455 @@ void getNextAnswer(Client *client) {
 }
 
 void executeProgram(Client *client) {
+  unsigned long nextYieldTime = millis() + yieldPeriod;
+
+  unsigned long excessTime = 0;
+
   while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
-    executeInstruction();
+    LOG(Serial << "Current Point: " << programFile->position() << endl);
+
+    unsigned long targetTime = micros() + excessTime;
+
+    do {
+      executeInstruction();
+    } while (micros() < targetTime);
+
+    excessTime = micros() - targetTime;
+
+    if (garbageCollectionRunning) {
+      double registryEntryUsage = static_cast<double>(tupleRegistryUsageCount) /
+                                  static_cast<double>(tupleRegistryCapacity);
+      double tupleUsage = static_cast<double>(nextFreeTuple - tuplesHeap) /
+                          static_cast<double>(tuplesHeapCapacity);
+      double maxUsage = std::max(registryEntryUsage, tupleUsage);
+      double garbageCollectionScaling = maxUsage / (1.0 - maxUsage);
+
+      VERBOSE(Serial << "registry usage" << registryEntryUsage << endl);
+      VERBOSE(Serial << "tuple usage" << tupleUsage << endl);
+      VERBOSE(Serial << "garbage collection scaling: "
+                     << garbageCollectionScaling << endl);
+
+      targetTime = micros() + excessTime * garbageCollectionScaling;
+
+      while (garbageCollectionRunning && (micros() < targetTime)) {
+        garbageCollectionStep();
+      }
+
+      if (garbageCollectionRunning) {
+        excessTime = micros() - targetTime;
+      } else {
+        excessTime = 0;
+      }
+    } else {
+      excessTime = 0;
+    }
+
+    if (millis() > nextYieldTime) {
+      yieldProcessor();
+
+      nextYieldTime = millis() + yieldPeriod;
+    }
   }
 
   if (exceptionRaised) {
-    Serial.println("Exception");
+    Serial << "Exception" << endl;
     Raw::write(*client, Results::exception);
 
     return;
   }
 
+  fullGarbageCollection();
+
+  Serial << "Registry Usage: "
+         << (tupleRegistryUsageCount * 100.0) / tupleRegistryCapacity << "%"
+         << endl;
+
+  Serial << "Tuple Heap Usage: "
+         << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity << "%"
+         << endl;
+
   if (querySucceeded) {
-    if (static_cast<void *>(b) == static_cast<void *>(stack)) {
-      Serial.println("Done");
+    if (currentChoicePoint == nullptr) {
+      Serial << "Done" << endl;
       Raw::write(*client, Results::success);
     } else {
-      Serial.println("Choice Points");
+      Serial << "Choice Points" << endl;
       Raw::write(*client, Results::choicePoints);
     }
 
-    Environment *queryEnvironment = reinterpret_cast<Environment *>(stack);
-
-    Raw::write(*client, queryEnvironment->n);
-    for (Arity n = 0; n < queryEnvironment->n; ++n) {
-      Raw::writeBlock(*client, Ancillary::deref(queryEnvironment->ys[n]));
-    }
+    currentEnvironment->sendToClient(*client);
 
     return;
   }
 
-  Serial.println("Failure!");
+  Serial << "Failure!" << endl;
   Raw::write(*client, Results::failure);
 }
 
 void executeInstruction() {
-  Serial.println();
   Opcode opcode = Raw::read<Opcode>(*instructionSource);
-  Serial.print("Executing opcode ");
-  Serial.println(static_cast<int>(opcode), HEX);
+
+  LOG(Serial << "Executing opcode " << opcode << ": ");
 
   switch (opcode) {
   case Opcode::putVariableXnAi:
-    Serial.println("putVariableXnAi");
+    LOG(Serial << "putVariableXnAi" << endl);
     Instructions::putVariableXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::putVariableYnAi:
-    Serial.println("putVariableYnAi");
+    LOG(Serial << "putVariableYnAi" << endl);
     Instructions::putVariableYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::putValueXnAi:
-    Serial.println("putValueXnAi");
+    LOG(Serial << "putValueXnAi" << endl);
     Instructions::putValueXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::putValueYnAi:
-    Serial.println("putValueYnAi");
+    LOG(Serial << "putValueYnAi" << endl);
     Instructions::putValueYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::putStructure:
-    Serial.println("putStructure");
+    LOG(Serial << "putStructure" << endl);
     Instructions::putStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::putList:
-    Serial.println("putList");
+    LOG(Serial << "putList" << endl);
     Instructions::putList(read<Ai>());
     break;
   case Opcode::putConstant:
-    Serial.println("putConstant");
+    LOG(Serial << "putConstant" << endl);
     Instructions::putConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::putInteger:
-    Serial.println("putInteger");
+    LOG(Serial << "putInteger" << endl);
     Instructions::putInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::putVoid:
-    Serial.println("putVoid");
+    LOG(Serial << "putVoid" << endl);
     Instructions::putVoid(read<VoidCount>(), read<Ai>());
     break;
   case Opcode::getVariableXnAi:
-    Serial.println("getVariableXnAi");
+    LOG(Serial << "getVariableXnAi" << endl);
     Instructions::getVariableXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::getVariableYnAi:
-    Serial.println("getVariableYnAi");
+    LOG(Serial << "getVariableYnAi" << endl);
     Instructions::getVariableYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::getValueXnAi:
-    Serial.println("getValueXnAi");
+    LOG(Serial << "getValueXnAi" << endl);
     Instructions::getValueXnAi(read<Xn>(), read<Ai>());
     break;
   case Opcode::getValueYnAi:
-    Serial.println("getValueYnAi");
+    LOG(Serial << "getValueYnAi" << endl);
     Instructions::getValueYnAi(read<Yn>(), read<Ai>());
     break;
   case Opcode::getStructure:
-    Serial.println("getStructure");
+    LOG(Serial << "getStructure" << endl);
     Instructions::getStructure(read<Functor>(), read<Arity>(), read<Ai>());
     break;
   case Opcode::getList:
-    Serial.println("getList");
+    LOG(Serial << "getList" << endl);
     Instructions::getList(read<Ai>());
     break;
   case Opcode::getConstant:
-    Serial.println("getConstant");
+    LOG(Serial << "getConstant" << endl);
     Instructions::getConstant(read<Constant>(), read<Ai>());
     break;
   case Opcode::getInteger:
-    Serial.println("getInteger");
+    LOG(Serial << "getInteger" << endl);
     Instructions::getInteger(read<Integer>(), read<Ai>());
     break;
   case Opcode::setVariableXn:
-    Serial.println("setVariableXn");
+    LOG(Serial << "setVariableXn" << endl);
     Instructions::setVariableXn(read<Xn>());
     break;
   case Opcode::setVariableYn:
-    Serial.println("setVariableYn");
+    LOG(Serial << "setVariableYn" << endl);
     Instructions::setVariableYn(read<Yn>());
     break;
   case Opcode::setValueXn:
-    Serial.println("setValueXn");
+    LOG(Serial << "setValueXn" << endl);
     Instructions::setValueXn(read<Xn>());
     break;
   case Opcode::setValueYn:
-    Serial.println("setValueYn");
+    LOG(Serial << "setValueYn" << endl);
     Instructions::setValueYn(read<Yn>());
     break;
   case Opcode::setConstant:
-    Serial.println("setConstant");
+    LOG(Serial << "setConstant" << endl);
     Instructions::setConstant(read<Constant>());
     break;
   case Opcode::setInteger:
-    Serial.println("setInteger");
+    LOG(Serial << "setInteger" << endl);
     Instructions::setInteger(read<Integer>());
     break;
   case Opcode::setVoid:
-    Serial.println("setVoid");
+    LOG(Serial << "setVoid" << endl);
     Instructions::setVoid(read<VoidCount>());
     break;
   case Opcode::unifyVariableXn:
-    Serial.println("unifyVariableXn");
+    LOG(Serial << "unifyVariableXn" << endl);
     Instructions::unifyVariableXn(read<Xn>());
     break;
   case Opcode::unifyVariableYn:
-    Serial.println("unifyVariableYn");
+    LOG(Serial << "unifyVariableYn" << endl);
     Instructions::unifyVariableYn(read<Yn>());
     break;
   case Opcode::unifyValueXn:
-    Serial.println("unifyValueXn");
+    LOG(Serial << "unifyValueXn" << endl);
     Instructions::unifyValueXn(read<Xn>());
     break;
   case Opcode::unifyValueYn:
-    Serial.println("unifyValueYn");
+    LOG(Serial << "unifyValueYn" << endl);
     Instructions::unifyValueYn(read<Yn>());
     break;
   case Opcode::unifyConstant:
-    Serial.println("unifyConstant");
+    LOG(Serial << "unifyConstant" << endl);
     Instructions::unifyConstant(read<Constant>());
     break;
   case Opcode::unifyInteger:
-    Serial.println("unifyInteger");
+    LOG(Serial << "unifyInteger" << endl);
     Instructions::unifyInteger(read<Integer>());
     break;
   case Opcode::unifyVoid:
-    Serial.println("unifyVoid");
+    LOG(Serial << "unifyVoid" << endl);
     Instructions::unifyVoid(read<VoidCount>());
     break;
   case Opcode::allocate:
-    Serial.println("allocate");
+    LOG(Serial << "allocate" << endl);
     Instructions::allocate(read<EnvironmentSize>());
     break;
   case Opcode::trim:
-    Serial.println("trim");
+    LOG(Serial << "trim" << endl);
     Instructions::trim(read<EnvironmentSize>());
     break;
   case Opcode::deallocate:
-    Serial.println("deallocate");
+    LOG(Serial << "deallocate" << endl);
     Instructions::deallocate();
     break;
   case Opcode::call:
-    Serial.println("call");
+    LOG(Serial << "call" << endl);
     Instructions::call(read<LabelIndex>());
     break;
   case Opcode::execute:
-    Serial.println("execute");
+    LOG(Serial << "execute" << endl);
     Instructions::execute(read<LabelIndex>());
     break;
   case Opcode::proceed:
-    Serial.println("proceed");
+    LOG(Serial << "proceed" << endl);
     Instructions::proceed();
     break;
   case Opcode::tryMeElse:
-    Serial.println("tryMeElse");
+    LOG(Serial << "tryMeElse" << endl);
     Instructions::tryMeElse(read<LabelIndex>());
     break;
   case Opcode::retryMeElse:
-    Serial.println("retryMeElse");
+    LOG(Serial << "retryMeElse" << endl);
     Instructions::retryMeElse(read<LabelIndex>());
     break;
   case Opcode::trustMe:
-    Serial.println("trustMe");
+    LOG(Serial << "trustMe" << endl);
     Instructions::trustMe();
     break;
   case Opcode::neckCut:
-    Serial.println("neckCut");
+    LOG(Serial << "neckCut" << endl);
     Instructions::neckCut();
     break;
   case Opcode::getLevel:
-    Serial.println("getLevel");
+    LOG(Serial << "getLevel" << endl);
     Instructions::getLevel(read<Yn>());
     break;
   case Opcode::cut:
-    Serial.println("cut");
+    LOG(Serial << "cut" << endl);
     Instructions::cut(read<Yn>());
     break;
   case Opcode::greaterThan:
-    Serial.println("greaterThan");
+    LOG(Serial << "greaterThan" << endl);
     Instructions::greaterThan();
     break;
   case Opcode::lessThan:
-    Serial.println("lessThan");
+    LOG(Serial << "lessThan" << endl);
     Instructions::lessThan();
     break;
   case Opcode::lessThanOrEqualTo:
-    Serial.println("lessThanOrEqualTo");
+    LOG(Serial << "lessThanOrEqualTo" << endl);
     Instructions::lessThanOrEqualTo();
     break;
   case Opcode::greaterThanOrEqualTo:
-    Serial.println("greaterThanOrEqualTo");
+    LOG(Serial << "greaterThanOrEqualTo" << endl);
     Instructions::greaterThanOrEqualTo();
     break;
   case Opcode::notEqual:
-    Serial.println("notEqual");
+    LOG(Serial << "notEqual" << endl);
     Instructions::notEqual();
     break;
   case Opcode::equals:
-    Serial.println("equals");
+    LOG(Serial << "equals" << endl);
     Instructions::equals();
     break;
   case Opcode::is:
-    Serial.println("is");
+    LOG(Serial << "is" << endl);
     Instructions::is();
     break;
   case Opcode::noOp:
-    Serial.println("noOp");
+    LOG(Serial << "noOp" << endl);
     Instructions::noOp();
     break;
   case Opcode::fail:
-    Serial.println("fail");
+    LOG(Serial << "fail" << endl);
     Instructions::fail();
     break;
   case Opcode::unify:
-    Serial.println("unify");
+    LOG(Serial << "unify" << endl);
     Instructions::unify();
     break;
   case Opcode::configureDigitalPin:
-    Serial.println("configureDigitalPin");
+    LOG(Serial << "configureDigitalPin" << endl);
     Instructions::configureDigitalPin(read<DigitalPinModes>());
     break;
   case Opcode::digitalReadPin:
-    Serial.println("digitalReadPin");
+    LOG(Serial << "digitalReadPin" << endl);
     Instructions::digitalReadPin();
     break;
   case Opcode::digitalWritePin:
-    Serial.println("digitalWritePin");
+    LOG(Serial << "digitalWritePin" << endl);
     Instructions::digitalWritePin();
     break;
   case Opcode::pinIsAnalogInput:
-    Serial.println("pinIsAnalogInput");
+    LOG(Serial << "pinIsAnalogInput" << endl);
     Instructions::pinIsAnalogInput();
     break;
   case Opcode::configureChannel:
-    Serial.println("configureChannel");
+    LOG(Serial << "configureChannel" << endl);
     Instructions::configureChannel();
     break;
   case Opcode::pinIsAnalogOutput:
-    Serial.println("pinIsAnalogOutput");
+    LOG(Serial << "pinIsAnalogOutput" << endl);
     Instructions::pinIsAnalogOutput();
     break;
   case Opcode::analogReadPin:
-    Serial.println("analogReadPin");
+    LOG(Serial << "analogReadPin" << endl);
     Instructions::analogReadPin();
     break;
   case Opcode::analogWritePin:
-    Serial.println("analogWritePin");
+    LOG(Serial << "analogWritePin" << endl);
     Instructions::analogWritePin();
     break;
   default:
-    Serial.printf("Unknown opcode %x\n", static_cast<uint8_t>(opcode));
+    LOG(Serial << "Unknown opcode \"" << opcode << "\"" << endl);
     Ancillary::failWithException();
     break;
   }
+
+  LOG(Serial << endl);
 }
 
 namespace Instructions {
-using Ancillary::addToTrail;
 using Ancillary::backtrack;
 using Ancillary::bind;
 using Ancillary::compare;
-using Ancillary::deref;
 using Ancillary::evaluateExpression;
+using Ancillary::evaluateStructure;
+using Ancillary::failAndExit;
 using Ancillary::failWithException;
 using Ancillary::getChannel;
 using Ancillary::getPin;
 using Ancillary::lookupLabel;
+using Ancillary::nullCheck;
+using Ancillary::permanentVariable;
+using Ancillary::resumeGarbageCollection;
+using Ancillary::setPermanentVariable;
 using Ancillary::tidyTrail;
-using Ancillary::topOfStack;
+using Ancillary::trail;
 using Ancillary::unify;
-using Ancillary::unwindTrail;
 using Ancillary::virtualPredicate;
+;
 
 void putVariableXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-  Serial.printf("Ai - %u\n", ai);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  heap[h].makeReference(h);
-  registers[xn] = heap[h];
-  registers[ai] = heap[h];
-  ++h;
+  nullCheck(registers[ai] = registers[xn] = newVariable());
 }
 
 void putVariableYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-  Serial.printf("Ai - %u\n", ai);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  heap[h].makeReference(h);
-  e->ys[yn] = heap[h];
-  registers[ai] = heap[h];
-  ++h;
+  nullCheck(registers[ai] = setPermanentVariable(yn, newVariable()));
 }
 
 void putValueXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[ai] = registers[xn];
 }
 
 void putValueYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai] = e->ys[yn];
+  registers[ai] = permanentVariable(yn);
 }
 
 void putStructure(Functor f, Arity n, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("f  - %u\n", f);
-  Serial.printf("n  - %u\n", n);
-  Serial.printf("Ai - %u\n", ai);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "f  - " << f << endl);
+  VERBOSE(Serial << "n  - " << n << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  heap[h].makeFunctor(f, n);
-  registers[ai].makeStructure(h);
-  ++h;
+  nullCheck(registers[ai] = newStructure(f, n));
 }
 
 void putList(Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Ai - %u\n", ai);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai].makeList(h);
+  nullCheck(registers[ai] = newList());
 }
 
 void putConstant(Constant c, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("c  - %u\n", c);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai].makeConstant(c);
+  nullCheck(registers[ai] = newConstant(c));
 }
 
 void putInteger(Integer i, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("i  - %i\n", i);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "i  - " << i << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  registers[ai].makeInteger(i);
+  nullCheck(registers[ai] = newInteger(i));
 }
 
 void putVoid(VoidCount n, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("n  - %u\n", n);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "n  - " << n << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  while (n > 0) {
-    heap[h].makeReference(h);
-    registers[ai] = heap[h];
-    ++h;
+  while (!exceptionRaised && n > 0) {
+    nullCheck(registers[ai] = newVariable());
     --n;
     ++ai;
   }
 }
 
 void getVariableXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   registers[xn] = registers[ai];
 }
 
 void getVariableYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  e->ys[yn] = registers[ai];
+  setPermanentVariable(yn, registers[ai]);
 }
 
 void getValueXnAi(Xn xn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
   if (!unify(registers[xn], registers[ai])) {
     backtrack();
@@ -524,42 +515,32 @@ void getValueXnAi(Xn xn, Ai ai) {
 }
 
 void getValueYnAi(Yn yn, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  if (!unify(e->ys[yn], registers[ai])) {
+  if (!unify(permanentVariable(yn), registers[ai])) {
     backtrack();
   }
 }
 
 void getStructure(Functor f, Arity n, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("f  - %u\n", f);
-  Serial.printf("n  - %u\n", n);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "f  - " << f << endl);
+  VERBOSE(Serial << "n  - " << n << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  Value &derefAi = deref(registers[ai]);
+  RegistryEntry *d = registers[ai]->deref();
 
-  switch (derefAi.type) {
-  case Value::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial.println("Writing structure");
-#endif
-    heap[h].makeStructure(h + 1);
-    heap[h + 1].makeFunctor(f, n);
-    bind(derefAi, heap[h]);
-    h = h + 2;
+  switch (d->type) {
+  case RegistryEntry::Type::reference:
+    VERBOSE(Serial << "Writing structure" << endl);
+    bind(d, nullCheck(newStructure(f, n)));
     rwMode = RWModes::write;
     return;
-  case Value::Type::structure:
-#ifdef VERBOSE_LOG
-    Serial.println("Reading structure");
-#endif
-    if (heap[derefAi.h].f == f && heap[derefAi.h].n == n) {
-      s = derefAi.h + 1;
+  case RegistryEntry::Type::structure:
+    VERBOSE(Serial << "Reading structure" << endl);
+    if (d->body<Structure>().functor == f && d->body<Structure>().arity == n) {
+      currentStructure = d;
+      currentStructureSubtermIndex = 0;
       rwMode = RWModes::read;
     } else {
       backtrack();
@@ -572,27 +553,20 @@ void getStructure(Functor f, Arity n, Ai ai) {
 }
 
 void getList(Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  Value &derefAi = deref(registers[ai]);
+  RegistryEntry *d = registers[ai]->deref();
 
-  switch (derefAi.type) {
-  case Value::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial.println("Writing list");
-#endif
-    heap[h].makeList(h + 1);
-    bind(derefAi, heap[h]);
-    ++h;
+  switch (d->type) {
+  case RegistryEntry::Type::reference:
+    VERBOSE(Serial << "Writing list" << endl);
+    bind(d, nullCheck(newList()));
     rwMode = RWModes::write;
     return;
-  case Value::Type::list:
-#ifdef VERBOSE_LOG
-    Serial.println("Reading list");
-#endif
-    s = derefAi.h;
+  case RegistryEntry::Type::list:
+    VERBOSE(Serial << "Reading list" << endl);
+    currentStructure = d;
+    currentStructureSubtermIndex = 0;
     rwMode = RWModes::read;
     return;
   default:
@@ -602,26 +576,20 @@ void getList(Ai ai) {
 }
 
 void getConstant(Constant c, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("c  - %u\n", c);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  Value &derefAi = deref(registers[ai]);
+  RegistryEntry *d = registers[ai]->deref();
 
-  switch (derefAi.type) {
-  case Value::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial.println("Writing constant");
-#endif
-    addToTrail(derefAi.h);
-    derefAi.makeConstant(c);
+  switch (d->type) {
+  case RegistryEntry::Type::reference:
+    VERBOSE(Serial << "Writing constant" << endl);
+    trail(d);
+    d->bindToConstant(c);
     return;
-  case Value::Type::constant:
-#ifdef VERBOSE_LOG
-    Serial.println("Reading constant");
-#endif
-    if (c != derefAi.c) {
+  case RegistryEntry::Type::constant:
+    VERBOSE(Serial << "Reading constant" << endl);
+    if (c != d->body<Constant>()) {
       backtrack();
     }
     return;
@@ -632,26 +600,20 @@ void getConstant(Constant c, Ai ai) {
 }
 
 void getInteger(Integer i, Ai ai) {
-#ifdef VERBOSE_LOG
-  Serial.printf("i  - %i\n", i);
-  Serial.printf("Ai - %u\n", ai);
-#endif
+  VERBOSE(Serial << "i  - " << i << endl);
+  VERBOSE(Serial << "Ai - " << ai << endl);
 
-  Value &derefAi = deref(registers[ai]);
+  RegistryEntry *d = registers[ai]->deref();
 
-  switch (derefAi.type) {
-  case Value::Type::reference:
-#ifdef VERBOSE_LOG
-    Serial.println("Writing integer");
-#endif
-    addToTrail(derefAi.h);
-    derefAi.makeInteger(i);
+  switch (d->type) {
+  case RegistryEntry::Type::reference:
+    VERBOSE(Serial << "Writing integer" << endl);
+    trail(d);
+    d->bindToInteger(i);
     return;
-  case Value::Type::integer:
-#ifdef VERBOSE_LOG
-    Serial.println("Reading integer");
-#endif
-    if (i != derefAi.i) {
+  case RegistryEntry::Type::integer:
+    VERBOSE(Serial << "Reading integer" << endl);
+    if (i != d->body<Integer>()) {
       backtrack();
     }
     return;
@@ -662,184 +624,121 @@ void getInteger(Integer i, Ai ai) {
 }
 
 void setVariableXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
-  heap[h].makeReference(h);
-  registers[xn] = heap[h];
-  ++h;
+  nullCheck(setCurrentStructureSubterm(registers[xn] = newVariable()));
 }
 
 void setVariableYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
-  heap[h].makeReference(h);
-  e->ys[yn] = heap[h];
-  ++h;
+  nullCheck(
+      setCurrentStructureSubterm(setPermanentVariable(yn, newVariable())));
 }
 
 void setValueXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
-  heap[h] = registers[xn];
-  ++h;
+  setCurrentStructureSubterm(registers[xn]);
 }
 
 void setValueYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-  Serial.printf("h  - %x\n", h);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
-  heap[h] = e->ys[yn];
-  ++h;
+  setCurrentStructureSubterm(permanentVariable(yn));
 }
 
 void setConstant(Constant c) {
-#ifdef VERBOSE_LOG
-  Serial.printf("c - %u\n", c);
-  Serial.printf("h - %x\n", h);
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
 
-  heap[h].makeConstant(c);
-  ++h;
+  nullCheck(setCurrentStructureSubterm(newConstant(c)));
 }
 
 void setInteger(Integer i) {
-#ifdef VERBOSE_LOG
-  Serial.printf("i - %i\n", i);
-  Serial.printf("h - %x\n", h);
-#endif
+  VERBOSE(Serial << "i - " << i << endl);
 
-  heap[h].makeInteger(i);
-  ++h;
+  nullCheck(setCurrentStructureSubterm(newInteger(i)));
 }
 
 void setVoid(VoidCount n) {
-#ifdef VERBOSE_LOG
-  Serial.printf("n - %u\n", n);
-#endif
+  VERBOSE(Serial << "n  - " << n << endl);
 
-  while (n > 0) {
-    heap[h].makeReference(h);
-    ++h;
+  while (!exceptionRaised && n > 0) {
+    nullCheck(setCurrentStructureSubterm(newVariable()));
     --n;
   }
 }
 
 void unifyVariableXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
   switch (rwMode) {
   case RWModes::read:
-    registers[xn] = heap[s];
+    registers[xn] = currentStructureSubterm();
     break;
   case RWModes::write:
-#ifdef VERBOSE_LOG
-    Serial.printf("h - %x\n", h);
-#endif
-
-    heap[h].makeReference(h);
-    registers[xn] = heap[h];
-    ++h;
+    nullCheck(setCurrentStructureSubterm(registers[xn] = newVariable()));
     break;
   }
-  s = s + 1;
 }
 
 void unifyVariableYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   switch (rwMode) {
   case RWModes::read:
-    e->ys[yn] = heap[s];
+    setPermanentVariable(yn, currentStructureSubterm());
     break;
   case RWModes::write:
-#ifdef VERBOSE_LOG
-    Serial.printf("h - %x\n", h);
-#endif
-
-    heap[h].makeReference(h);
-    e->ys[yn] = heap[h];
-    ++h;
+    nullCheck(
+        setCurrentStructureSubterm(setPermanentVariable(yn, newVariable())));
     break;
   }
-  s = s + 1;
 }
 
 void unifyValueXn(Xn xn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Xn - %u\n", xn);
-#endif
+  VERBOSE(Serial << "Xn - " << xn << endl);
 
   switch (rwMode) {
   case RWModes::read:
-    if (!unify(registers[xn], heap[s])) {
+    if (!unify(registers[xn], currentStructureSubterm())) {
       backtrack();
     };
     break;
   case RWModes::write:
-#ifdef VERBOSE_LOG
-    Serial.printf("h - %x\n", h);
-#endif
-
-    heap[h] = registers[xn];
-    ++h;
+    setCurrentStructureSubterm(registers[xn]);
     break;
   }
-  s = s + 1;
 }
 
 void unifyValueYn(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
   switch (rwMode) {
   case RWModes::read:
-    if (!unify(e->ys[yn], heap[s])) {
+    if (!unify(permanentVariable(yn), currentStructureSubterm())) {
       backtrack();
     };
     break;
   case RWModes::write:
-#ifdef VERBOSE_LOG
-    Serial.printf("h - %x\n", h);
-#endif
-
-    heap[h] = e->ys[yn];
-    ++h;
+    setCurrentStructureSubterm(permanentVariable(yn));
     break;
   }
-  s = s + 1;
 }
 
 void unifyConstant(Constant c) {
-#ifdef VERBOSE_LOG
-  Serial.printf("c - %u\n", c);
-#endif
+  VERBOSE(Serial << "c  - " << c << endl);
 
   switch (rwMode) {
   case RWModes::read: {
-    Value &derefS = deref(heap[s]);
-    switch (derefS.type) {
-    case Value::Type::reference:
-      addToTrail(derefS.h);
-      derefS.makeConstant(c);
+    RegistryEntry *d = currentStructureSubterm()->deref();
+    switch (d->type) {
+    case RegistryEntry::Type::reference:
+      trail(d);
+      d->bindToConstant(c);
       break;
-    case Value::Type::constant:
-      if (c != derefS.c) {
+    case RegistryEntry::Type::constant:
+      if (c != d->body<Constant>()) {
         backtrack();
       }
       break;
@@ -849,32 +748,24 @@ void unifyConstant(Constant c) {
     }
   } break;
   case RWModes::write:
-#ifdef VERBOSE_LOG
-    Serial.printf("h - %x\n", h);
-#endif
-
-    heap[h].makeConstant(c);
-    ++h;
+    nullCheck(setCurrentStructureSubterm(newConstant(c)));
     break;
   }
-  s = s + 1;
 }
 
 void unifyInteger(Integer i) {
-#ifdef VERBOSE_LOG
-  Serial.printf("i - %i\n", i);
-#endif
+  VERBOSE(Serial << "i - " << i << endl);
 
   switch (rwMode) {
   case RWModes::read: {
-    Value &derefS = deref(heap[s]);
-    switch (derefS.type) {
-    case Value::Type::reference:
-      addToTrail(derefS.h);
-      derefS.makeInteger(i);
+    RegistryEntry *d = currentStructureSubterm()->deref();
+    switch (d->type) {
+    case RegistryEntry::Type::reference:
+      trail(d);
+      d->bindToInteger(i);
       break;
-    case Value::Type::integer:
-      if (i != derefS.i) {
+    case RegistryEntry::Type::integer:
+      if (i != d->body<Integer>()) {
         backtrack();
       }
       break;
@@ -884,30 +775,21 @@ void unifyInteger(Integer i) {
     }
   } break;
   case RWModes::write:
-#ifdef VERBOSE_LOG
-    Serial.printf("h - %x\n", h);
-#endif
-
-    heap[h].makeInteger(i);
-    ++h;
+    nullCheck(setCurrentStructureSubterm(newInteger(i)));
     break;
   }
-  s = s + 1;
 }
 
 void unifyVoid(VoidCount n) {
-#ifdef VERBOSE_LOG
-  Serial.printf("n - %u\n", n);
-#endif
+  VERBOSE(Serial << "n  - " << n << endl);
 
   switch (rwMode) {
   case RWModes::read:
-    s = s + n;
+    currentStructureSubtermIndex += n;
     break;
   case RWModes::write:
-    while (n > 0) {
-      heap[h].makeReference(h);
-      ++h;
+    while (!exceptionRaised && n > 0) {
+      nullCheck(setCurrentStructureSubterm(newVariable()));
       --n;
     }
     break;
@@ -915,234 +797,161 @@ void unifyVoid(VoidCount n) {
 }
 
 void allocate(EnvironmentSize n) {
-  Environment *newEnvironment = reinterpret_cast<Environment *>(topOfStack());
+  VERBOSE(Serial << "Current environment: " << *currentEnvironment);
 
-#ifdef VERBOSE_LOG
-  Serial.printf("Allocating a new environment at %x:\n",
-                reinterpret_cast<uint8_t *>(newEnvironment) - stack);
-  Serial.printf("\tce - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
-  Serial.printf("\tcp - %u\n", cp);
-  Serial.printf("\tn - %u\n", n);
-  Serial.printf("\ttop of stack - %x\n",
-                reinterpret_cast<uint8_t *>(newEnvironment->ys + n) - stack);
-#endif
+  nullCheck(newEnvironment(n));
 
-  newEnvironment->ce = e;
-  newEnvironment->cp = cp;
-  newEnvironment->n = n;
-
-  e = newEnvironment;
+  VERBOSE(Serial << "New Environment:" << currentEnvironment);
 }
 
 void trim(EnvironmentSize n) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Trimming %u items\n", n);
-  Serial.printf("Environment size from %u\n", e->n);
-#endif
+  VERBOSE(Serial << "Trimming " << n << " items" << endl);
+  VERBOSE(Serial << "Environment size from "
+                 << currentEnvironment->body<Environment>().size);
 
-  e->n -= n;
+  currentEnvironment->mutableBody<Environment>().size -= n;
+  resumeGarbageCollection();
 
-#ifdef VERBOSE_LOG
-  Serial.printf(" to %u\n", e->n);
-#endif
+  VERBOSE(Serial << " to " << currentEnvironment->body<Environment>().size);
 }
 
 void deallocate() {
-#ifdef VERBOSE_LOG
-  Serial.printf("Deallocating environment %x to %x:\n",
-                reinterpret_cast<uint8_t *>(e) - stack,
-                reinterpret_cast<uint8_t *>(e->ce) - stack);
-  Serial.printf("\tcp - %u\n", e->cp);
-#endif
-  cp = e->cp;
-  e = e->ce;
+  VERBOSE(Serial << "Deallocating environment: " << *currentEnvironment);
+
+  continuePoint = currentEnvironment->body<Environment>().continuePoint;
+  currentEnvironment = currentEnvironment->body<Environment>().nextEnvironment;
+  resumeGarbageCollection();
+
+  VERBOSE(Serial << "New environment: " << *currentEnvironment);
 }
 
 void call(LabelIndex p) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Calling label %u:\n", p);
-#endif
+  VERBOSE(Serial << "Calling label " << p << endl);
+
   switch (executeMode) {
   case ExecuteModes::query:
     executeMode = ExecuteModes::program;
-    cp = haltIndex;
+    continuePoint = haltIndex;
     break;
   case ExecuteModes::program:
-    cp = programFile->position();
+    continuePoint = programFile->position();
     break;
   }
   LabelTableEntry entry = lookupLabel(p);
 
-#ifdef VERBOSE_LOG
-  Serial.printf("\tcp - %u\n", cp);
-  Serial.printf("\tb - %u\n", reinterpret_cast<uint8_t *>(b) - stack);
-  Serial.printf("\tp - %u\n", entry.entryPoint);
-  Serial.printf("\targument count - %u\n", entry.arity);
-#endif
+  VERBOSE(Serial << "\tcp - " << continuePoint << endl);
+  VERBOSE(Serial << "\tb  - " << currentChoicePoint << endl);
+  VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
+  VERBOSE(Serial << "\targument count - " << entry.arity << endl);
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
-  b0 = b;
+
+  for (Xn i = argumentCount; i < registerCount; ++i) {
+    registers[i] = nullptr;
+  }
+
+  currentCutPoint = currentChoicePoint;
 }
 
 void execute(LabelIndex p) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Executing label %u:\n", p);
-  Serial.printf("\tb - %u\n", reinterpret_cast<uint8_t *>(b) - stack);
-#endif
+  VERBOSE(Serial << "Executing label " << p << endl);
+  VERBOSE(Serial << "\tb - " << currentChoicePoint << endl);
 
   LabelTableEntry entry = lookupLabel(p);
 
-#ifdef VERBOSE_LOG
-  Serial.printf("\tp - %u\n", entry.entryPoint);
-  Serial.printf("\targument count - %u\n", entry.arity);
-#endif
+  VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
+  VERBOSE(Serial << "\targument count - " << entry.arity << endl);
 
   programFile->seek(entry.entryPoint);
   argumentCount = entry.arity;
-  b0 = b;
+
+  for (Xn i = argumentCount; i < registerCount; ++i) {
+    registers[i] = nullptr;
+  }
+
+  currentCutPoint = currentChoicePoint;
 }
 
 void proceed() {
-#ifdef VERBOSE_LOG
-  Serial.printf("Proceeding to %u\n", cp);
-#endif
-  programFile->seek(cp);
+  VERBOSE(Serial << "Proceeding to " << continuePoint << endl);
+  programFile->seek(continuePoint);
 }
 
 void tryMeElse(LabelIndex l) {
-  ChoicePoint *newChoicePoint = reinterpret_cast<ChoicePoint *>(topOfStack());
+  nullCheck(newChoicePoint(l));
 
-#ifdef VERBOSE_LOG
-  Serial.printf("Allocating a new choice point at %x:\n",
-                reinterpret_cast<uint8_t *>(newChoicePoint) - stack);
-  Serial.printf("\tce - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
-  Serial.printf("\tcp - %u\n", cp);
-  Serial.printf("\tb  - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
-  Serial.printf("\tbp - %u\n", l);
-  Serial.printf("\ttr - %u\n", tr);
-  Serial.printf("\th  - %u\n", h);
-  Serial.printf("\tb0 - %u\n", reinterpret_cast<uint8_t *>(b0) - stack);
-  Serial.printf("\tn  - %u\n", argumentCount);
-  Serial.printf(
-      "\ttop of stack - %x\n",
-      reinterpret_cast<uint8_t *>(newChoicePoint->args + argumentCount) -
-          stack);
-#endif
-
-  newChoicePoint->ce = e;
-  newChoicePoint->cp = cp;
-  newChoicePoint->b = b;
-  newChoicePoint->bp = l;
-  newChoicePoint->tr = tr;
-  newChoicePoint->h = h;
-  newChoicePoint->b0 = b0;
-  newChoicePoint->n = argumentCount;
-  for (Arity n = 0; n < argumentCount; ++n) {
-    newChoicePoint->args[n] = registers[n];
-  }
-
-  b = newChoicePoint;
-  hb = h;
+  VERBOSE(Serial << "New Choice Point: " << currentChoicePoint);
 }
 
 void retryMeElse(LabelIndex l) {
-#ifdef VERBOSE_LOG
-  Serial.printf("\te - %x\n", reinterpret_cast<uint8_t *>(b->ce) - stack);
-  Serial.printf("\tce - %u\n", b->cp);
-  Serial.printf("\tbp - %u\n", l);
-  Serial.printf("\tn - %u\n", b->n);
-#endif
+  VERBOSE(Serial << "Current Choice Point: " << *currentChoicePoint << endl);
 
-  for (Arity n = 0; n < b->n; ++n) {
-    registers[n] = b->args[n];
-  }
+  restoreChoicePoint(l);
 
-  e = b->ce;
-  cp = b->cp;
-  b->bp = l;
-  unwindTrail(b->tr, tr);
-  tr = b->tr;
-#ifdef VERBOSE_LOG
-  Serial.printf("\t h - %u -> %u\n", h, b->h);
-#endif
-  h = b->h;
-  hb = h;
+  VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
 }
 
 void trustMe() {
-#ifdef VERBOSE_LOG
-  Serial.printf("\te - %x\n", reinterpret_cast<uint8_t *>(b->ce) - stack);
-  Serial.printf("\tcp - %u\n", b->cp);
-  Serial.printf("\tn - %u\n", b->n);
-#endif
+  VERBOSE(Serial << "Current Choice Point: " << *currentChoicePoint << endl);
 
-  for (Arity n = 0; n < b->n; ++n) {
-    registers[n] = b->args[n];
+  restoreChoicePoint();
+
+  currentChoicePoint = currentChoicePoint->body<ChoicePoint>().nextChoicePoint;
+
+  if (currentChoicePoint == nullptr) {
+    VERBOSE(Serial << "No more choice points" << endl);
+  } else {
+    VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
   }
-
-  e = b->ce;
-  cp = b->cp;
-  unwindTrail(b->tr, tr);
-  tr = b->tr;
-
-#ifdef VERBOSE_LOG
-  Serial.printf("\t h - %u -> %u\n", h, b->h);
-#endif
-  h = b->h;
-
-#ifdef VERBOSE_LOG
-  Serial.printf("Moving from choice point %x to %x\n",
-                reinterpret_cast<uint8_t *>(b) - stack,
-                reinterpret_cast<uint8_t *>(b->b) - stack);
-#endif
-
-  b = b->b;
-  hb = h;
 }
 
 void neckCut() {
-  if (b > b0) {
-#ifdef VERBOSE_LOG
-    Serial.printf("Cutting %u to %u\n", reinterpret_cast<uint8_t *>(b) - stack,
-                  reinterpret_cast<uint8_t *>(b0) - stack);
-#endif
+  if (currentChoicePoint > currentCutPoint) {
+    VERBOSE(Serial << "Cutting " << currentChoicePoint << " to "
+                   << currentCutPoint << endl);
 
-    b = b0;
+    currentChoicePoint = currentCutPoint;
+
+    if (currentChoicePoint == nullptr) {
+      VERBOSE(Serial << "No more choice points" << endl);
+    } else {
+      VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
+    }
+
     tidyTrail();
   }
 }
 
 void getLevel(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
-  Level level = reinterpret_cast<uint8_t *>(b0) - stack;
+  if (currentCutPoint == nullptr) {
+    VERBOSE(Serial << "No cut point" << endl);
+  } else {
+    VERBOSE(Serial << "Level is " << *currentCutPoint << endl);
+  }
 
-#ifdef VERBOSE_LOG
-  Serial.printf("Level is %u\n", level);
-#endif
-
-  e->ys[yn].makeLevel(level);
+  setPermanentVariable(yn, currentCutPoint);
 }
 
 void cut(Yn yn) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Yn - %u\n", yn);
-#endif
+  VERBOSE(Serial << "Yn - " << yn << endl);
 
-  if (e->ys[yn].type != Value::Type::level) {
-    Serial.println("Value is not a level");
+  RegistryEntry *cutPoint = permanentVariable(yn);
+
+  if (cutPoint != nullptr &&
+      cutPoint->type != RegistryEntry::Type::choicePoint) {
+    VERBOSE(Serial << "Value is not a choice point" << endl);
     failWithException();
     return;
   }
 
-  ChoicePoint *newChoicePoint =
-      reinterpret_cast<ChoicePoint *>(stack + e->ys[yn].level);
+  if (currentChoicePoint > cutPoint) {
+    VERBOSE(Serial << "Cutting " << (currentChoicePoint - tupleRegistry)
+                   << " to " << (cutPoint - tupleRegistry) << endl);
 
-  if (b > newChoicePoint) {
-    b = newChoicePoint;
+    currentChoicePoint = cutPoint;
     tidyTrail();
   }
 }
@@ -1184,11 +993,9 @@ void equals() {
 }
 
 void is() {
-  Value v;
-  v.makeInteger(evaluateExpression(registers[1]));
-  if (!unify(registers[0], v)) {
+  if (!unify(registers[0], evaluateExpression(registers[1]))) {
     backtrack();
-  }
+  };
 }
 
 void noOp() {}
@@ -1224,7 +1031,7 @@ void configureDigitalPin(DigitalPinModes pm) {
     pinMode(pinID, INPUT_PULLDOWN);
     break;
   default:
-    Serial.printf("Invalid pinmode %u\n", static_cast<uint8_t>(pm));
+    Serial << "Invalid pinmode " << pm << endl;
     failWithException();
     return;
   }
@@ -1239,13 +1046,9 @@ void digitalReadPin() {
     return;
   }
 
-  Value pinValue;
-
-  pinValue.makeInteger(static_cast<Integer>(digitalRead(pinID)));
-
-  if (!unify(registers[1], pinValue)) {
+  if (!unify(registers[1], static_cast<Integer>(digitalRead(pinID)))) {
     backtrack();
-  }
+  };
 }
 
 void digitalWritePin() {
@@ -1267,9 +1070,7 @@ void digitalWritePin() {
     digitalWrite(pinID, HIGH);
     break;
   default:
-    Serial.printf("Invalid digital pin value \"%i\"\n",
-                  static_cast<int>(pinValue));
-
+    Serial << "Invalid digital pin value \"" << pinValue << "\"" << endl;
     failWithException();
     return;
   }
@@ -1326,13 +1127,9 @@ void analogReadPin() {
     return;
   }
 
-  Value pinValue;
-
-  pinValue.makeInteger(static_cast<Integer>(analogRead(pinID)));
-
-  if (!unify(registers[1], pinValue)) {
+  if (!unify(registers[1], static_cast<Integer>(digitalRead(pinID)))) {
     backtrack();
-  }
+  };
 }
 
 void analogWritePin() {
@@ -1347,15 +1144,23 @@ void analogWritePin() {
   }
 
   if (pinValue < 0) {
-    Serial.println("Analog pin write values must be positive");
+    Serial << "Analog pin write values must be positive" << endl;
+    return;
   }
 
   ledcWrite(channelID, static_cast<uint32_t>(pinValue));
 }
-
 } // namespace Instructions
 
 namespace Ancillary {
+RegistryEntry *nullCheck(RegistryEntry *entry) {
+  if (entry == nullptr) {
+    failWithException();
+  }
+
+  return entry;
+}
+
 LabelTableEntry lookupLabel(LabelIndex p) {
   File labelTableFile = SPIFFS.open(labelTablePath);
 
@@ -1368,23 +1173,13 @@ LabelTableEntry lookupLabel(LabelIndex p) {
   return entry;
 }
 
-void *topOfStack() {
-#ifdef VERBOSE_LOG
-  Serial.printf("e - %x\n", reinterpret_cast<uint8_t *>(e) - stack);
-  Serial.printf("b - %x\n", reinterpret_cast<uint8_t *>(b) - stack);
-#endif
+RegistryEntry *permanentVariable(Yn yn) {
+  return currentEnvironment->mutableBody<Environment>().permanentVariables[yn];
+}
 
-  if (static_cast<void *>(e) >= static_cast<void *>(b)) {
-#ifdef VERBOSE_LOG
-    Serial.println("e higher");
-#endif
-    return e->ys + e->n;
-  } else {
-#ifdef VERBOSE_LOG
-    Serial.println("b higher");
-#endif
-    return b->args + b->n;
-  }
+RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value) {
+  currentEnvironment->mutableBody<Environment>().permanentVariables[yn] = value;
+  return value;
 }
 
 void backtrack() {
@@ -1392,162 +1187,151 @@ void backtrack() {
     return;
   }
 
-  Serial.println("\n ---- Backtrack! ---- \n");
+  LOG(Serial << endl << " ---- Backtrack! ---- " << endl << endl);
 
-#ifdef VERBOSE_LOG
-  Serial.printf("Choice point: %x\n", reinterpret_cast<uint8_t *>(b) - stack);
-#endif
+  VERBOSE(Serial << "Choice point: " << *currentChoicePoint << endl);
 
-  if (static_cast<void *>(b) == static_cast<void *>(stack)) {
+  if (currentChoicePoint == nullptr) {
     failAndExit();
     return;
   }
 
-#ifdef VERBOSE_LOG
-  Serial.printf("Moving b0 from %x to %x\n",
-                reinterpret_cast<uint8_t *>(b0) - stack,
-                reinterpret_cast<uint8_t *>(b->b0) - stack);
-#endif
+  if (currentCutPoint == nullptr) {
+    VERBOSE(Serial << "No cut point" << endl);
+  } else {
+    VERBOSE(Serial << "Current cut point: " << *currentCutPoint << endl);
+  }
 
-  b0 = b->b0;
-  programFile->seek(lookupLabel(b->bp).entryPoint);
+  if (currentChoicePoint->type != RegistryEntry::Type::choicePoint) {
+    Serial << "Not a choice point!" << endl;
+    failWithException();
+    return;
+  }
+
+  currentCutPoint = currentChoicePoint->body<ChoicePoint>().currentCutPoint;
+
+  if (currentCutPoint == nullptr) {
+    VERBOSE(Serial << "No cut point" << endl);
+  } else {
+    VERBOSE(Serial << "New cut point: " << *currentCutPoint << endl);
+  }
+
+  programFile->seek(
+      lookupLabel(currentChoicePoint->body<ChoicePoint>().retryLabel)
+          .entryPoint);
+
+  resumeGarbageCollection();
 }
 
 void failAndExit() { querySucceeded = false; }
 
 void failWithException() { exceptionRaised = true; }
 
-Value &deref(Value &a) {
-#ifdef VERBOSE_LOG
-  Serial.print("Dereferencing value:");
-  a.dump();
-#endif
-  if (a.type == Value::Type::reference) {
-    return deref(a.h);
-  } else {
-    return a;
-  }
-}
-
-Value &deref(HeapIndex derefH) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Heap index %u:", static_cast<uint16_t>(derefH));
-  heap[derefH].dump();
-#endif
-  if (heap[derefH].type == Value::Type::reference && heap[derefH].h != derefH) {
-    return deref(heap[derefH].h);
-  } else {
-    return heap[derefH];
-  }
-}
-
-void bind(Value &a1, Value &a2) {
-  if (a1.type == Value::Type::reference && a2.type == Value::Type::reference &&
-      a1.h == a2.h) {
+void bind(RegistryEntry *a1, RegistryEntry *a2) {
+  if (exceptionRaised) {
     return;
   }
 
-  if (a1.type == Value::Type::reference &&
-      ((a2.type != Value::Type::reference) || (a2.h < a1.h))) {
-    addToTrail(a1.h);
-    a1 = a2;
+  if (a1->type == RegistryEntry::Type::reference &&
+      ((a2->type != RegistryEntry::Type::reference) ||
+       (a2->body<RegistryEntry *>() < a1->body<RegistryEntry *>()))) {
+    trail(a1);
+    a1->bindTo(a2);
   } else {
-    addToTrail(a2.h);
-    a2 = a1;
+    trail(a2);
+    a2->bindTo(a1);
   }
 }
 
-void addToTrail(HeapIndex a) {
-  if (a < hb) {
-#ifdef VERBOSE_LOG
-    Serial.printf("Adding %u to the trail\n", a);
-#endif
-    trail[tr] = a;
-    tr = tr + 1;
+void trail(RegistryEntry *a) {
+  if (currentChoicePoint != nullptr && a < currentChoicePoint) {
+    VERBOSE(Serial << "Adding " << (a - tupleRegistry) << " to the trail"
+                   << endl);
+
+    nullCheck(newTrailItem(a));
   } else {
-#ifndef VERBOSE_LOG
-    Serial.printf("Address %u is not conditional\n", a);
-#endif
+
+    VERBOSE(Serial << "Address " << (a - tupleRegistry) << " is not conditional"
+                   << endl);
   }
 }
 
-void unwindTrail(TrailIndex a1, TrailIndex a2) {
-#ifdef VERBOSE_LOG
-  Serial.printf("Unwinding from %u to %u\n", a1, a2);
-#endif
-  for (TrailIndex i = a1; i < a2; ++i) {
-#ifndef VERBOSE_LOG
-    Serial.printf("Resetting address %u\n", trail[i]);
-#endif
-    heap[trail[i]].makeReference(trail[i]);
+void tidyTrail() { tidyTrail(trailHead); }
+
+void tidyTrail(RegistryEntry *&head) {
+  if (head == nullptr || currentChoicePoint == nullptr ||
+      head < currentChoicePoint) {
+    return;
   }
+
+  if (head->body<TrailItem>().item > currentChoicePoint) {
+    head = head->mutableBody<TrailItem>().nextItem;
+  }
+
+  tidyTrail(head->mutableBody<TrailItem>().nextItem);
 }
 
-void tidyTrail() {
-  for (TrailIndex i = b->tr; i < tr;) {
-    if (trail[i] < hb) {
-      --i;
-    } else {
-      trail[i] = trail[tr - 1];
-      --tr;
-    }
-  }
-}
+bool unify(RegistryEntry *a1, RegistryEntry *a2) {
+  VERBOSE(Serial << "Unify:" << endl);
+  VERBOSE(Serial << "a1: " << *a1 << endl);
+  VERBOSE(Serial << "a2: " << *a2 << endl);
 
-bool unify(Value &a1, Value &a2) {
-#ifdef VERBOSE_LOG
-  Serial.println("Unify:");
-  Serial.print("a1: ");
-  a1.dump();
-  Serial.print("a2: ");
-  a2.dump();
-#endif
+  RegistryEntry *d1 = a1->deref();
+  RegistryEntry *d2 = a2->deref();
 
-  Value &d1 = deref(a1);
-  Value &d2 = deref(a2);
+  VERBOSE(Serial << "d1: " << *d1 << endl);
+  VERBOSE(Serial << "d2: " << *d2 << endl);
 
-#ifdef VERBOSE_LOG
-  Serial.print("d1: ");
-  d1.dump();
-  Serial.print("d2: ");
-  d2.dump();
-#endif
-
-  if (d1.type == Value::Type::reference || d2.type == Value::Type::reference) {
+  if (d1->type == RegistryEntry::Type::reference ||
+      d2->type == RegistryEntry::Type::reference) {
     bind(d1, d2);
     return true;
   }
 
-  if (d1.type != d2.type) {
+  if (d1->type != d2->type) {
     return false;
   }
 
-  switch (d1.type) {
-  case Value::Type::constant:
-    return d1.c == d2.c;
-  case Value::Type::integer:
-    return d1.i == d2.i;
-  case Value::Type::list:
-    return unify(heap[d1.h], heap[d2.h]) &&
-           unify(heap[d1.h + 1], heap[d2.h + 1]);
-  case Value::Type::structure: {
-    Value &h1 = heap[d1.h];
-    Value &h2 = heap[d2.h];
+  switch (d1->type) {
+  case RegistryEntry::Type::constant:
+    return d1->body<Constant>() == d2->body<Constant>();
+  case RegistryEntry::Type::integer:
+    return d1->body<Integer>() == d2->body<Integer>();
+  case RegistryEntry::Type::list:
+    return unify(d1->body<List>().subterms[0], d2->body<List>().subterms[0]) &&
+           unify(d1->body<List>().subterms[1], d2->body<List>().subterms[1]);
+  case RegistryEntry::Type::structure: {
+    Structure &s1 = d1->mutableBody<Structure>();
+    Structure &s2 = d2->mutableBody<Structure>();
 
-    if (h1.f != h2.f) {
+    if ((s1.functor != s2.functor) || (s1.arity != s2.arity)) {
       return false;
     }
 
-    for (Arity n = 1; n <= h1.n; ++n) {
-      if (!unify(heap[d1.h + n], heap[d2.h + n])) {
+    for (Arity i = 1; i <= s1.arity; ++i) {
+      if (!unify(s1.subterms[i], s2.subterms[i])) {
         return false;
       }
     }
     return true;
   }
   default:
-    Serial.printf("Error during unify. Unknown type %u\n",
-                  static_cast<uint8_t>(d1.type));
+    Serial << "Error during unify. Unknown type " << d1->type << endl;
+    return false;
+  }
+}
+
+bool unify(RegistryEntry *a1, Integer i2) {
+  RegistryEntry *d1 = a1->deref();
+
+  switch (d1->type) {
+  case RegistryEntry::Type::reference:
+    trail(d1);
+    d1->bindToInteger(i2);
+    return true;
+  case RegistryEntry::Type::integer:
+    return i2 == d1->body<Integer>();
+  default:
     return false;
   }
 }
@@ -1562,77 +1346,70 @@ Comparison compare(Integer i1, Integer i2) {
   return Comparison::equals;
 }
 
-Comparison compare(Value &e1, Value &e2) {
-  return compare(evaluateExpression(e1), evaluateExpression(e2));
+Comparison compare(const RegistryEntry *a1, const RegistryEntry *a2) {
+  return compare(evaluateExpression(a1), evaluateExpression(a2));
 }
 
-Integer evaluateExpression(Value &a) {
+Integer evaluateExpression(const RegistryEntry *a) {
   if (exceptionRaised) {
     return 0;
   }
 
-#ifdef VERBOSE_LOG
-  Serial.print("Evaluating Expression: ");
-  a.dump();
-#endif
+  VERBOSE(Serial << "Evaluating Expression: " << *a << endl);
 
-  Value &derefA = deref(a);
+  const RegistryEntry *d = a->deref();
 
-#ifdef VERBOSE_LOG
-  Serial.print("Derefs to: ");
-  derefA.dump();
-#endif
+  VERBOSE(Serial << "Derefs to: " << *d << endl);
 
-  switch (derefA.type) {
-  case Value::Type::integer:
-    return derefA.i;
-  case Value::Type::structure:
-    return evaluateStructure(derefA);
+  switch (d->type) {
+  case RegistryEntry::Type::integer:
+    return d->body<Integer>();
+  case RegistryEntry::Type::structure:
+    return evaluateStructure(d->body<Structure>());
   default:
-    Serial.printf("Exception: invalid expression type %u\n",
-                  static_cast<uint8_t>(derefA.type));
+    Serial << "Exception: invalid expression type " << d->type << endl;
     failWithException();
     return 0;
   }
 }
 
-Integer evaluateStructure(Value &a) {
+Integer evaluateStructure(const Structure &structure) {
   if (exceptionRaised) {
     return 0;
   }
 
-  switch (static_cast<SpecialStructures>(heap[a.h].f)) {
+  switch (static_cast<SpecialStructures>(structure.functor)) {
   case SpecialStructures::add:
-    switch (heap[a.h].n) {
+    switch (structure.arity) {
     case 1:
-      return evaluateExpression(heap[a.h + 1]);
+      return evaluateExpression(structure.subterms[0]);
     case 2:
-      return evaluateExpression(heap[a.h + 1]) +
-             evaluateExpression(heap[a.h + 2]);
+      return evaluateExpression(structure.subterms[0]) +
+             evaluateExpression(structure.subterms[1]);
     default:
       break;
     }
   case SpecialStructures::subtract:
-    switch (heap[a.h].n) {
+    switch (structure.arity) {
     case 1:
-      return -evaluateExpression(heap[a.h + 1]);
+      return -evaluateExpression(structure.subterms[0]);
     case 2:
-      return evaluateExpression(heap[a.h + 1]) -
-             evaluateExpression(heap[a.h + 2]);
+      return evaluateExpression(structure.subterms[0]) -
+             evaluateExpression(structure.subterms[1]);
     default:
       break;
     }
   case SpecialStructures::multiply:
-    if (heap[a.h].n == 2) {
-      return evaluateExpression(heap[a.h + 1]) *
-             evaluateExpression(heap[a.h + 2]);
+    if (structure.arity == 2) {
+      return evaluateExpression(structure.subterms[0]) *
+             evaluateExpression(structure.subterms[1]);
     }
   case SpecialStructures::divide:
-    if (heap[a.h].n == 2) {
-      Integer i1 = evaluateExpression(heap[a.h + 1]);
-      Integer i2 = evaluateExpression(heap[a.h + 2]);
+    if (structure.arity == 2) {
+      Integer i1 = evaluateExpression(structure.subterms[0]);
+      Integer i2 = evaluateExpression(structure.subterms[1]);
       if (i2 == 0) {
-        Serial.println("Exception: divide by 0");
+        Serial << "Exception: divide by 0" << endl;
         failWithException();
         return 0;
       }
@@ -1642,14 +1419,13 @@ Integer evaluateStructure(Value &a) {
   default:
     break;
   }
-  Serial.printf("Exception: not an operator: %u/%u\n",
-                static_cast<uint16_t>(heap[a.h].f),
-                static_cast<uint8_t>(heap[a.h].n));
+  Serial << "Exception: not an operator: " << structure.functor << "/"
+         << structure.arity;
   failWithException();
   return 0;
 }
 
-uint8_t getPin(Value &a) {
+uint8_t getPin(const RegistryEntry *a) {
   Integer i = evaluateExpression(a);
 
   if (exceptionRaised) {
@@ -1657,7 +1433,7 @@ uint8_t getPin(Value &a) {
   }
 
   if (i < 0 || i >= 256) {
-    Serial.printf("Exception: pin out of range: %i\n", i);
+    Serial << "Exception: pin out of range: " << i << endl;
 
     failWithException();
     return 0;
@@ -1666,7 +1442,7 @@ uint8_t getPin(Value &a) {
   return static_cast<uint8_t>(i);
 }
 
-uint8_t getChannel(Value &a) {
+uint8_t getChannel(RegistryEntry *a) {
   Integer channelInt = evaluateExpression(a);
 
   if (exceptionRaised) {
@@ -1674,8 +1450,7 @@ uint8_t getChannel(Value &a) {
   }
 
   if (channelInt < 0 || channelInt > 15) {
-    Serial.printf("Invalid channel number \"%i\"\n",
-                  static_cast<int>(channelInt));
+    Serial << "Invalid channel number \"" << channelInt << "\"";
 
     failWithException();
     return 0;
@@ -1687,10 +1462,17 @@ uint8_t getChannel(Value &a) {
 void virtualPredicate(Arity n) {
   if (executeMode == ExecuteModes::query) {
     executeMode = ExecuteModes::program;
-    cp = haltIndex;
+    continuePoint = haltIndex;
     programFile->seek(haltIndex);
     argumentCount = n;
   }
 }
 
+void resumeGarbageCollection() {
+  if (!garbageCollectionRunning) {
+    LOG(Serial << "resuming garbage collection");
+
+    garbageCollectionRunning = true;
+  }
+}
 } // namespace Ancillary

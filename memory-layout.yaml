@@ -1,0 +1,33 @@
+Basics:
+  - Tuple Directory Index: 16 bits
+  - Tuple Heap Index: 32 bits
+
+Directory Item Structure:
+  - Marked: 1 bit
+  - Type: 4 bits
+  - Next Item: Directory Index
+
+Tuple Structures:
+  Header: Directory Index
+  Body:
+    Variable:
+      - Reference: Directory Index
+
+    Structure:
+      - Functor: 16 bits
+      - Arity: 8 bits
+      - Arguments: Array of Directory Indexes
+
+    Constant:
+      - Value: 16 bits
+
+    Integer:
+      - Value: 16 bits
+    
+    Environment Frame:
+      - Header: Various
+      - Permanent Variables: Array of Directory Indexes
+    
+    Choice Point:
+      - Header: Various
+      - Registers: 

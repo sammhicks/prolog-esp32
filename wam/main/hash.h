@@ -4,7 +4,9 @@
 #include "SPIFFS.h"
 
 #include "raw-io.h"
+#include "serial-stream.h"
 #include "update-file.h"
+#include "verbose-log.h"
 
 typedef uint8_t HashLength;
 

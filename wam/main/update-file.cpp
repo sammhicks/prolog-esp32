@@ -6,7 +6,7 @@ bool updateFile(const char *path, size_t newLength, Client &client) {
   for (size_t n = 0; n < newLength; ++n) {
     while (client.available() == 0) {
       if (!client.connected()) {
-        Serial.println();
+        VERBOSE(Serial << endl);
         return false;
       }
       yieldProcessor();
@@ -14,13 +14,12 @@ bool updateFile(const char *path, size_t newLength, Client &client) {
 
     int nextByte = client.read();
 
-    Serial.print(nextByte, HEX);
-    Serial.print(" ");
+    VERBOSE(Serial << static_cast<uint8_t>(nextByte) << " ");
 
     codeFile.write(nextByte);
   }
 
-  Serial.println();
+  VERBOSE(Serial << endl);
 
   return true;
 }

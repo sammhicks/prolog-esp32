@@ -32,6 +32,16 @@ int32(N) -->
 	bytes(4, N, signed).
 
 
+bytes(Count, N, Sign, Stream, Stream) :-
+	var(N),
+	is_stream(Stream),
+	!,
+	length(Bytes, Count),
+	get_bytes(Bytes, Stream),
+	read_bytes(Count, UN, Bytes, []),
+	add_sign(Sign, Count, UN, N).
+
+
 bytes(Count, N, Sign, Codes, Tail) :-
 	var(N),
 	!,
@@ -42,6 +52,13 @@ bytes(Count, N, Sign, Codes, Tail) :-
 	integer(N),
 	remove_sign(Sign, Count, N, UN),
 	write_bytes(Count, UN, Codes, Tail).
+
+
+get_bytes([], _Stream).
+
+get_bytes([Code|Codes], Stream) :-
+	get_byte(Stream, Code),
+	get_bytes(Codes, Stream).
 
 
 read_bytes(0, 0) -->

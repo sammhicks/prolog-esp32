@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Arduino.h"
+
 #include "commands.h"
 #include "hash.h"
 #include "machine.h"
@@ -15,6 +17,4 @@ void updateCode(Client &client);
 
 void updateLabelTable(Client &client);
 
-void readStructure(Client &client);
-
-void readList(Client &client);
+void readValue(Client &client);

@@ -43,15 +43,11 @@ void loop() {
         case Command::getNextAnswer:
           getNextAnswer(&client);
           break;
-        case Command::readStructure:
-          readStructure(client);
-          break;
-        case Command::readList:
-          readList(client);
+        case Command::readValue:
+          readValue(client);
           break;
         default:
-          Serial.printf("Unknown command %x\n",
-                        static_cast<unsigned int>(command));
+          Serial << "Unknown command " << command << endl;
           break;
         }
       }
@@ -60,36 +56,38 @@ void loop() {
     }
 
     client.stop();
-    Serial.println("client disconnected");
+    Serial << "client disconnected" << endl;
   }
 
   yieldProcessor();
 }
 
 void runPing(Client &client) {
-  Serial.print("ping: ");
+  Serial << "ping: ";
   while (client.available() == 0) {
     if (!client.connected()) {
-      Serial.println("failed");
+      Serial << "failed" << endl;
     }
   }
-  auto body = Raw::read<uint8_t>(client);
-  Serial.println(body, HEX);
+  uint8_t body = Raw::read<uint8_t>(client);
+
+  Serial << body;
+
   Raw::write(client, body);
 }
 
 void updateCode(Client &client) {
-  Serial.println("code update");
+  Serial << "code update" << endl;
   while (client.available() < sizeof(CodeIndex)) {
     if (!client.connected()) {
-      Serial.println("client disconnected");
+      Serial << "client disconnected" << endl;
       return;
     }
   }
 
   CodeIndex codeLength = Raw::read<CodeIndex>(client);
 
-  Serial.printf("code length: %x\n", codeLength);
+  Serial << "code length: " << codeLength << endl;
 
   if (updateFile(codePath, codeLength, client)) {
     Raw::write<bool>(client, true);
@@ -98,11 +96,11 @@ void updateCode(Client &client) {
     deleteHash();
   }
 
-  Serial.println("code update complete");
+  Serial << "code update complete" << endl;
 }
 
 void updateLabelTable(Client &client) {
-  Serial.println("label table update");
+  Serial << "label table update" << endl;
   while (client.available() < sizeof(CodeIndex)) {
     if (!client.connected()) {
       Serial.println("client disconnected");
@@ -112,7 +110,7 @@ void updateLabelTable(Client &client) {
 
   CodeIndex labelTableLength = Raw::read<CodeIndex>(client);
 
-  Serial.printf("label table length: %x\n", labelTableLength);
+  Serial << "code length: " << labelTableLength << endl;
 
   if (updateFile(labelTablePath, labelTableLength, client)) {
     Raw::write<bool>(client, true);
@@ -121,24 +119,19 @@ void updateLabelTable(Client &client) {
     deleteHash();
   }
 
-  Serial.println("label table update complete");
+  Serial << "label table update complete" << endl;
 }
 
-void readStructure(Client &client) {
-  HeapIndex hi = Raw::read<HeapIndex>(client);
+void readValue(Client &client) {
+  RegistryEntry *entry = Raw::read<RegistryEntry *>(client);
 
-  Value header = heap[hi];
+  LOG(Serial << "Reading entry: ");
 
-  Raw::writeBlock(client, header);
+#ifdef VERBOSE_LOG
+  LOG(Serial << *entry << endl);
+#else
+  LOG(Serial << (entry - tupleRegistry) << endl);
+#endif
 
-  for (Arity n = 1; n <= header.n; ++n) {
-    Raw::writeBlock(client, Ancillary::deref(heap[hi + n]));
-  }
-}
-
-void readList(Client &client) {
-  HeapIndex hi = Raw::read<HeapIndex>(client);
-
-  Raw::writeBlock(client, Ancillary::deref(heap[hi + 0]));
-  Raw::writeBlock(client, Ancillary::deref(heap[hi + 1]));
+  entry->deref()->sendToClient(client);
 }

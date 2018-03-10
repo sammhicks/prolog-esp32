@@ -1,6 +1,6 @@
 #pragma once
 
-#include "value.h"
+#include "serial-stream.h"
 
 enum class Opcode : uint8_t {
   // Put
@@ -81,8 +81,5 @@ enum class DigitalPinModes : uint8_t {
   InputPulldown = 0x03,
 };
 
-typedef uint8_t Xn;
-typedef uint8_t Yn;
-typedef uint8_t Ai;
-typedef uint8_t EnvironmentSize;
-typedef uint16_t LabelIndex;
+Print &operator<<(Print &os, const Opcode &c);
+Print &operator<<(Print &os, const DigitalPinModes &pin);
