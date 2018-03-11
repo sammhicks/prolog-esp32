@@ -129,6 +129,7 @@ void configureChannel();
 void pinIsAnalogOutput();
 void analogReadPin();
 void analogWritePin();
+void lineSensor();
 } // namespace Instructions
 
 namespace Ancillary {

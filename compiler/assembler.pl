@@ -342,6 +342,7 @@ simple_code(configure_channel, 0x85).
 simple_code(analog_output, 0x86).
 simple_code(analog_read, 0x87).
 simple_code(analog_write, 0x88).
+simple_code(line_sensor, 0x89).
 
 
 pin_mode(digital_input, 0x00).

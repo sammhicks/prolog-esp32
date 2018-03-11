@@ -391,6 +391,10 @@ void executeInstruction() {
     LOG(Serial << "analogWritePin" << endl);
     Instructions::analogWritePin();
     break;
+  case Opcode::lineSensor:
+    LOG(Serial << "lineSensor" << endl);
+    Instructions::lineSensor();
+    break;
   default:
     LOG(Serial << "Unknown opcode \"" << opcode << "\"" << endl);
     Ancillary::failWithException();
@@ -1121,7 +1125,7 @@ void pinIsAnalogOutput() {
   LOG(Serial << "Pin " << pinID << " is attached to channel " << channelID
              << "endl");
 
-  pinMode(pinID, ANALOG);
+  pinMode(pinID, OUTPUT);
 
   ledcAttachPin(pinID, channelID);
 }
@@ -1160,6 +1164,72 @@ void analogWritePin() {
 
   ledcWrite(channelID, static_cast<uint32_t>(pinValue));
 }
+
+const Ai lineSensorCount = 6;
+
+void lineSensor() {
+  virtualPredicate(2 * lineSensorCount);
+
+  uint8_t pins[lineSensorCount];
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    pins[i] = getPin(registers[i]);
+
+    if (machineState == MachineStates::exception) {
+      return;
+    }
+  }
+
+  bool triggered[lineSensorCount];
+
+  LOG(Serial << "Reading line sensor pins:");
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    pinMode(pins[i], OUTPUT);
+    digitalWrite(pins[i], HIGH);
+    triggered[i] = false;
+
+    LOG(Serial << "\t" << pins[i]);
+  }
+
+  LOG(Serial << endl);
+
+  delay(10);
+
+  Ai pinsRemaining = lineSensorCount;
+  Integer timings[lineSensorCount];
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    pinMode(pins[i], INPUT);
+  }
+
+  unsigned long startTime = micros();
+
+  while (pinsRemaining > 0) {
+    unsigned long currentTime = micros() - startTime;
+    for (Ai i = 0; i < lineSensorCount; ++i) {
+      if (!triggered[i] && digitalRead(pins[i]) == LOW) {
+        timings[i] = currentTime;
+        triggered[i] = true;
+        --pinsRemaining;
+      }
+    }
+  }
+
+  LOG(Serial << "Timings:                 ");
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    LOG(Serial << "\t" << timings[i]);
+  }
+  LOG(Serial << endl);
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    if (!unify(registers[i + lineSensorCount], timings[i])) {
+      backtrack();
+      return;
+    }
+  }
+}
+
 } // namespace Instructions
 
 namespace Ancillary {

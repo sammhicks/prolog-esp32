@@ -93,3 +93,4 @@
 | configure pin `A0` as analog mode output  |   `86`   |          |          |          |          |
 | analog read pin `A0` to `A1`              |   `87`   |          |          |          |          |
 | analog write pin `A0` to `A1`             |   `88`   |          |          |          |          |
+| read line sensor                          |   `89`   |          |          |          |          |
