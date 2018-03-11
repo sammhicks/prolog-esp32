@@ -1,7 +1,7 @@
 #pragma once
 
 //#define VERBOSE_LOG
-//#define HEADLESS
+#define HEADLESS
 
 #ifdef VERBOSE_LOG
 #undef HEADLESS

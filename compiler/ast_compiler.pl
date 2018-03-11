@@ -115,16 +115,16 @@ unchanged_token(analog_write).
 % --- Program ---
 
 compile_program_ast(Definitions, Codes) :-
-	compine_definitions_ast(Definitions, Codes0),
+	compile_definitions_ast(Definitions, Codes0),
 	combine_voids(Codes0, Codes1),
 	last_call_optimisation(Codes1, Codes).
 
 
-compine_definitions_ast([], []).
+compile_definitions_ast([], []).
 
-compine_definitions_ast([Definition|Definitions], Codes) :-
+compile_definitions_ast([Definition|Definitions], Codes) :-
 	compile_definition_ast(Definition, Codes, Definitions_Codes),
-	compine_definitions_ast(Definitions, Definitions_Codes).
+	compile_definitions_ast(Definitions, Definitions_Codes).
 
 
 compile_definition_ast(fact(Functor, Arguments)) -->

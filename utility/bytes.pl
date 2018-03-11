@@ -67,14 +67,14 @@ read_bytes(0, 0) -->
 read_bytes(Count, N, [Digit|Digits], Tail) :-
 	New_Count is Count - 1,
 	read_bytes(New_Count, Major, Digits, Tail),
-	N is 0xFF * Major + Digit.
+	N is 0x100 * Major + Digit.
 
 
 write_bytes(0, _N) -->
 	!.
 
 write_bytes(Count, N, [Digit|Digits], Tail) :-
-	divmod(N, 0xFF, New_N, Digit),
+	divmod(N, 0x100, New_N, Digit),
 	New_Count is Count - 1,
 	write_bytes(New_Count, New_N, Digits, Tail).
 

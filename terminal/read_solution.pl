@@ -11,7 +11,7 @@
 read_solution(Stream, Query, _Constants, _Structures) :-
 	atom(Query),
 	!,
-	get_byte(Stream, 0).
+	value(environment([]), Stream, Stream).
 
 read_solution(Stream, Query, Constants, Structures) :-
 	setup_state(Empty_State, Constants, Structures),

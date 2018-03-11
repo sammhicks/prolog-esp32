@@ -19,7 +19,13 @@ const unsigned long yieldPeriod = 1000;
 
 const uint8_t analogResolution = 12;
 
-enum class ExecuteModes : uint8_t { query, program };
+enum class MachineStates : uint8_t {
+  executingQuery,
+  executingProgram,
+  success,
+  failure,
+  exception,
+};
 
 enum class RWModes : uint8_t { read, write };
 
@@ -34,10 +40,8 @@ struct LabelTableEntry {
   Arity arity;
 };
 
-extern ExecuteModes executeMode;
-extern CodeIndex haltIndex;
-extern bool querySucceeded;
-extern bool exceptionRaised;
+extern MachineStates machineState;
+const CodeIndex haltIndex = std::numeric_limits<CodeIndex>::max();
 extern Stream *instructionSource;
 extern File *programFile;
 
@@ -132,6 +136,7 @@ RegistryEntry *nullCheck(RegistryEntry *entry);
 LabelTableEntry lookupLabel(LabelIndex l);
 RegistryEntry *permanentVariable(Yn yn);
 RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value);
+void setInstructionCounter(CodeIndex p);
 void backtrack();
 void failAndExit();
 void failWithException();

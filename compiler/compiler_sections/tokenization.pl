@@ -23,20 +23,11 @@ tokenize_rule_allocation(Allocation, Goals, Permanent_Variables, Already_Declare
 	get_level(Permanent_Variables),
 	tokenize_atom_argument_subterm_list(Allocation, program),
 	tokenize_goals_allocation(Goals, Permanent_Variables, Already_Declared_Permanent_Variables, Trimmed_Variables),
-	deallocate(Permanent_Variables).
+	[deallocate].
 
-
-allocate([], Tokens, Tokens) :-
-	!.
 
 allocate(Permanent_Variables, [allocate(Frame_Size)|Tokens], Tokens) :-
 	length(Permanent_Variables, Frame_Size).
-
-
-deallocate([], Tokens, Tokens) :-
-	!.
-
-deallocate(_, [deallocate|Tokens], Tokens).
 
 
 get_level(Permanent_Variables, [get_level(y(Yn))|Tokens], Tokens) :-

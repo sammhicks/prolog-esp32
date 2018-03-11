@@ -3,10 +3,7 @@
 const char *codePath = "/code";
 const char *labelTablePath = "/label-table";
 
-ExecuteModes executeMode;
-CodeIndex haltIndex;
-bool querySucceeded;
-bool exceptionRaised;
+MachineStates machineState;
 Stream *instructionSource;
 File *programFile;
 
@@ -21,26 +18,23 @@ void resetMachine() {
 }
 
 void executeInstructions(Client *client) {
-  executeMode = ExecuteModes::query;
-  querySucceeded = true;
-  exceptionRaised = false;
+  machineState = MachineStates::executingQuery;
   instructionSource = client;
 
   File actualProgramFile = SPIFFS.open(codePath);
   programFile = &actualProgramFile;
-  haltIndex = actualProgramFile.size();
 
-  while (executeMode == ExecuteModes::query) {
+  while (machineState == MachineStates::executingQuery) {
     executeInstruction();
   }
 
-  if (!exceptionRaised) {
+  if (machineState != MachineStates::exception) {
     LOG(Serial << "Executing Program" << endl);
     instructionSource = programFile;
 
     Ancillary::nullCheck(newEnvironment(argumentCount));
 
-    if (!exceptionRaised) {
+    if (machineState != MachineStates::exception) {
       for (EnvironmentSize i = 0; i < argumentCount; ++i) {
         Ancillary::setPermanentVariable(i, registers[i]);
       }
@@ -54,6 +48,8 @@ void getNextAnswer(Client *client) {
   File actualProgramFile = SPIFFS.open(codePath);
   programFile = &actualProgramFile;
 
+  machineState = MachineStates::executingProgram;
+
   Ancillary::backtrack();
   executeProgram(client);
 }
@@ -63,14 +59,15 @@ void executeProgram(Client *client) {
 
   unsigned long excessTime = 0;
 
-  while (querySucceeded && !exceptionRaised && programFile->available() > 0) {
+  while (machineState == MachineStates::executingProgram) {
     LOG(Serial << "Current Point: " << programFile->position() << endl);
 
     unsigned long targetTime = micros() + excessTime;
 
     do {
       executeInstruction();
-    } while (micros() < targetTime);
+    } while (machineState == MachineStates::executingProgram &&
+             micros() < targetTime);
 
     excessTime = micros() - targetTime;
 
@@ -109,7 +106,7 @@ void executeProgram(Client *client) {
     }
   }
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     Serial << "Exception" << endl;
     Raw::write(*client, Results::exception);
 
@@ -126,7 +123,7 @@ void executeProgram(Client *client) {
          << ((nextFreeTuple - tuplesHeap) * 100.0) / tuplesHeapCapacity << "%"
          << endl;
 
-  if (querySucceeded) {
+  if (machineState == MachineStates::success) {
     if (currentChoicePoint == nullptr) {
       Serial << "Done" << endl;
       Raw::write(*client, Results::success);
@@ -417,6 +414,7 @@ using Ancillary::lookupLabel;
 using Ancillary::nullCheck;
 using Ancillary::permanentVariable;
 using Ancillary::resumeGarbageCollection;
+using Ancillary::setInstructionCounter;
 using Ancillary::setPermanentVariable;
 using Ancillary::tidyTrail;
 using Ancillary::trail;
@@ -484,7 +482,7 @@ void putVoid(VoidCount n, Ai ai) {
   VERBOSE(Serial << "n  - " << n << endl);
   VERBOSE(Serial << "Ai - " << ai << endl);
 
-  while (!exceptionRaised && n > 0) {
+  while ((machineState != MachineStates::exception) && n > 0) {
     nullCheck(registers[ai] = newVariable());
     --n;
     ++ai;
@@ -663,7 +661,7 @@ void setInteger(Integer i) {
 void setVoid(VoidCount n) {
   VERBOSE(Serial << "n  - " << n << endl);
 
-  while (!exceptionRaised && n > 0) {
+  while ((machineState != MachineStates::exception) && n > 0) {
     nullCheck(setCurrentStructureSubterm(newVariable()));
     --n;
   }
@@ -788,7 +786,7 @@ void unifyVoid(VoidCount n) {
     currentStructureSubtermIndex += n;
     break;
   case RWModes::write:
-    while (!exceptionRaised && n > 0) {
+    while ((machineState != MachineStates::exception) && n > 0) {
       nullCheck(setCurrentStructureSubterm(newVariable()));
       --n;
     }
@@ -828,15 +826,19 @@ void deallocate() {
 void call(LabelIndex p) {
   VERBOSE(Serial << "Calling label " << p << endl);
 
-  switch (executeMode) {
-  case ExecuteModes::query:
-    executeMode = ExecuteModes::program;
+  switch (machineState) {
+  case MachineStates::executingQuery:
+    machineState = MachineStates::executingProgram;
     continuePoint = haltIndex;
     break;
-  case ExecuteModes::program:
+  case MachineStates::executingProgram:
     continuePoint = programFile->position();
     break;
+  default:
+    Serial << "Invalid call state" << endl;
+    return;
   }
+
   LabelTableEntry entry = lookupLabel(p);
 
   VERBOSE(Serial << "\tcp - " << continuePoint << endl);
@@ -844,7 +846,7 @@ void call(LabelIndex p) {
   VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
   VERBOSE(Serial << "\targument count - " << entry.arity << endl);
 
-  programFile->seek(entry.entryPoint);
+  setInstructionCounter(entry.entryPoint);
   argumentCount = entry.arity;
 
   for (Xn i = argumentCount; i < registerCount; ++i) {
@@ -863,7 +865,7 @@ void execute(LabelIndex p) {
   VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
   VERBOSE(Serial << "\targument count - " << entry.arity << endl);
 
-  programFile->seek(entry.entryPoint);
+  setInstructionCounter(entry.entryPoint);
   argumentCount = entry.arity;
 
   for (Xn i = argumentCount; i < registerCount; ++i) {
@@ -875,7 +877,7 @@ void execute(LabelIndex p) {
 
 void proceed() {
   VERBOSE(Serial << "Proceeding to " << continuePoint << endl);
-  programFile->seek(continuePoint);
+  setInstructionCounter(continuePoint);
 }
 
 void tryMeElse(LabelIndex l) {
@@ -1013,7 +1015,7 @@ void configureDigitalPin(DigitalPinModes pm) {
 
   uint8_t pinID = getPin(registers[0]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
@@ -1042,7 +1044,7 @@ void digitalReadPin() {
 
   uint8_t pinID = getPin(registers[0]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
@@ -1058,7 +1060,7 @@ void digitalWritePin() {
 
   Integer pinValue = evaluateExpression(registers[1]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
@@ -1081,7 +1083,7 @@ void pinIsAnalogInput() {
 
   uint8_t pinID = getPin(registers[0]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
@@ -1095,11 +1097,14 @@ void configureChannel() {
 
   Integer frequencyInt = evaluateExpression(registers[1]);
 
-  if (exceptionRaised) {
+  LOG(Serial << "Channel " << channelID << " is at " << frequencyInt << "Hz"
+             << endl);
+
+  if (machineState == MachineStates::exception) {
     return;
   }
 
-  ledcSetup(channelID, static_cast<float>(frequencyInt), analogResolution);
+  ledcSetup(channelID, static_cast<double>(frequencyInt), analogResolution);
 }
 
 void pinIsAnalogOutput() {
@@ -1109,9 +1114,12 @@ void pinIsAnalogOutput() {
 
   uint8_t channelID = getChannel(registers[1]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
+
+  LOG(Serial << "Pin " << pinID << " is attached to channel " << channelID
+             << "endl");
 
   pinMode(pinID, ANALOG);
 
@@ -1123,11 +1131,11 @@ void analogReadPin() {
 
   uint8_t pinID = getPin(registers[0]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
-  if (!unify(registers[1], static_cast<Integer>(digitalRead(pinID)))) {
+  if (!unify(registers[1], static_cast<Integer>(analogRead(pinID)))) {
     backtrack();
   };
 }
@@ -1139,9 +1147,11 @@ void analogWritePin() {
 
   Integer pinValue = evaluateExpression(registers[1]);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
+
+  LOG(Serial << "Writing " << pinValue << " to channel " << channelID);
 
   if (pinValue < 0) {
     Serial << "Analog pin write values must be positive" << endl;
@@ -1182,8 +1192,18 @@ RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value) {
   return value;
 }
 
+void setInstructionCounter(CodeIndex p) {
+  if (p == haltIndex) {
+    Serial << "Halting" << endl;
+    machineState = MachineStates::success;
+  } else {
+    Serial << "Seeking" << endl;
+    programFile->seek(p);
+  }
+}
+
 void backtrack() {
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
@@ -1216,19 +1236,19 @@ void backtrack() {
     VERBOSE(Serial << "New cut point: " << *currentCutPoint << endl);
   }
 
-  programFile->seek(
+  setInstructionCounter(
       lookupLabel(currentChoicePoint->body<ChoicePoint>().retryLabel)
           .entryPoint);
 
   resumeGarbageCollection();
 }
 
-void failAndExit() { querySucceeded = false; }
+void failAndExit() { machineState = MachineStates::failure; }
 
-void failWithException() { exceptionRaised = true; }
+void failWithException() { machineState = MachineStates::exception; }
 
 void bind(RegistryEntry *a1, RegistryEntry *a2) {
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return;
   }
 
@@ -1351,7 +1371,7 @@ Comparison compare(const RegistryEntry *a1, const RegistryEntry *a2) {
 }
 
 Integer evaluateExpression(const RegistryEntry *a) {
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return 0;
   }
 
@@ -1374,7 +1394,7 @@ Integer evaluateExpression(const RegistryEntry *a) {
 }
 
 Integer evaluateStructure(const Structure &structure) {
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return 0;
   }
 
@@ -1428,7 +1448,7 @@ Integer evaluateStructure(const Structure &structure) {
 uint8_t getPin(const RegistryEntry *a) {
   Integer i = evaluateExpression(a);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return 0;
   }
 
@@ -1445,7 +1465,7 @@ uint8_t getPin(const RegistryEntry *a) {
 uint8_t getChannel(RegistryEntry *a) {
   Integer channelInt = evaluateExpression(a);
 
-  if (exceptionRaised) {
+  if (machineState == MachineStates::exception) {
     return 0;
   }
 
@@ -1460,17 +1480,15 @@ uint8_t getChannel(RegistryEntry *a) {
 }
 
 void virtualPredicate(Arity n) {
-  if (executeMode == ExecuteModes::query) {
-    executeMode = ExecuteModes::program;
-    continuePoint = haltIndex;
-    programFile->seek(haltIndex);
+  if (machineState == MachineStates::executingQuery) {
+    machineState = MachineStates::success;
     argumentCount = n;
   }
 }
 
 void resumeGarbageCollection() {
   if (!garbageCollectionRunning) {
-    LOG(Serial << "resuming garbage collection");
+    LOG(Serial << "resuming garbage collection" << endl);
 
     garbageCollectionRunning = true;
   }
