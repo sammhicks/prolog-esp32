@@ -12,21 +12,21 @@
 	  ]).
 
 
-:- use_module('..'/utility/bytes).
+:- use_module('..'/utility/datatypes).
 :- use_module(command).
 :- use_module(value).
 
 
 check_hash(Stream, Hash) :-
 	length(Hash, Length),
-	uint8(Length, Bytes, Hash),
+	hash_length(Length, Bytes, Hash),
 	put_command_with_block(Stream, check_hash, Bytes),
 	get_boolean(Stream).
 
 
 update_hash(Stream, Hash) :-
 	length(Hash, Length),
-	uint8(Length, Bytes, Hash),
+	hash_length(Length, Bytes, Hash),
 	put_command_with_block(Stream, update_hash, Bytes),
 	get_boolean(Stream).
 

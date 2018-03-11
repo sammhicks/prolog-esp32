@@ -963,42 +963,56 @@ void cut(Yn yn) {
 }
 
 void greaterThan() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) != Comparison::greaterThan) {
     backtrack();
   }
 }
 
 void lessThan() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) != Comparison::lessThan) {
     backtrack();
   }
 }
 
 void lessThanOrEqualTo() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) == Comparison::greaterThan) {
     backtrack();
   }
 }
 
 void greaterThanOrEqualTo() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) == Comparison::lessThan) {
     backtrack();
   }
 }
 
 void notEqual() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) == Comparison::equals) {
     backtrack();
   }
 }
 
 void equals() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) != Comparison::equals) {
     backtrack();
   }
 }
 
 void is() {
+  virtualPredicate(2);
+
   if (!unify(registers[0], evaluateExpression(registers[1]))) {
     backtrack();
   };
@@ -1009,6 +1023,8 @@ void noOp() {}
 void fail() { backtrack(); }
 
 void unify() {
+  virtualPredicate(2);
+
   if (!unify(registers[0], registers[1])) {
     backtrack();
   }

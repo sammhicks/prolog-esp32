@@ -17,7 +17,7 @@ extern const char *labelTablePath;
 
 const unsigned long yieldPeriod = 1000;
 
-const uint8_t analogResolution = 12;
+const uint8_t analogResolution = 16;
 
 enum class MachineStates : uint8_t {
   executingQuery,
