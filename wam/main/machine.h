@@ -131,6 +131,7 @@ void analogReadPin();
 void analogWritePin();
 void lineSensor();
 void millisInstruction();
+void delayInstruction();
 } // namespace Instructions
 
 namespace Ancillary {

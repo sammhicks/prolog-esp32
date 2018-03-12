@@ -399,6 +399,10 @@ void executeInstruction() {
     LOG(Serial << "millis" << endl);
     Instructions::millisInstruction();
     break;
+  case Opcode::delay:
+    LOG(Serial << "delay" << endl);
+    Instructions::delayInstruction();
+    break;
   default:
     Serial << "Unknown opcode \"" << opcode << "\"" << endl;
     Ancillary::failWithException();
@@ -1194,6 +1198,7 @@ void analogWritePin() {
   }
 
   ledcWrite(channelID, static_cast<uint32_t>(pinValue));
+  yieldProcessor();
 }
 
 const Ai lineSensorCount = 6;
@@ -1271,6 +1276,12 @@ void millisInstruction() {
   if (!unify(registers[0], t)) {
     backtrack();
   }
+}
+
+void delayInstruction() {
+  virtualPredicate(1);
+
+  delay(evaluateExpression(registers[0]));
 }
 
 } // namespace Instructions

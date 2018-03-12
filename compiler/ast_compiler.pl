@@ -112,7 +112,7 @@ unchanged_query_token(analog_read).
 unchanged_query_token(analog_write).
 unchanged_query_token(line_sensor).
 unchanged_query_token(millis).
-
+unchanged_query_token(delay).
 
 % --- Program ---
 

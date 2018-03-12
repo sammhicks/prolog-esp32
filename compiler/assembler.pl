@@ -296,6 +296,7 @@ simple_code(analog_read, 0x87).
 simple_code(analog_write, 0x88).
 simple_code(line_sensor, 0x89).
 simple_code(millis, 0x8A).
+simple_code(delay, 0x8B).
 
 
 pin_mode(digital_input, 0x00).
