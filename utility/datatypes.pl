@@ -13,6 +13,7 @@
 	      term_id//1,
 	      environment_size//1,
 	      program_location//1,
+	      program_length//1,
 	      value_header//1,
 	      registry_entry//1,
 	      hash_length//1
@@ -78,6 +79,10 @@ environment_size(N) -->
 
 program_location(N) -->
 	uint32(N).
+
+
+program_length(N) -->
+	program_location(N).
 
 
 value_header(N) -->

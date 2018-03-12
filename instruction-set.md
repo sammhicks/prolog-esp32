@@ -94,3 +94,4 @@
 | analog read pin `A0` to `A1`              |   `87`   |          |          |          |          |
 | analog write pin `A0` to `A1`             |   `88`   |          |          |          |          |
 | read line sensor                          |   `89`   |          |          |          |          |
+| get time from start in milliseconds       |   `8A`   |          |          |          |          |

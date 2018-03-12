@@ -229,6 +229,7 @@ special_predicate(analog_output/2).
 special_predicate(analog_read/2).
 special_predicate(analog_write/2).
 special_predicate(line_sensor/12).
+special_predicate(millis/1).
 
 
 map_permanent_variables([], _Permanent_Variables, []).

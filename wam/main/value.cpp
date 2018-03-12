@@ -52,8 +52,7 @@ const RegistryEntry *RegistryEntry::deref() const {
 }
 
 void RegistryEntry::resetToVariable() {
-  VERBOSE(Serial << "Resetting " << (this - tupleRegistry) << " to variable"
-                 << endl);
+  VERBOSE(Serial << "Resetting " << this << " to variable" << endl);
 
   type = Type::reference;
 
@@ -97,6 +96,14 @@ void RegistryEntry::bindToInteger(Integer i) {
   mutableBody<Integer>() = i;
 }
 
+Print &operator<<(Print &os, const RegistryEntry *entry) {
+  if (entry == nullptr) {
+    return os << "NULL";
+  }
+
+  return os << (entry - tupleRegistry);
+}
+
 Print &operator<<(Print &os, const RegistryEntry &entry) {
   return entry.dump(os);
 }
@@ -110,8 +117,7 @@ Print &RegistryEntry::dump(Print &os) const {
 
   switch (type) {
   case Type::reference:
-    os << "\t\tReference: " << (body<RegistryEntry *>() - tupleRegistry)
-       << endl;
+    os << "\t\tReference: " << body<RegistryEntry *>() << endl;
     break;
   case Type::structure:
     os << "\t\tStructure: " << body<Structure>() << endl;
@@ -149,7 +155,7 @@ Print &operator<<(Print &os, const Structure &s) {
   os << s.functor << "/" << s.arity << " (";
 
   for (Arity i = 0; i < s.arity; ++i) {
-    os << (s.subterms[i] - tupleRegistry) << ", ";
+    os << s.subterms[i] << ", ";
   }
 
   return os << ")";
@@ -160,7 +166,7 @@ Print &operator<<(Print &os, const List &l) {
 }
 
 Print &operator<<(Print &os, const Environment &e) {
-  os << "\t\tNext Environment: " << (e.nextEnvironment - tupleRegistry) << endl;
+  os << "\t\tNext Environment: " << e.nextEnvironment << endl;
   os << "\t\tContinue Point: " << e.continuePoint << endl;
   os << "\t\tSize: " << e.size << endl;
   os << "\t\tCapacity: " << e.capacity << endl;
@@ -168,14 +174,11 @@ Print &operator<<(Print &os, const Environment &e) {
 }
 
 Print &operator<<(Print &os, const ChoicePoint &b) {
-  os << "\t\t\tCurrent Environment: " << (b.currentEnvironment - tupleRegistry)
-     << endl;
+  os << "\t\t\tCurrent Environment: " << b.currentEnvironment << endl;
   os << "\t\t\tContinue Point: " << b.continuePoint << endl;
-  os << "\t\t\tNext Choice Point: " << (b.nextChoicePoint - tupleRegistry)
-     << endl;
+  os << "\t\t\tNext Choice Point: " << b.nextChoicePoint << endl;
   os << "\t\t\tRetry Label: " << b.retryLabel << endl;
-  os << "\t\t\tCurrent Cut Point: " << (b.currentCutPoint - tupleRegistry)
-     << endl;
+  os << "\t\t\tCurrent Cut Point: " << b.currentCutPoint << endl;
   return os;
 }
 

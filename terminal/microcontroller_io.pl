@@ -33,14 +33,14 @@ update_hash(Stream, Hash) :-
 
 update_program(Stream, Program_Bytes) :-
 	length(Program_Bytes, Length),
-	uint32(Length, Bytes, Program_Bytes),
+	program_length(Length, Bytes, Program_Bytes),
 	put_command_with_block(Stream, update_program, Bytes),
 	get_boolean(Stream).
 
 
 update_label_table(Stream, Label_Table_Bytes) :-
 	length(Label_Table_Bytes, Length),
-	uint32(Length, Bytes, Label_Table_Bytes),
+	program_length(Length, Bytes, Label_Table_Bytes),
 	put_command_with_block(Stream, update_label_table, Bytes),
 	get_boolean(Stream).
 

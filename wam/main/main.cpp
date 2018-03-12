@@ -130,7 +130,7 @@ void readValue(Client &client) {
 #ifdef VERBOSE_LOG
   LOG(Serial << *entry << endl);
 #else
-  LOG(Serial << (entry - tupleRegistry) << endl);
+  LOG(Serial << entry << endl);
 #endif
 
   entry->deref()->sendToClient(client);

@@ -9,14 +9,20 @@ void initScanning() {
   scanCurrentHead = nullptr;
   scanNextHead = nullptr;
 
+  VERBOSE(Serial << "Adding Environment: ");
   scanNext(currentEnvironment);
+  VERBOSE(Serial << "Adding choice point: ");
   scanNext(currentChoicePoint);
+  VERBOSE(Serial << "Adding cut point: ");
   scanNext(currentCutPoint);
+  VERBOSE(Serial << "Adding trail head: ");
   scanNext(trailHead);
 
+  VERBOSE(Serial << "Adding registers:" << endl);
   for (Xn i = 0; i < registerCount; ++i) {
     scanNext(registers[i]);
   }
+  VERBOSE(Serial << "End of Init Scanning" << endl);
 }
 
 bool scanStep() {

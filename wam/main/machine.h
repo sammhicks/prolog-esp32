@@ -130,6 +130,7 @@ void pinIsAnalogOutput();
 void analogReadPin();
 void analogWritePin();
 void lineSensor();
+void millisInstruction();
 } // namespace Instructions
 
 namespace Ancillary {
@@ -143,7 +144,6 @@ void failAndExit();
 void failWithException();
 void bind(RegistryEntry *a1, RegistryEntry *a2);
 void trail(RegistryEntry *a);
-void tidyTrail();
 void tidyTrail(RegistryEntry *&head);
 bool unify(RegistryEntry *a1, RegistryEntry *a2);
 bool unify(RegistryEntry *a1, Integer i2);

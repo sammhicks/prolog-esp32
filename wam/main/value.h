@@ -123,6 +123,7 @@ struct TrailItem {
   RegistryEntry *nextItem;
 };
 
+Print &operator<<(Print &os, const RegistryEntry *entry);
 Print &operator<<(Print &os, const RegistryEntry &entry);
 Print &operator<<(Print &os, const RegistryEntry::Type &t);
 Print &operator<<(Print &os, const Structure &s);

@@ -73,6 +73,7 @@ enum class Opcode : uint8_t {
   analogReadPin = 0x87,
   analogWritePin = 0x88,
   lineSensor = 0x89,
+  millis = 0x8A,
 };
 
 enum class DigitalPinModes : uint8_t {
