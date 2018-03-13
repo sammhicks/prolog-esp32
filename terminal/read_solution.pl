@@ -3,25 +3,28 @@
 	      read_solution/4   % +Stream, +Query, Constants, Structures
 	  ]).
 
+:- use_module(library(debug)).
+
 :- use_module(microcontroller_io).
 :- use_module(queue).
 :- use_module(value).
 
 
-read_solution(Stream, Query, _Constants, _Structures) :-
+read_solution(Stream, Query, Constants, Structures) :-
 	atom(Query),
 	!,
-	value(environment([]), Stream, Stream).
+	compound_name_arity(Compound, Query, 0),
+	read_solution(Stream, Compound, Constants, Structures).
 
 read_solution(Stream, Query, Constants, Structures) :-
+	compound(Query),
 	setup_state(Empty_State, Constants, Structures),
 	value(Registers, Stream, Stream),
 	unwrap_value(Registers, Arguments, Empty_State, Initial_State),
 	compound_name_arity(Query, Name, _),
 	compound_name_arguments(Working_Query, Name, Arguments),
 	fetch_values(Stream, Working_Query, Initial_State),
-	nl,
-	nl,
+	debug(solution, "Full Solution -    ~w\n", [Working_Query]),
 	Query = Working_Query.
 
 
@@ -36,7 +39,7 @@ fetch_values(_Stream, _Working_Query, State) :-
 	!.
 
 fetch_values(Stream, Working_Query, State0) :-
-	writeln(Working_Query),
+	debug(solution, "Partial Solution - ~w\n", [Working_Query]),
 	pop_value_to_read(Address, Value, State0, State1),
 	fetch_value(Stream, Address, Wrapped_Value),
 	unwrap_value(Wrapped_Value, Value, State1, State),

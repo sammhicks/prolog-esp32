@@ -1570,6 +1570,28 @@ Integer evaluateStructure(const Structure &structure) {
       return i1 / i2;
     }
     break;
+  case SpecialStructures::min:
+    if (structure.arity == 2) {
+      Integer i1 = evaluateExpression(structure.subterms[0]);
+      Integer i2 = evaluateExpression(structure.subterms[1]);
+      return std::min(i1, i2);
+    }
+    break;
+  case SpecialStructures::max:
+    if (structure.arity == 2) {
+      Integer i1 = evaluateExpression(structure.subterms[0]);
+      Integer i2 = evaluateExpression(structure.subterms[1]);
+      return std::max(i1, i2);
+    }
+    break;
+  case SpecialStructures::clamp:
+    if (structure.arity == 3) {
+      Integer it = evaluateExpression(structure.subterms[0]);
+      Integer ia = evaluateExpression(structure.subterms[1]);
+      Integer ib = evaluateExpression(structure.subterms[2]);
+      return std::min(std::max(it, ia), ib);
+    }
+    break;
   default:
     break;
   }

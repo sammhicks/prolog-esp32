@@ -41,8 +41,7 @@ is_connected(Stream) :-
 	!.
 
 is_connected(_) :-
-	writeln("Not connected"),
-	fail.
+	throw("Not connected to microcontroller").
 
 
 ping(Result) :-
@@ -78,8 +77,16 @@ compile_program(Program, Result) :-
 	).
 
 
-run_query(Query) :-
+has_program_compile_state(State) :-
 	program_compile_state(State),
+	!.
+
+has_program_compile_state(_) :-
+	throw("No program compiled").
+
+
+run_query(Query) :-
+	has_program_compile_state(State),
 	compile_query(Query, State, Bytes, Constants, Structures),
 	is_connected(Stream),
 	reset_machine(Stream),

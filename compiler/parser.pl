@@ -7,7 +7,11 @@
 
 program(Terms, Definitions) :-
 	program_clauses(Terms, Clauses),
+	!,
 	join_program(Clauses, Definitions).
+
+program(Terms, _) :-
+	throw(not_a_program(Terms)).
 
 
 query(Term, query(Functor, Arguments)) :-
@@ -84,6 +88,9 @@ compound_argument(Term, Argument) :-
 	structure(Term, Argument),
 	!.
 
+compound_argument(Term, _) :-
+	throw(not_supported_in_source(Term)).
+
 
 variable(Term, Term) :-
 	var(Term).
@@ -109,6 +116,7 @@ structure(Term, s(Term/0, [])) :-
 	!.
 
 structure(Term, s(Functor/Arity, Arguments)) :-
+	compound(Term),
 	compound_name_arity(Term, Functor, Arity),
 	compound_name_arguments(Term, Functor, Arguments_Terms),
 	compound_arguments(Arguments_Terms, Arguments).

@@ -31,7 +31,15 @@ enum class RWModes : uint8_t { read, write };
 
 enum class Comparison : uint8_t { lessThan, equals, greaterThan };
 
-enum class SpecialStructures : Functor { add, subtract, multiply, divide };
+enum class SpecialStructures : Functor {
+  add,
+  subtract,
+  multiply,
+  divide,
+  min,
+  max,
+  clamp
+};
 
 enum class Results : uint8_t { failure, success, choicePoints, exception };
 
