@@ -391,8 +391,20 @@ void executeInstruction() {
     LOG(Serial << "analogWritePin" << endl);
     Instructions::analogWritePin();
     break;
+  case Opcode::lineSensor:
+    LOG(Serial << "lineSensor" << endl);
+    Instructions::lineSensor();
+    break;
+  case Opcode::millis:
+    LOG(Serial << "millis" << endl);
+    Instructions::millisInstruction();
+    break;
+  case Opcode::delay:
+    LOG(Serial << "delay" << endl);
+    Instructions::delayInstruction();
+    break;
   default:
-    LOG(Serial << "Unknown opcode \"" << opcode << "\"" << endl);
+    Serial << "Unknown opcode \"" << opcode << "\"" << endl;
     Ancillary::failWithException();
     break;
   }
@@ -909,7 +921,13 @@ void trustMe() {
 }
 
 void neckCut() {
-  if (currentChoicePoint > currentCutPoint) {
+  if (currentChoicePoint == nullptr) {
+    LOG(Serial << "No choice point to cut!" << endl);
+    return;
+  }
+
+  if ((currentCutPoint == nullptr) ||
+      (currentChoicePoint->tuple > currentCutPoint->tuple)) {
     VERBOSE(Serial << "Cutting " << currentChoicePoint << " to "
                    << currentCutPoint << endl);
 
@@ -921,7 +939,7 @@ void neckCut() {
       VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
     }
 
-    tidyTrail();
+    tidyTrail(trailHead);
   }
 }
 
@@ -944,57 +962,76 @@ void cut(Yn yn) {
 
   if (cutPoint != nullptr &&
       cutPoint->type != RegistryEntry::Type::choicePoint) {
-    VERBOSE(Serial << "Value is not a choice point" << endl);
+    Serial << "Value is not a choice point" << endl;
     failWithException();
     return;
   }
 
-  if (currentChoicePoint > cutPoint) {
-    VERBOSE(Serial << "Cutting " << (currentChoicePoint - tupleRegistry)
-                   << " to " << (cutPoint - tupleRegistry) << endl);
+  if (currentChoicePoint == nullptr) {
+    LOG(Serial << "No choice point to cut!" << endl);
+    return;
+  }
+
+  if ((cutPoint == nullptr) || (currentChoicePoint->tuple > cutPoint->tuple)) {
+    VERBOSE(Serial << "Cutting " << currentChoicePoint << " to " << cutPoint
+                   << endl);
 
     currentChoicePoint = cutPoint;
-    tidyTrail();
+    tidyTrail(trailHead);
   }
 }
 
 void greaterThan() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) != Comparison::greaterThan) {
     backtrack();
   }
 }
 
 void lessThan() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) != Comparison::lessThan) {
     backtrack();
   }
 }
 
 void lessThanOrEqualTo() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) == Comparison::greaterThan) {
     backtrack();
   }
 }
 
 void greaterThanOrEqualTo() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) == Comparison::lessThan) {
     backtrack();
   }
 }
 
 void notEqual() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) == Comparison::equals) {
     backtrack();
   }
 }
 
 void equals() {
+  virtualPredicate(2);
+
   if (compare(registers[0], registers[1]) != Comparison::equals) {
     backtrack();
   }
 }
 
 void is() {
+  virtualPredicate(2);
+
   if (!unify(registers[0], evaluateExpression(registers[1]))) {
     backtrack();
   };
@@ -1005,6 +1042,8 @@ void noOp() {}
 void fail() { backtrack(); }
 
 void unify() {
+  virtualPredicate(2);
+
   if (!unify(registers[0], registers[1])) {
     backtrack();
   }
@@ -1121,7 +1160,7 @@ void pinIsAnalogOutput() {
   LOG(Serial << "Pin " << pinID << " is attached to channel " << channelID
              << "endl");
 
-  pinMode(pinID, ANALOG);
+  pinMode(pinID, OUTPUT);
 
   ledcAttachPin(pinID, channelID);
 }
@@ -1159,7 +1198,92 @@ void analogWritePin() {
   }
 
   ledcWrite(channelID, static_cast<uint32_t>(pinValue));
+  yieldProcessor();
 }
+
+const Ai lineSensorCount = 6;
+
+void lineSensor() {
+  virtualPredicate(2 * lineSensorCount);
+
+  uint8_t pins[lineSensorCount];
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    pins[i] = getPin(registers[i]);
+
+    if (machineState == MachineStates::exception) {
+      return;
+    }
+  }
+
+  bool triggered[lineSensorCount];
+
+  LOG(Serial << "Reading line sensor pins:");
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    pinMode(pins[i], OUTPUT);
+    digitalWrite(pins[i], HIGH);
+    triggered[i] = false;
+
+    LOG(Serial << "\t" << pins[i]);
+  }
+
+  LOG(Serial << endl);
+
+  delay(10);
+
+  Ai pinsRemaining = lineSensorCount;
+  Integer timings[lineSensorCount];
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    pinMode(pins[i], INPUT);
+  }
+
+  unsigned long startTime = micros();
+
+  while (pinsRemaining > 0) {
+    unsigned long currentTime = micros() - startTime;
+    for (Ai i = 0; i < lineSensorCount; ++i) {
+      if (!triggered[i] && digitalRead(pins[i]) == LOW) {
+        timings[i] = currentTime;
+        triggered[i] = true;
+        --pinsRemaining;
+      }
+    }
+  }
+
+  LOG(Serial << "Timings:                 ");
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    LOG(Serial << "\t" << timings[i]);
+  }
+  LOG(Serial << endl);
+
+  for (Ai i = 0; i < lineSensorCount; ++i) {
+    if (!unify(registers[i + lineSensorCount], timings[i])) {
+      backtrack();
+      return;
+    }
+  }
+}
+
+void millisInstruction() {
+  virtualPredicate(1);
+
+  Integer t = millis();
+
+  LOG(Serial << "time: " << t << endl);
+
+  if (!unify(registers[0], t)) {
+    backtrack();
+  }
+}
+
+void delayInstruction() {
+  virtualPredicate(1);
+
+  delay(evaluateExpression(registers[0]));
+}
+
 } // namespace Instructions
 
 namespace Ancillary {
@@ -1194,10 +1318,8 @@ RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value) {
 
 void setInstructionCounter(CodeIndex p) {
   if (p == haltIndex) {
-    Serial << "Halting" << endl;
     machineState = MachineStates::success;
   } else {
-    Serial << "Seeking" << endl;
     programFile->seek(p);
   }
 }
@@ -1209,12 +1331,12 @@ void backtrack() {
 
   LOG(Serial << endl << " ---- Backtrack! ---- " << endl << endl);
 
-  VERBOSE(Serial << "Choice point: " << *currentChoicePoint << endl);
-
   if (currentChoicePoint == nullptr) {
     failAndExit();
     return;
   }
+
+  VERBOSE(Serial << "Choice point: " << *currentChoicePoint << endl);
 
   if (currentCutPoint == nullptr) {
     VERBOSE(Serial << "No cut point" << endl);
@@ -1254,7 +1376,8 @@ void bind(RegistryEntry *a1, RegistryEntry *a2) {
 
   if (a1->type == RegistryEntry::Type::reference &&
       ((a2->type != RegistryEntry::Type::reference) ||
-       (a2->body<RegistryEntry *>() < a1->body<RegistryEntry *>()))) {
+       (a2->body<RegistryEntry *>()->tuple <
+        a1->body<RegistryEntry *>()->tuple))) {
     trail(a1);
     a1->bindTo(a2);
   } else {
@@ -1264,31 +1387,42 @@ void bind(RegistryEntry *a1, RegistryEntry *a2) {
 }
 
 void trail(RegistryEntry *a) {
-  if (currentChoicePoint != nullptr && a < currentChoicePoint) {
-    VERBOSE(Serial << "Adding " << (a - tupleRegistry) << " to the trail"
-                   << endl);
+  if (currentChoicePoint != nullptr && (a->tuple < currentChoicePoint->tuple)) {
+    VERBOSE(Serial << "Adding " << a << " to the trail" << endl);
 
     nullCheck(newTrailItem(a));
   } else {
-
-    VERBOSE(Serial << "Address " << (a - tupleRegistry) << " is not conditional"
-                   << endl);
+    VERBOSE(Serial << "Address " << a << " is not conditional" << endl);
   }
 }
 
-void tidyTrail() { tidyTrail(trailHead); }
-
 void tidyTrail(RegistryEntry *&head) {
-  if (head == nullptr || currentChoicePoint == nullptr ||
-      head < currentChoicePoint) {
+  // If we're at the end of the trail
+  if (head == nullptr) {
     return;
   }
 
-  if (head->body<TrailItem>().item > currentChoicePoint) {
-    head = head->mutableBody<TrailItem>().nextItem;
+  // If we're past the choice point
+  if ((currentChoicePoint != nullptr) &&
+      (head->tuple < currentChoicePoint->tuple)) {
+    return;
   }
 
-  tidyTrail(head->mutableBody<TrailItem>().nextItem);
+  VERBOSE(Serial << "Tidying " << *head << endl);
+
+  if (currentChoicePoint == nullptr) {
+    VERBOSE(Serial << "No choice point");
+  } else {
+    VERBOSE(Serial << "Current choice point: " << *currentChoicePoint);
+  }
+
+  if ((currentChoicePoint == nullptr) ||
+      (head->body<TrailItem>().item->tuple > currentChoicePoint->tuple)) {
+    head = head->mutableBody<TrailItem>().nextItem;
+    tidyTrail(head);
+  } else {
+    tidyTrail(head->mutableBody<TrailItem>().nextItem);
+  }
 }
 
 bool unify(RegistryEntry *a1, RegistryEntry *a2) {

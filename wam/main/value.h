@@ -18,7 +18,7 @@ typedef uint32_t CodeIndex;
 typedef uint16_t Functor;
 typedef uint8_t Arity;
 typedef uint16_t Constant;
-typedef int16_t Integer;
+typedef int32_t Integer;
 typedef Vn VoidCount;
 typedef Vn EnvironmentSize;
 typedef Vn ChoicePointSize;
@@ -123,6 +123,7 @@ struct TrailItem {
   RegistryEntry *nextItem;
 };
 
+Print &operator<<(Print &os, const RegistryEntry *entry);
 Print &operator<<(Print &os, const RegistryEntry &entry);
 Print &operator<<(Print &os, const RegistryEntry::Type &t);
 Print &operator<<(Print &os, const Structure &s);

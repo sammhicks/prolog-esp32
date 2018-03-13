@@ -12,11 +12,6 @@ Print &operator<<(Print &os, const char *str) {
   return os;
 }
 
-Print &operator<<(Print &os, const void *ptr) {
-  os.print(reinterpret_cast<const int>(ptr), DEC);
-  return os;
-}
-
 Print &operator<<(Print &os, uint8_t n) {
   os.print(n, HEX);
   return os;

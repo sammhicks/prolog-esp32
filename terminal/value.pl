@@ -1,70 +1,69 @@
 
 :- module(value, [
-	      value//1,         % ?Value
-	      registry_entry//1 % ?Registry_Entry
+	      value//1          % ?Value
 	  ]).
 
 
-:- use_module('..'/utility/bytes).
+:- use_module('..'/utility/datatypes).
 
 value(Body) -->
 	header(Type),
+	!,
 	value_body(Type, Body).
 
 
 value_body(reference, Reference) -->
-	reference(Reference),
+	reference_body(Reference),
 	!.
 
 value_body(structure, Structure) -->
-	structure(Structure),
+	structure_body(Structure),
 	!.
 
 value_body(list, List) -->
-	list(List),
+	list_body(List),
 	!.
 
 value_body(constant, Constant) -->
-	constant(Constant),
+	constant_body(Constant),
 	!.
 
 value_body(integer, Integer) -->
-	integer(Integer),
+	integer_body(Integer),
 	!.
 
 value_body(environment, Environment) -->
-	environment(Environment),
+	environment_body(Environment),
 	!.
 
 
-reference(reference(H)) -->
+reference_body(reference(H)) -->
 	registry_entry(H).
 
 
-structure(structure(Functor, Subterms)) -->
-	uint16(Functor),
-	uint8(Arity),
+structure_body(structure(Functor_ID, Subterms)) -->
+	structure(Functor_ID/Arity),
 	{
 	    length(Subterms, Arity)
 	},
 	registry_entries(Subterms).
 
 
-list(list(Head, Tail)) -->
+list_body(list(Head, Tail)) -->
 	registry_entry(Head),
 	registry_entry(Tail).
 
 
-constant(constant(C)) -->
-	uint16(C).
+constant_body(constant(C)) -->
+	constant(C).
 
 
-integer(integer(I)) -->
-	int16(I).
+integer_body(integer(I)) -->
+	integer(I).
 
 
-environment(environment(Permanent_Variables)) -->
-	uint8(Arity),
+environment_body(environment(Permanent_Variables)) -->
+	environment_size(Arity),
 	{
 	    length(Permanent_Variables, Arity)
 	},
@@ -79,18 +78,14 @@ registry_entries([Entry|Entries]) -->
 	registry_entries(Entries).
 
 
-registry_entry(Entry) -->
-	uint32(Entry).
-
-
 header(Type, Codes, Tail) :-
 	ground(Type),
 	!,
 	header(Type, Code),
-	uint8(Code, Codes, Tail).
+	value_header(Code, Codes, Tail).
 
 header(Type, Codes, Tail) :-
-	uint8(Code, Codes, Tail),
+	value_header(Code, Codes, Tail),
 	header(Type, Code).
 
 

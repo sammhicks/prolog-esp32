@@ -36,10 +36,19 @@ close_connection :-
 close_connection.
 
 
+is_connected(Stream) :-
+	current_connection(Stream),
+	!.
+
+is_connected(_) :-
+	writeln("Not connected"),
+	fail.
+
+
 ping(Result) :-
 	command(ping, Header),
 	random_between(0, 255, Body),
-	current_connection(Stream),
+	is_connected(Stream),
 	put_bytes([Header, Body], Stream),
 	get_byte(Stream, Response),
 	(   Body = Response
@@ -59,7 +68,7 @@ compile_program(Program, Result) :-
 	assertz(program_compile_state(State)),
 	append(Program_Bytes, Label_Table_Bytes, All_Bytes),
 	sha_hash(All_Bytes, Hash, [algorithm(sha256)]),
-	current_connection(Stream),
+	is_connected(Stream),
 	(   check_hash(Stream, Hash)
 	->  Result = nothing_to_do
 	;   update_hash(Stream, Hash),
@@ -72,7 +81,7 @@ compile_program(Program, Result) :-
 run_query(Query) :-
 	program_compile_state(State),
 	compile_query(Query, State, Bytes, Constants, Structures),
-	current_connection(Stream),
+	is_connected(Stream),
 	reset_machine(Stream),
 	run_query(Stream, Bytes, Results),
 	process_results(Results, Stream, Query, Constants, Structures).

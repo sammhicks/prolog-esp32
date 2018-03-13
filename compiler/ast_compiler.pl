@@ -30,7 +30,7 @@ convert_query_tokens([Token|Tokens], Rs0) -->
 
 
 convert_query_token(Token, Rs, Rs, [Token|Tokens], Tokens) :-
-	unchanged_token(Token),
+	unchanged_query_token(Token),
 	!.
 
 convert_query_token(x_a(X, A), Rs, Rs) -->
@@ -88,29 +88,31 @@ convert_query_token(void, Rs, Rs) -->
 	[set_void(1)].
 
 
-unchanged_token(call(_)).
-unchanged_token(>).
-unchanged_token(<).
-unchanged_token(=<).
-unchanged_token(>=).
-unchanged_token(=\=).
-unchanged_token(=:=).
-unchanged_token(is).
-unchanged_token(true).
-unchanged_token(fail).
-unchanged_token(=).
-unchanged_token(digital_input).
-unchanged_token(digital_output).
-unchanged_token(digital_input_pullup).
-unchanged_token(digital_input_pulldown).
-unchanged_token(digital_read).
-unchanged_token(digital_write).
-unchanged_token(analog_input).
-unchanged_token(configure_channel).
-unchanged_token(analog_output).
-unchanged_token(analog_read).
-unchanged_token(analog_write).
-
+unchanged_query_token(call(_)).
+unchanged_query_token(>).
+unchanged_query_token(<).
+unchanged_query_token(=<).
+unchanged_query_token(>=).
+unchanged_query_token(=\=).
+unchanged_query_token(=:=).
+unchanged_query_token(is).
+unchanged_query_token(true).
+unchanged_query_token(fail).
+unchanged_query_token(=).
+unchanged_query_token(digital_input).
+unchanged_query_token(digital_output).
+unchanged_query_token(digital_input_pullup).
+unchanged_query_token(digital_input_pulldown).
+unchanged_query_token(digital_read).
+unchanged_query_token(digital_write).
+unchanged_query_token(analog_input).
+unchanged_query_token(configure_channel).
+unchanged_query_token(analog_output).
+unchanged_query_token(analog_read).
+unchanged_query_token(analog_write).
+unchanged_query_token(line_sensor).
+unchanged_query_token(millis).
+unchanged_query_token(delay).
 
 % --- Program ---
 

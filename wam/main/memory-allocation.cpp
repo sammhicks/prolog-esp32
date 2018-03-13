@@ -31,7 +31,7 @@ RegistryEntry *newRegistryEntry(RegistryEntry::Type type) {
     nextFreeRegistryEntry = nextFreeRegistryEntry->next;
   }
 
-  VERBOSE(Serial << (newEntry - tupleRegistry) << endl);
+  VERBOSE(Serial << newEntry << endl);
 
   newEntry->type = type;
 
@@ -322,7 +322,9 @@ void restoreChoicePoint(ChoicePoint &b, LabelIndex l) {
 
   VERBOSE(Serial << "Unwinding Trail" << endl);
 
-  while (trailHead > currentChoicePoint) {
+  while ((trailHead != nullptr) &&
+         ((currentChoicePoint == nullptr) ||
+          (trailHead->tuple > currentChoicePoint->tuple))) {
     trailHead->mutableBody<TrailItem>().item->resetToVariable();
     trailHead = trailHead->mutableBody<TrailItem>().nextItem;
   }

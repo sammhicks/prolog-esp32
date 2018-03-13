@@ -12,35 +12,35 @@
 	  ]).
 
 
-:- use_module('..'/utility/bytes).
+:- use_module('..'/utility/datatypes).
 :- use_module(command).
 :- use_module(value).
 
 
 check_hash(Stream, Hash) :-
 	length(Hash, Length),
-	uint8(Length, Bytes, Hash),
+	hash_length(Length, Bytes, Hash),
 	put_command_with_block(Stream, check_hash, Bytes),
 	get_boolean(Stream).
 
 
 update_hash(Stream, Hash) :-
 	length(Hash, Length),
-	uint8(Length, Bytes, Hash),
+	hash_length(Length, Bytes, Hash),
 	put_command_with_block(Stream, update_hash, Bytes),
 	get_boolean(Stream).
 
 
 update_program(Stream, Program_Bytes) :-
 	length(Program_Bytes, Length),
-	uint32(Length, Bytes, Program_Bytes),
+	program_length(Length, Bytes, Program_Bytes),
 	put_command_with_block(Stream, update_program, Bytes),
 	get_boolean(Stream).
 
 
 update_label_table(Stream, Label_Table_Bytes) :-
 	length(Label_Table_Bytes, Length),
-	uint32(Length, Bytes, Label_Table_Bytes),
+	program_length(Length, Bytes, Label_Table_Bytes),
 	put_command_with_block(Stream, update_label_table, Bytes),
 	get_boolean(Stream).
 

@@ -11,7 +11,7 @@
 :- use_module(assembly_sections/remove_labels).
 :- use_module(assembly_sections/allocate_structures).
 :- use_module(assembly_sections/allocate_constants).
-:- use_module('..'/utility/bytes).
+:- use_module('..'/utility/datatypes).
 
 assemble_query(Codes0, State, Bytes, Constant_Allocation, Structure_Allocation) :-
 	assembly_state(State, Structures, Constants, Labels, _Label_Table),
@@ -124,7 +124,7 @@ assemble_code(set_constant(C)) -->
 
 assemble_code(set_integer(I)) -->
 	[0x27],
-	constant(I).
+	integer(I).
 
 assemble_code(set_void(N)) -->
 	[0x28],
@@ -271,58 +271,10 @@ unify_value(y(N)) -->
 assemble_label_table_entries([]) -->
 	[].
 
-assemble_label_table_entries([ID/Arity|Entries]) -->
-	uint32(ID),
-	uint8(Arity),
+assemble_label_table_entries([Location/Arity|Entries]) -->
+	program_location(Location),
+	arity(Arity),
 	assemble_label_table_entries(Entries).
-
-
-register_index(N) -->
-	uint8(N).
-
-
-vn(x(N)) -->
-	register_index(N).
-
-vn(y(N)) -->
-	register_index(N).
-
-
-ai(a(I)) -->
-	register_index(I).
-
-ai(x(N)) -->
-	register_index(N).
-
-
-vnai(N, I) -->
-	vn(N),
-	ai(I).
-
-
-structure(ID/Arity) -->
-	uint16(ID),
-	uint8(Arity).
-
-
-constant(C) -->
-	uint16(C).
-
-
-integer(I) -->
-	int16(I).
-
-
-void_count(N) -->
-	uint8(N).
-
-
-term_id(ID) -->
-	uint16(ID).
-
-
-environment_size(N) -->
-	uint8(N).
 
 
 simple_code(>, 0x60).
@@ -342,6 +294,9 @@ simple_code(configure_channel, 0x85).
 simple_code(analog_output, 0x86).
 simple_code(analog_read, 0x87).
 simple_code(analog_write, 0x88).
+simple_code(line_sensor, 0x89).
+simple_code(millis, 0x8A).
+simple_code(delay, 0x8B).
 
 
 pin_mode(digital_input, 0x00).

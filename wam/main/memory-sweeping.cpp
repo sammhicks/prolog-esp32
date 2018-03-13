@@ -40,8 +40,7 @@ bool sweepStep() {
   size_t tupleSize = entry->tupleSize();
 
   if (entry->marked) {
-    VERBOSE(Serial << "Entry " << (entry - tupleRegistry) << " is live"
-                   << endl);
+    VERBOSE(Serial << "Entry " << entry << " is live" << endl);
 
     ++liveCount;
 
@@ -55,7 +54,7 @@ bool sweepStep() {
 
     entry->marked = false;
   } else {
-    LOG(Serial << "Entry " << (entry - tupleRegistry) << " is dead" << endl);
+    LOG(Serial << "Entry " << entry << " is dead" << endl);
 
     ++deadCount;
 
