@@ -87,7 +87,10 @@ special_structures([
     +,
     -,
     *,
-    //
+    //,
+    min,
+    max,
+    clamp
 ]).
 
 
