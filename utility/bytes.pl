@@ -41,6 +41,13 @@ bytes(Count, N, Sign, Stream, Stream) :-
 	read_bytes(Count, UN, Bytes, []),
 	add_sign(Sign, Count, UN, N).
 
+bytes(Count, N, Sign, Codes, Tail) :-
+	var(N),
+	var(Codes),
+	!,
+	length(N_Codes, Count),
+	append(N_Codes, Tail, Codes),
+	freeze(N, (remove_sign(Sign, Count, N, UN), write_bytes(Count, UN, N_Codes, []))).
 
 bytes(Count, N, Sign, Codes, Tail) :-
 	var(N),

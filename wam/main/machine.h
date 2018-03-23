@@ -59,7 +59,7 @@ void resetMachine();
 
 void performGarbageCollection();
 
-void executeInstructions(Client *client);
+void runQuery(Client *client);
 
 void getNextAnswer(Client *client);
 

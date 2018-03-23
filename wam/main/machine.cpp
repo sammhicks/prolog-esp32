@@ -17,7 +17,9 @@ void resetMachine() {
   initScanning();
 }
 
-void executeInstructions(Client *client) {
+void runQuery(Client *client) {
+  resetMachine();
+
   machineState = MachineStates::executingQuery;
   instructionSource = client;
 

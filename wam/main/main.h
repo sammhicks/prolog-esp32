@@ -11,10 +11,6 @@ void setup();
 
 void loop();
 
-void runPing(Client &client);
-
-void updateCode(Client &client);
-
-void updateLabelTable(Client &client);
+void updateProgram(Client &client);
 
 void readValue(Client &client);
