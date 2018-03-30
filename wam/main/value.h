@@ -9,16 +9,20 @@
 #include "serial-stream.h"
 #include "verbose-log.h"
 
+#define INTEGER(SIGNED, WIDTH) SIGNED##int##WIDTH##_t
+#define UNSIGNED_INTEGER(WIDTH) INTEGER(u, WIDTH)
+#define SIGNED_INTEGER(WIDTH) INTEGER(, WIDTH)
+
 typedef uint8_t Vn;
 typedef Vn Xn;
 typedef Vn Yn;
 typedef Vn Ai;
 
 typedef uint32_t CodeIndex;
-typedef uint16_t Functor;
-typedef uint8_t Arity;
-typedef uint16_t Constant;
-typedef int32_t Integer;
+typedef UNSIGNED_INTEGER(CONFIG_VM_FUNCTOR_SIZE) Functor;
+typedef UNSIGNED_INTEGER(CONFIG_VM_ARITY_SIZE) Arity;
+typedef UNSIGNED_INTEGER(CONFIG_VM_CONSTANT_SIZE) Constant;
+typedef SIGNED_INTEGER(CONFIG_VM_INTEGER_SIZE) Integer;
 typedef Vn VoidCount;
 typedef Vn EnvironmentSize;
 typedef Vn ChoicePointSize;

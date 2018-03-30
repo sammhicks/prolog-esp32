@@ -20,9 +20,18 @@
 	  ]).
 
 :- use_module(bytes).
+:- use_module("../wam/build/terminal-config/config").
+
 
 register_index(N) -->
-	uint8(N).
+	uint8(N),
+	{
+	    config(register_count, Register_Count),
+	    (	N < Register_Count
+	    ->	true
+	    ;	throw(invalid_register_index(N))
+	    )
+	}.
 
 
 vn(x(N)) -->
@@ -50,19 +59,19 @@ structure(ID/Arity) -->
 
 
 functor_id(ID) -->
-	uint16(ID).
+	config_bytes(functor_size, ID, unsigned).
 
 
 arity(Arity) -->
-	uint8(Arity).
+	config_bytes(arity_size, Arity, unsigned).
 
 
 constant(C) -->
-	uint16(C).
+	config_bytes(constant_size, C, unsigned).
 
 
 integer(I) -->
-	int32(I).
+	config_bytes(integer_size, I, signed).
 
 
 void_count(N) -->
@@ -95,3 +104,9 @@ registry_entry(Entry) -->
 
 hash_length(N) -->
 	uint8(N).
+
+
+config_bytes(Name, N, Sign, Codes, Tail) :-
+	config(Name, Bits),
+	Bytes is Bits // 8,
+	bytes(Bytes, N, Sign, Codes, Tail).

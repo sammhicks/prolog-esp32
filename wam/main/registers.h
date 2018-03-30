@@ -3,7 +3,7 @@
 
 #include "value.h"
 
-const Xn registerCount = 32;
+const Xn registerCount = CONFIG_VM_REGISTER_COUNT;
 const size_t tupleRegistryCapacity = 2 << 10;
 const size_t tuplesHeapCapacity = 2 << 15;
 

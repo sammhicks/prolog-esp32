@@ -1,0 +1,52 @@
+menu "Prolog on ESP32 Configuration"
+
+menu "AP Configuration"
+
+config ESP_WIFI_SSID
+    string "WiFi SSID"
+    default "ESP32 WAM"
+    help
+        SSID (network name).
+
+config ESP_WIFI_PASSWORD
+    string "WiFi Password"
+    default ""
+    help
+        WiFi password (WPA2).
+
+endmenu
+
+menu "VM Configuration"
+
+config VM_REGISTER_COUNT
+    int "number of registers"
+    range 8 256
+    default 32
+
+config VM_FUNCTOR_SIZE
+    int "functor size"
+    default 8
+    help
+        The number of bits used to represent the functor of a structure.
+
+config VM_ARITY_SIZE
+    int "arity size"
+    default 8
+    help
+        The number of bits used to represent the arity of a structure.
+
+config VM_CONSTANT_SIZE
+    int "constant size"
+    default 8
+    help
+        The number of bits used to represent a constant. A constant is a zero arity structure.
+
+config VM_INTEGER_SIZE
+    int "integer size"
+    default 32
+    help
+        The number of bits used to represent a constant. A constant is a zero arity structure.
+
+endmenu
+
+endmenu

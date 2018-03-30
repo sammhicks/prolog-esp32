@@ -5,7 +5,8 @@
 	      uint16//1,    % +N
 	      int16//1,     % +N
 	      uint32//1,    % +N
-	      int32//1      % +N
+	      int32//1,     % +N
+	      bytes//3	    % +Count, ?N, +Sign
 	  ]).
 
 uint8(N) -->
