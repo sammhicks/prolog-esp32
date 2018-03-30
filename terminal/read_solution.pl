@@ -57,7 +57,7 @@ unwrap_value(reference(H), Value, Current_State, New_State) :-
 
 unwrap_value(structure(ID, Subterm_Addresses), Structure, Current_State, New_State) :-
 	state(Current_State, Functors, _Items_To_Read, _Discovered_Values),
-	memberchk(Functor-ID, Functors),
+	nth0(ID, Functors, Functor),
 	push_values_to_read(Subterm_Addresses, Arguments, Current_State, New_State),
 	compound_name_arguments(Structure, Functor, Arguments).
 
@@ -65,9 +65,9 @@ unwrap_value(list(Head_Address, Tail_Address), [Head|Tail]) -->
 	push_value_to_read(Head_Address, Head),
 	push_value_to_read(Tail_Address, Tail).
 
-unwrap_value(constant(ID), C, State, State) :-
+unwrap_value(constant(ID), Constant, State, State) :-
 	state(State, Functors, _Items_To_Read, _Discovered_Values),
-	memberchk(C-ID, Functors).
+	nth0(ID, Functors, Constant).
 
 unwrap_value(integer(I), I, State, State).
 

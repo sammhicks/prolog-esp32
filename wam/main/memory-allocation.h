@@ -17,7 +17,7 @@ RegistryEntry *newList();
 RegistryEntry *newConstant(Constant c);
 RegistryEntry *newInteger(Integer i);
 RegistryEntry *newEnvironment(EnvironmentSize n);
-RegistryEntry *newChoicePoint(LabelIndex retryLabel);
+RegistryEntry *newChoicePoint(CodeIndex retryIndex);
 RegistryEntry *newTrailItem(RegistryEntry *reference);
 
 RegistryEntry *currentStructureSubterm();
@@ -25,5 +25,5 @@ RegistryEntry *setCurrentStructureSubterm(RegistryEntry *value);
 RegistryEntry *&currentStructureSubterm(Structure &s);
 RegistryEntry *&currentStructureSubterm(List &l);
 
-void restoreChoicePoint(LabelIndex l = std::numeric_limits<LabelIndex>::max());
-void restoreChoicePoint(ChoicePoint &b, LabelIndex l);
+void restoreChoicePoint(CodeIndex p = std::numeric_limits<CodeIndex>::max());
+void restoreChoicePoint(ChoicePoint &b, CodeIndex l);

@@ -1,7 +1,6 @@
 #include "machine.h"
 
 const char *codePath = "/code";
-const char *labelTablePath = "/label-table";
 
 MachineStates machineState;
 Stream *instructionSource;
@@ -287,11 +286,11 @@ void executeInstruction() {
     break;
   case Opcode::call:
     LOG(Serial << "call" << endl);
-    Instructions::call(read<LabelIndex>());
+    Instructions::call(read<CodeIndex>(), read<Arity>());
     break;
   case Opcode::execute:
     LOG(Serial << "execute" << endl);
-    Instructions::execute(read<LabelIndex>());
+    Instructions::execute(read<CodeIndex>(), read<Arity>());
     break;
   case Opcode::proceed:
     LOG(Serial << "proceed" << endl);
@@ -299,11 +298,11 @@ void executeInstruction() {
     break;
   case Opcode::tryMeElse:
     LOG(Serial << "tryMeElse" << endl);
-    Instructions::tryMeElse(read<LabelIndex>());
+    Instructions::tryMeElse(read<CodeIndex>());
     break;
   case Opcode::retryMeElse:
     LOG(Serial << "retryMeElse" << endl);
-    Instructions::retryMeElse(read<LabelIndex>());
+    Instructions::retryMeElse(read<CodeIndex>());
     break;
   case Opcode::trustMe:
     LOG(Serial << "trustMe" << endl);
@@ -424,7 +423,6 @@ using Ancillary::failAndExit;
 using Ancillary::failWithException;
 using Ancillary::getChannel;
 using Ancillary::getPin;
-using Ancillary::lookupLabel;
 using Ancillary::nullCheck;
 using Ancillary::permanentVariable;
 using Ancillary::resumeGarbageCollection;
@@ -837,8 +835,8 @@ void deallocate() {
   VERBOSE(Serial << "New environment: " << *currentEnvironment);
 }
 
-void call(LabelIndex p) {
-  VERBOSE(Serial << "Calling label " << p << endl);
+void call(CodeIndex p, Arity arity) {
+  VERBOSE(Serial << "Calling functor" << endl);
 
   switch (machineState) {
   case MachineStates::executingQuery:
@@ -853,15 +851,13 @@ void call(LabelIndex p) {
     return;
   }
 
-  LabelTableEntry entry = lookupLabel(p);
-
   VERBOSE(Serial << "\tcp - " << continuePoint << endl);
   VERBOSE(Serial << "\tb  - " << currentChoicePoint << endl);
-  VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
-  VERBOSE(Serial << "\targument count - " << entry.arity << endl);
+  VERBOSE(Serial << "\tp  - " << p << endl);
+  VERBOSE(Serial << "\tarity - " << arity << endl);
 
-  setInstructionCounter(entry.entryPoint);
-  argumentCount = entry.arity;
+  setInstructionCounter(p);
+  argumentCount = arity;
 
   for (Xn i = argumentCount; i < registerCount; ++i) {
     registers[i] = nullptr;
@@ -870,17 +866,14 @@ void call(LabelIndex p) {
   currentCutPoint = currentChoicePoint;
 }
 
-void execute(LabelIndex p) {
+void execute(CodeIndex p, Arity arity) {
   VERBOSE(Serial << "Executing label " << p << endl);
   VERBOSE(Serial << "\tb - " << currentChoicePoint << endl);
+  VERBOSE(Serial << "\tp  - " << p << endl);
+  VERBOSE(Serial << "\targument count - " << arity << endl);
 
-  LabelTableEntry entry = lookupLabel(p);
-
-  VERBOSE(Serial << "\tp  - " << entry.entryPoint << endl);
-  VERBOSE(Serial << "\targument count - " << entry.arity << endl);
-
-  setInstructionCounter(entry.entryPoint);
-  argumentCount = entry.arity;
+  setInstructionCounter(p);
+  argumentCount = arity;
 
   for (Xn i = argumentCount; i < registerCount; ++i) {
     registers[i] = nullptr;
@@ -894,16 +887,16 @@ void proceed() {
   setInstructionCounter(continuePoint);
 }
 
-void tryMeElse(LabelIndex l) {
-  nullCheck(newChoicePoint(l));
+void tryMeElse(CodeIndex p) {
+  nullCheck(newChoicePoint(p));
 
   VERBOSE(Serial << "New Choice Point: " << currentChoicePoint);
 }
 
-void retryMeElse(LabelIndex l) {
+void retryMeElse(CodeIndex p) {
   VERBOSE(Serial << "Current Choice Point: " << *currentChoicePoint << endl);
 
-  restoreChoicePoint(l);
+  restoreChoicePoint(p);
 
   VERBOSE(Serial << "New Choice Point: " << *currentChoicePoint << endl);
 }
@@ -1297,18 +1290,6 @@ RegistryEntry *nullCheck(RegistryEntry *entry) {
   return entry;
 }
 
-LabelTableEntry lookupLabel(LabelIndex p) {
-  File labelTableFile = SPIFFS.open(labelTablePath);
-
-  LabelTableEntry entry;
-
-  labelTableFile.seek(p * sizeof(entry));
-
-  labelTableFile.read(reinterpret_cast<uint8_t *>(&entry), sizeof(entry));
-
-  return entry;
-}
-
 RegistryEntry *permanentVariable(Yn yn) {
   return currentEnvironment->mutableBody<Environment>().permanentVariables[yn];
 }
@@ -1360,9 +1341,7 @@ void backtrack() {
     VERBOSE(Serial << "New cut point: " << *currentCutPoint << endl);
   }
 
-  setInstructionCounter(
-      lookupLabel(currentChoicePoint->body<ChoicePoint>().retryLabel)
-          .entryPoint);
+  setInstructionCounter(currentChoicePoint->body<ChoicePoint>().retryIndex);
 
   resumeGarbageCollection();
 }

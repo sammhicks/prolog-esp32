@@ -214,7 +214,7 @@ RegistryEntry *newEnvironment(EnvironmentSize n) {
   return entry;
 }
 
-RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
+RegistryEntry *newChoicePoint(CodeIndex retryIndex) {
   VERBOSE(Serial << "New Choice Point:" << endl);
 
   RegistryEntry *entry = newRegistryEntryWithTuple(
@@ -229,7 +229,7 @@ RegistryEntry *newChoicePoint(LabelIndex retryLabel) {
   choicePoint.currentEnvironment = currentEnvironment;
   choicePoint.continuePoint = continuePoint;
   choicePoint.nextChoicePoint = currentChoicePoint;
-  choicePoint.retryLabel = retryLabel;
+  choicePoint.retryIndex = retryIndex;
   choicePoint.currentCutPoint = currentCutPoint;
   choicePoint.savedRegisterCount = argumentCount;
 
@@ -306,11 +306,11 @@ RegistryEntry *&currentStructureSubterm(List &l) {
   return subterm;
 }
 
-void restoreChoicePoint(LabelIndex l) {
-  restoreChoicePoint(currentChoicePoint->mutableBody<ChoicePoint>(), l);
+void restoreChoicePoint(CodeIndex p) {
+  restoreChoicePoint(currentChoicePoint->mutableBody<ChoicePoint>(), p);
 }
 
-void restoreChoicePoint(ChoicePoint &b, LabelIndex l) {
+void restoreChoicePoint(ChoicePoint &b, CodeIndex p) {
   for (ChoicePointSize i = 0; i < b.savedRegisterCount; ++i) {
     registers[i] = b.savedRegisters[i];
   }
@@ -318,7 +318,7 @@ void restoreChoicePoint(ChoicePoint &b, LabelIndex l) {
   currentEnvironment = b.currentEnvironment;
   continuePoint = b.continuePoint;
 
-  b.retryLabel = l;
+  b.retryIndex = p;
 
   VERBOSE(Serial << "Unwinding Trail" << endl);
 

@@ -13,7 +13,6 @@
 #include "SPIFFS.h"
 
 extern const char *codePath;
-extern const char *labelTablePath;
 
 const unsigned long yieldPeriod = 1000;
 
@@ -106,12 +105,12 @@ void unifyVoid(VoidCount n);
 void allocate(EnvironmentSize n);
 void trim(EnvironmentSize n);
 void deallocate();
-void call(LabelIndex p);
-void execute(LabelIndex p);
+void call(CodeIndex p, Arity arity);
+void execute(CodeIndex p, Arity arity);
 void proceed();
 
-void tryMeElse(LabelIndex l);
-void retryMeElse(LabelIndex l);
+void tryMeElse(CodeIndex p);
+void retryMeElse(CodeIndex p);
 void trustMe();
 void neckCut();
 void getLevel(Yn yn);
@@ -144,7 +143,6 @@ void delayInstruction();
 
 namespace Ancillary {
 RegistryEntry *nullCheck(RegistryEntry *entry);
-LabelTableEntry lookupLabel(LabelIndex l);
 RegistryEntry *permanentVariable(Yn yn);
 RegistryEntry *setPermanentVariable(Yn yn, RegistryEntry *value);
 void setInstructionCounter(CodeIndex p);

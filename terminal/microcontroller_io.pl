@@ -31,13 +31,13 @@ hash_matches(1, hash_matches).
 update_hash(Stream, Hash) :-
 	length(Hash, Length),
 	hash_length(Length, Bytes, Hash),
-	put_command_with_block(Stream, update_hash, Bytes).
+	put_bytes(Bytes, Stream).
 
 
 update_program(Stream, Program_Bytes) :-
 	length(Program_Bytes, Length),
 	program_length(Length, Bytes, Program_Bytes),
-	put_command_with_block(Stream, update_program, Bytes).
+	put_bytes(Bytes, Stream).
 
 run_query(Stream, Bytes, Results) :-
 	put_command_with_block(Stream, run_query, Bytes),
@@ -51,7 +51,7 @@ get_next_answer(Stream, Results) :-
 
 fetch_value(Stream, Address, Value) :-
 	registry_entry(Address, Bytes, []),
-	put_command_with_block(Stream, fetch_structure, Bytes),
+	put_command_with_block(Stream, fetch_value, Bytes),
 	value(Value, Stream, Stream).
 
 

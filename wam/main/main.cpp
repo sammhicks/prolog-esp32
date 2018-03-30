@@ -51,12 +51,15 @@ void updateProgram(Client &client) {
     return;
   }
 
+  updateHash(client);
+
   Serial << "code update" << endl;
   while (client.available() < sizeof(CodeIndex)) {
     if (!client.connected()) {
       Serial << "client disconnected" << endl;
       return;
     }
+    yieldProcessor();
   }
 
   CodeIndex codeLength = Raw::read<CodeIndex>(client);
@@ -71,8 +74,6 @@ void updateProgram(Client &client) {
   }
 
   Serial << "code update complete" << endl;
-
-  updateHash(client);
 }
 
 void readValue(Client &client) {

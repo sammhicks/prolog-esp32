@@ -44,12 +44,13 @@ compile_program(File, Result) :-
 	read_terms_from_file(File, Program),
 	retractall(program_compile_state(_)),
 	compile_program(Program, State, Program_Bytes),
-	assertz(program_compile_state(State)),
-	sha_hash(Program_Bytes, Hash, [algorithm(sha256)]),
+	format(codes(Bytes_To_Hash, Program_Bytes), "~w", [State]),
+	sha_hash(Bytes_To_Hash, Hash, [algorithm(sha256)]),
 	is_connected(Stream),
 	put_command(Stream, update_program),
 	check_hash(Stream, Hash, Hash_Matches),
-	update_program(Hash_Matches, Result, Stream, Program_Bytes, Hash).
+	update_program(Hash_Matches, Result, Stream, Program_Bytes, Hash),
+	assertz(program_compile_state(State)).
 
 
 update_program(hash_matches, nothing_to_do, _Stream, _Program_Bytes, _Hash).

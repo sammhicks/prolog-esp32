@@ -22,7 +22,6 @@ typedef int32_t Integer;
 typedef Vn VoidCount;
 typedef Vn EnvironmentSize;
 typedef Vn ChoicePointSize;
-typedef uint16_t LabelIndex;
 
 enum class GarbageCollectionStates : uint8_t {
   scan,
@@ -112,7 +111,7 @@ struct ChoicePoint {
   RegistryEntry *currentEnvironment;
   CodeIndex continuePoint;
   RegistryEntry *nextChoicePoint;
-  LabelIndex retryLabel;
+  CodeIndex retryIndex;
   RegistryEntry *currentCutPoint;
   ChoicePointSize savedRegisterCount;
   RegistryEntry *savedRegisters[0];
