@@ -45,10 +45,8 @@ void updateHash(Client &client) {
   HashLength hashLength = Raw::read<HashLength>(client);
 
   if (updateFile(hashPath, hashLength, client)) {
-    client.write(1);
   } else {
     deleteHash();
-    client.write(0);
   }
 
   Serial << "hash update complete" << endl;

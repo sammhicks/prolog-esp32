@@ -1,44 +1,29 @@
 
 :- module(assembler, [
-	      assemble_query/5,         % +Codes, +State, -Bytes, -Constants, -Structures
-	      assemble_program/3,       % +Codes, -State, -Bytes
-	      assemble_label_table/2    % +State, -Label_Table_Bytes
+	      assemble_query/4,         % +Codes, +State, -Bytes, -Functors
+	      assemble_program/3        % +Codes, -State, -Bytes
 	  ]).
-
-:- use_module(library(lists)).
 
 :- use_module(assembly_sections/allocate_labels).
 :- use_module(assembly_sections/remove_labels).
-:- use_module(assembly_sections/allocate_structures).
-:- use_module(assembly_sections/allocate_constants).
+:- use_module(assembly_sections/allocate_functors).
 :- use_module('..'/utility/datatypes).
 
-assemble_query(Codes0, State, Bytes, Constant_Allocation, Structure_Allocation) :-
-	assembly_state(State, Structures, Constants, Labels, _Label_Table),
-	allocate_structures(Codes0, Codes1, Structures, All_Structures),
-	structure_allocation(All_Structures, Structure_Allocation),
-	allocate_constants(Codes1, Codes2, Constants, All_Constants),
-	constant_allocation(All_Constants, Constant_Allocation),
-	apply_labels(Codes2, Labels, Codes3),
+assemble_query(Codes0, State, Bytes, Functors) :-
+	assembly_state(State, Functors0, Labels),
+	allocate_functors(Codes0, Codes1, Functors0, Functors),
+	apply_labels(Codes1, Labels, Codes3),
 	assemble_codes(Codes3, Bytes, []).
 
 
 assemble_program(Codes0, State, Bytes) :-
-	init_structures_state(Structures0),
-	allocate_structures(Codes0, Codes1, Structures0, Structures),
-	init_constants_state(Constants0),
-	allocate_constants(Codes1, Codes2, Constants0, Constants),
-	allocate_labels(Codes2, Labels),
-	apply_labels(Codes2, Labels, Codes3),
-	assemble_codes(Codes3, Bytes_With_Labels, []),
-	same_length(Labels, Label_Table),
-	remove_labels(Bytes_With_Labels, Bytes, Labels, Label_Table),
-	assembly_state(State, Structures, Constants, Labels, Label_Table).
-
-
-assemble_label_table(State, Label_Table_Bytes) :-
-	assembly_state(State, _Structures, _Constants, _Labels, Label_Table),
-	assemble_label_table_entries(Label_Table, Label_Table_Bytes, []).
+	init_functors_state(Functors0),
+	allocate_functors(Codes0, Codes1, Functors0, Functors),
+	allocate_labels(Codes1, Labels),
+	apply_labels(Codes1, Labels, Codes2),
+	assemble_codes(Codes2, Bytes_With_Labels, []),
+	remove_labels(Bytes_With_Labels, Bytes, Labels),
+	assembly_state(State, Functors, Labels).
 
 
 assemble_codes([]) -->
@@ -162,24 +147,26 @@ assemble_code(deallocate) -->
 assemble_code(label(L)) -->
 	[label(L)].
 
-assemble_code(call(ID)) -->
+assemble_code(call(PC, Arity)) -->
 	[0x43],
-	term_id(ID).
+	program_location(PC),
+	arity(Arity).
 
-assemble_code(execute(ID)) -->
+assemble_code(execute(PC, Arity)) -->
 	[0x44],
-	term_id(ID).
+	program_location(PC),
+	arity(Arity).
 
 assemble_code(proceed) -->
 	[0x45].
 
 assemble_code(try_me_else(ID)) -->
 	[0x50],
-	term_id(ID).
+	program_location(ID).
 
 assemble_code(retry_me_else(ID)) -->
 	[0x51],
-	term_id(ID).
+	program_location(ID).
 
 assemble_code(trust_me) -->
 	[0x52].
@@ -268,15 +255,6 @@ unify_value(y(N)) -->
 	vn(y(N)).
 
 
-assemble_label_table_entries([]) -->
-	[].
-
-assemble_label_table_entries([Location/Arity|Entries]) -->
-	program_location(Location),
-	arity(Arity),
-	assemble_label_table_entries(Entries).
-
-
 simple_code(>, 0x60).
 simple_code(<, 0x61).
 simple_code(=<, 0x62).
@@ -305,5 +283,4 @@ pin_mode(digital_input_pullup, 0x02).
 pin_mode(digital_input_pulldown, 0x03).
 
 
-
-assembly_state(state(Structures, Constants, Labels, Label_Table), Structures, Constants, Labels, Label_Table).
+assembly_state(state(Functors, Labels), Functors, Labels).

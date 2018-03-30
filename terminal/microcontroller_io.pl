@@ -1,10 +1,9 @@
 
 :- module(microcontroller_io, [
-	      check_hash/2,
+	      put_command/2,
+	      check_hash/3,
 	      update_hash/2,
 	      update_program/2,
-	      update_label_table/2,
-	      reset_machine/1,
 	      run_query/3,
 	      get_next_answer/2,
 	      fetch_value/3,
@@ -17,38 +16,28 @@
 :- use_module(value).
 
 
-check_hash(Stream, Hash) :-
+check_hash(Stream, Hash, Hash_Matches) :-
 	length(Hash, Length),
 	hash_length(Length, Bytes, Hash),
-	put_command_with_block(Stream, check_hash, Bytes),
-	get_boolean(Stream).
+	put_bytes(Bytes, Stream),
+	get_byte(Stream, Code),
+	hash_matches(Code, Hash_Matches).
+
+
+hash_matches(0, hash_differs).
+hash_matches(1, hash_matches).
 
 
 update_hash(Stream, Hash) :-
 	length(Hash, Length),
 	hash_length(Length, Bytes, Hash),
-	put_command_with_block(Stream, update_hash, Bytes),
-	get_boolean(Stream).
+	put_bytes(Bytes, Stream).
 
 
 update_program(Stream, Program_Bytes) :-
 	length(Program_Bytes, Length),
 	program_length(Length, Bytes, Program_Bytes),
-	put_command_with_block(Stream, update_program, Bytes),
-	get_boolean(Stream).
-
-
-update_label_table(Stream, Label_Table_Bytes) :-
-	length(Label_Table_Bytes, Length),
-	program_length(Length, Bytes, Label_Table_Bytes),
-	put_command_with_block(Stream, update_label_table, Bytes),
-	get_boolean(Stream).
-
-
-reset_machine(Stream) :-
-	put_command_with_block(Stream, reset_machine, []),
-	get_boolean(Stream).
-
+	put_bytes(Bytes, Stream).
 
 run_query(Stream, Bytes, Results) :-
 	put_command_with_block(Stream, run_query, Bytes),
@@ -62,8 +51,13 @@ get_next_answer(Stream, Results) :-
 
 fetch_value(Stream, Address, Value) :-
 	registry_entry(Address, Bytes, []),
-	put_command_with_block(Stream, fetch_structure, Bytes),
+	put_command_with_block(Stream, fetch_value, Bytes),
 	value(Value, Stream, Stream).
+
+
+put_command(Stream, Command) :-
+	command(Command, Byte),
+	put_byte(Stream, Byte).
 
 
 put_command_with_block(Stream, Command, Block) :-
@@ -77,22 +71,6 @@ put_bytes([], Stream) :-
 put_bytes([Code|Codes], Stream) :-
 	put_byte(Stream, Code),
 	put_bytes(Codes, Stream).
-
-
-get_boolean(Stream) :-
-	get_byte(Stream, Code),
-	boolean(Code).
-
-
-boolean(1) :-
-	!.
-
-boolean(0) :-
-	!,
-	fail.
-
-boolean(Code) :-
-	throw(invalid_boolean(Code)).
 
 
 get_results(Stream, Results) :-

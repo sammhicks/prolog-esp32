@@ -177,7 +177,7 @@ Print &operator<<(Print &os, const ChoicePoint &b) {
   os << "\t\t\tCurrent Environment: " << b.currentEnvironment << endl;
   os << "\t\t\tContinue Point: " << b.continuePoint << endl;
   os << "\t\t\tNext Choice Point: " << b.nextChoicePoint << endl;
-  os << "\t\t\tRetry Label: " << b.retryLabel << endl;
+  os << "\t\t\tRetry Index: " << b.retryIndex << endl;
   os << "\t\t\tCurrent Cut Point: " << b.currentCutPoint << endl;
   return os;
 }
