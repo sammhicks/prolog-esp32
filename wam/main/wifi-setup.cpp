@@ -13,9 +13,8 @@ void wifiEvent(WiFiEvent_t event) {
   switch (event) {
   case SYSTEM_EVENT_AP_START:
     WiFi.softAPConfig(ipAddr, ipAddr, subnet);
-    break;
-  case SYSTEM_EVENT_STA_GOT_IP:
     wifiServer.begin();
+    break;
   default:
     break;
   }
