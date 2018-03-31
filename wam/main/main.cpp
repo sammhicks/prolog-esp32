@@ -51,12 +51,14 @@ void updateProgram(Client &client) {
     return;
   }
 
-  updateHash(client);
+  if (!updateHash(client)) {
+    return;
+  }
 
   Serial << "code update" << endl;
   while (client.available() < sizeof(CodeIndex)) {
     if (!client.connected()) {
-      Serial << "client disconnected" << endl;
+      Serial << "code update failed" << endl;
       return;
     }
     yieldProcessor();
@@ -67,13 +69,11 @@ void updateProgram(Client &client) {
   Serial << "code length: " << codeLength << endl;
 
   if (updateFile(codePath, codeLength, client)) {
-    Raw::write<bool>(client, true);
+    Serial << "code update complete" << endl;
   } else {
-    Raw::write<bool>(client, false);
     deleteHash();
+    Serial << "code update failed" << endl;
   }
-
-  Serial << "code update complete" << endl;
 }
 
 void readValue(Client &client) {

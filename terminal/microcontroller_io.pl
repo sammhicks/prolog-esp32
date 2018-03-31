@@ -31,13 +31,15 @@ hash_matches(1, hash_matches).
 update_hash(Stream, Hash) :-
 	length(Hash, Length),
 	hash_length(Length, Bytes, Hash),
-	put_bytes(Bytes, Stream).
+	put_bytes(Bytes, Stream),
+	verify_file_updated(Stream, hash_update_failed).
 
 
 update_program(Stream, Program_Bytes) :-
 	length(Program_Bytes, Length),
 	program_length(Length, Bytes, Program_Bytes),
-	put_bytes(Bytes, Stream).
+	put_bytes(Bytes, Stream),
+	verify_file_updated(Stream, code_update_failed).
 
 run_query(Stream, Bytes, Results) :-
 	put_command_with_block(Stream, run_query, Bytes),
@@ -71,6 +73,14 @@ put_bytes([], Stream) :-
 put_bytes([Code|Codes], Stream) :-
 	put_byte(Stream, Code),
 	put_bytes(Codes, Stream).
+
+
+verify_file_updated(Stream, Exception) :-
+	get_byte(Stream, Code),
+	(   Code =:= 1
+	->  true
+	;   throw(Exception)
+	).
 
 
 get_results(Stream, Results) :-
