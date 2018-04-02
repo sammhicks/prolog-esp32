@@ -4,8 +4,8 @@
 #include "value.h"
 
 const Xn registerCount = CONFIG_VM_REGISTER_COUNT;
-const size_t tupleRegistryCapacity = 2 << 10;
-const size_t tuplesHeapCapacity = 2 << 15;
+const size_t tupleRegistryCapacity = 2 << CONFIG_VM_LOG_2_REGISTRY_SIZE;
+const size_t tuplesHeapCapacity = 2 << CONFIG_VM_LOG_2_TUPLE_HEAP_SIZE;
 
 extern RegistryEntry *registers[registerCount];
 
