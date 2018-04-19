@@ -99,15 +99,31 @@ add_sign(signed, Count, UN, N) :-
 	N is UN - Range.
 
 
-remove_sign(unsigned, _Count, N, N).
+remove_sign(unsigned, Count, N, N) :-
+	unsigned_range(Count, Range),
+	(   N >= 0,
+	    N < Range
+	->  true
+	;   throw(out_of_range(N, unsigned(Count)))
+	).
 
-remove_sign(signed, _Count, N, N) :-
+
+remove_sign(signed, Count, N, N) :-
 	N >= 0,
-	!.
+	!,
+	signed_range(Count, Range),
+	(   N < Range
+	->  true
+	;   throw(out_of_range(N, signed(Count)))
+	).
 
 remove_sign(signed, Count, N, UN) :-
 	unsigned_range(Count, Range),
-	UN is Range + N.
+	UN is Range + N,
+	(   UN >= 0
+	->  true
+	;   throw(out_of_range(N, signed(Count)))
+	).
 
 
 unsigned_range(ByteCount, Range) :-
