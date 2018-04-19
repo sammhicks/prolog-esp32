@@ -11,17 +11,6 @@
 | Input with pullup resistor    | `02` |
 | Input with pulldown resistor  | `03` |
 
-
-## Value Representations in Memory
-
-+ Heap Reference
-+ Stack Reference
-+ Structure
-+ List
-+ Constant
-+ Integer
-
-
 ## Instructions
 
 | instruction                               | opcode |
@@ -30,7 +19,7 @@
 | put variable `Yn`, `Ai`                   |  `01`  |
 | put value `Xn`, `Ai`                      |  `02`  |
 | put value `Yn`, `Ai`                      |  `03`  |
-| put structure `f`, `n`, `Ai`              |  `04`  |
+| put structure `f`, `n`, `Vn`              |  `04`  |
 | put list `Ai`                             |  `05`  |
 | put constant `c`, `Ai`                    |  `06`  |
 | put integer `i`, `Ai`                     |  `07`  |
@@ -38,7 +27,7 @@
 | get variable `Yn`, `Ai`                   |  `11`  |
 | get value `Xn`, `Ai`                      |  `12`  |
 | get value `Yn`, `Ai`                      |  `13`  |
-| get structure `f`, `n`, `Ai`              |  `14`  |
+| get structure `f`, `n`, `Vn`              |  `14`  |
 | get list `Ai`                             |  `15`  |
 | get constant `c`, `Ai`                    |  `16`  |
 | get integer `i`, `Ai`                     |  `17`  |

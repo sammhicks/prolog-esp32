@@ -1,9 +1,12 @@
+/* The terminal for interfacing with the ESP32 WAM
+ *
+*/
 
 :- module(terminal, [
 	      open_connection/0,
 	      close_connection/0,
 	      compile_program/2,        % +File, -Result
-	      run_query/1
+	      run_query/1               % +Query
 	  ]).
 
 :- use_module(library(socket)).
@@ -17,12 +20,18 @@
 :- dynamic(program_compile_state/1).
 
 
+%!	open_connection is det
+%
+%	Open a connection to the VM. You must already be connected to
+%	the Access Point on the ESP32
 open_connection :-
 	close_connection,
 	tcp_connect(ip(192,168,167,1):1, Stream, []),
 	assertz(current_connection(Stream)).
 
-
+%!	close_connection is det
+%
+%	Close the connection to the VM.
 close_connection :-
 	retract(current_connection(Stream)),
 	!,
@@ -39,7 +48,14 @@ is_connected(Stream) :-
 is_connected(_) :-
 	throw("Not connected to microcontroller").
 
-
+%!	compile_program(+File:string, -Result) is det.
+%
+%	Compiles a program
+%
+%	@arg File The path to the source file
+%	@arg Result The result of the compilation. The compiler checks
+%	that the program isn't already stored onboard the
+%	microcontroller
 compile_program(File, Result) :-
 	read_terms_from_file(File, Program),
 	retractall(program_compile_state(_)),
@@ -68,6 +84,11 @@ has_program_compile_state(_) :-
 	throw("No program compiled").
 
 
+%!	run_query(+Query) is nondet.
+%
+%	Run a query on the microcontroller
+%
+%	@arg Query The query to run
 run_query(Query) :-
 	has_program_compile_state(State),
 	compile_query(Query, State, Bytes, Functors),
