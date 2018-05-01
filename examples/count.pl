@@ -1,4 +1,13 @@
 
+count(Current, End) :-
+	Current < End,
+	!,
+	Next is Current + 1,
+	count(Next, End).
+
+count(_, _).
+
+
 count_list(Count, List) :-
 	count_list(Count, 1, List).
 

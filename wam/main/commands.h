@@ -4,15 +4,10 @@
 #include "serial-stream.h"
 
 enum class Command : uint8_t {
-  ping = 0x00,
-  checkHash = 0x10,
-  updateHash = 0x20,
-  updateProgram,
-  updateLabelTable,
-  resetMachine = 0x30,
-  runQuery,
+  updateProgram = 0x00,
+  runQuery = 0x10,
   getNextAnswer,
-  readValue = 0x40,
+  readValue = 0x20,
 };
 
 bool commandWaiting(Stream &s);

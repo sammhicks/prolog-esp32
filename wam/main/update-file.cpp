@@ -21,5 +21,7 @@ bool updateFile(const char *path, size_t newLength, Client &client) {
 
   VERBOSE(Serial << endl);
 
+  client.write(1);
+
   return true;
 }

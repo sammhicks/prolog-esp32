@@ -32,12 +32,13 @@ bool checkHash(Client &client) {
   return hashCorrect;
 }
 
-void updateHash(Client &client) {
+bool updateHash(Client &client) {
   Serial << "hash update" << endl;
 
   while (client.available() < sizeof(HashLength)) {
     if (!client.connected()) {
-      return;
+      Serial << "hash update failed" << endl;
+      return false;
     }
     yieldProcessor();
   }
@@ -45,13 +46,13 @@ void updateHash(Client &client) {
   HashLength hashLength = Raw::read<HashLength>(client);
 
   if (updateFile(hashPath, hashLength, client)) {
-    client.write(1);
+    Serial << "hash update complete" << endl;
+    return true;
   } else {
     deleteHash();
-    client.write(0);
+    Serial << "hash update failed" << endl;
+    return false;
   }
-
-  Serial << "hash update complete" << endl;
 }
 
 void deleteHash() { SPIFFS.remove(hashPath); }

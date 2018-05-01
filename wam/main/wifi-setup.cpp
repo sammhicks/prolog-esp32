@@ -1,8 +1,5 @@
 #include "wifi-setup.h"
 
-const char *ssid = "ESP32 WAM";
-const char *password =
-    "#XAbHWYZodCXLfOm6!a^e^PVi9pqRCH#BlDq#nE4SpvABE20#fBPPNmdMqi8";
 const IPAddress ipAddr(192, 168, 167, 1);
 const IPAddress subnet(255, 255, 255, 0);
 const uint16_t serverPort = 1;
@@ -13,9 +10,8 @@ void wifiEvent(WiFiEvent_t event) {
   switch (event) {
   case SYSTEM_EVENT_AP_START:
     WiFi.softAPConfig(ipAddr, ipAddr, subnet);
-    break;
-  case SYSTEM_EVENT_STA_GOT_IP:
     wifiServer.begin();
+    break;
   default:
     break;
   }
@@ -23,5 +19,5 @@ void wifiEvent(WiFiEvent_t event) {
 
 void setupWiFi() {
   WiFi.onEvent(wifiEvent);
-  WiFi.softAP(ssid, password);
+  WiFi.softAP(CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
 }

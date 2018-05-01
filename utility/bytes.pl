@@ -5,7 +5,8 @@
 	      uint16//1,    % +N
 	      int16//1,     % +N
 	      uint32//1,    % +N
-	      int32//1      % +N
+	      int32//1,     % +N
+	      bytes//3	    % +Count, ?N, +Sign
 	  ]).
 
 uint8(N) -->
@@ -41,6 +42,13 @@ bytes(Count, N, Sign, Stream, Stream) :-
 	read_bytes(Count, UN, Bytes, []),
 	add_sign(Sign, Count, UN, N).
 
+bytes(Count, N, Sign, Codes, Tail) :-
+	var(N),
+	var(Codes),
+	!,
+	length(N_Codes, Count),
+	append(N_Codes, Tail, Codes),
+	freeze(N, (remove_sign(Sign, Count, N, UN), write_bytes(Count, UN, N_Codes, []))).
 
 bytes(Count, N, Sign, Codes, Tail) :-
 	var(N),
@@ -91,15 +99,31 @@ add_sign(signed, Count, UN, N) :-
 	N is UN - Range.
 
 
-remove_sign(unsigned, _Count, N, N).
+remove_sign(unsigned, Count, N, N) :-
+	unsigned_range(Count, Range),
+	(   N >= 0,
+	    N < Range
+	->  true
+	;   throw(out_of_range(N, unsigned(Count)))
+	).
 
-remove_sign(signed, _Count, N, N) :-
+
+remove_sign(signed, Count, N, N) :-
 	N >= 0,
-	!.
+	!,
+	signed_range(Count, Range),
+	(   N < Range
+	->  true
+	;   throw(out_of_range(N, signed(Count)))
+	).
 
 remove_sign(signed, Count, N, UN) :-
 	unsigned_range(Count, Range),
-	UN is Range + N.
+	UN is Range + N,
+	(   UN >= 0
+	->  true
+	;   throw(out_of_range(N, signed(Count)))
+	).
 
 
 unsigned_range(ByteCount, Range) :-
